@@ -24,8 +24,8 @@ interface InvestmentTransactionDao {
     @Query("SELECT * FROM investment_transactions WHERE accountId = :accountId ORDER BY date DESC, time DESC")
     fun getTransactionsByAccount(accountId: Long): Flow<List<InvestmentTransactionEntity>>
 
-    @Query("SELECT * FROM investment_transactions WHERE investmentItemId = :itemId ORDER BY date DESC, time DESC")
-    fun getTransactionsByItem(itemId: Long): Flow<List<InvestmentTransactionEntity>>
+    @Query("SELECT * FROM investment_transactions WHERE ticker = :ticker ORDER BY date DESC, time DESC")
+    fun getTransactionsByTicker(ticker: String): Flow<List<InvestmentTransactionEntity>>
 
     @Query("SELECT * FROM investment_transactions WHERE id = :id")
     fun getTransactionById(id: Long): Flow<InvestmentTransactionEntity?>

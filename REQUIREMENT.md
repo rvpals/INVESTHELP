@@ -32,29 +32,46 @@ Android app to track personal investments.
 - Total gain/loss
 
 ### Investment Transaction
-- Date
-- Time of transaction
+- Date (defaults to today)
+- Time of transaction (optional — button to populate current time)
 - Action (Buy / Sell)
-- Associated Account
+- Associated Account (dropdown)
+- Ticker (direct text input, auto-uppercased)
 - Number of shares
 - Price per share
-- Associated Investment Item
+- Total Amount (calculated display with copy button for verification)
+- Note (optional, multi-line)
 
 ## Features
+
+### Account Detail with Tabs
+- **Positions tab** — lists all positions for the account (ticker, value, quantity, cost, day/total gain/loss)
+- **Transactions tab** — lists all transactions for the account (ordered by date DESC, time DESC)
 
 ### Position Tracking
 - Add/edit/delete positions per account
 - Same ticker allowed on different accounts (composite key: ticker + account)
 - Refresh all positions with live market prices
 - Account values auto-update from position values
+- **Pie chart** — collapsible chart section showing allocation by ticker value
 
-### Investment Item Statistics View
-- Opens when clicking on an Investment Item
-- Shows statistics:
-  - Average buy/sell price
-  - Max buy/sell price
-  - Min buy/sell price
-- Filterable by date range
+### Investment Item Detail
+- Shows item type, current price, shares owned, total value
+- **Analysis Info** — fetches Yahoo Finance quoteSummary (sector, industry, P/E, EPS, 52-week range, profit margins, business summary) displayed in a bottom sheet
+- **Yahoo Finance link** — opens ticker page in browser
+- **View Statistics** — average/max/min buy/sell prices filterable by date range
+
+### Simulation
+- Accessible from Dashboard toolbar (trending icon)
+- Enter ticker, number of shares, cost per share
+- **Get Price** button fetches current Yahoo Finance price
+- **Run Sim** — fetches last 2 weeks of daily prices, shows:
+  - Summary card with buy price vs current price, profit/loss amount and percentage
+  - Trending line chart with filled area, buy price reference line, date labels
+
+### Backup & Restore
+- Export all data to JSON file
+- Restore from JSON backup file
 
 ### App Branding
 - Custom app icon (invest_help_icon.png)

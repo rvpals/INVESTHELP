@@ -9,7 +9,7 @@ import javax.inject.Singleton
 interface TransactionRepository {
     fun getAllTransactions(): Flow<List<InvestmentTransactionEntity>>
     fun getTransactionsByAccount(accountId: Long): Flow<List<InvestmentTransactionEntity>>
-    fun getTransactionsByItem(itemId: Long): Flow<List<InvestmentTransactionEntity>>
+    fun getTransactionsByTicker(ticker: String): Flow<List<InvestmentTransactionEntity>>
     fun getTransactionById(id: Long): Flow<InvestmentTransactionEntity?>
     suspend fun insertTransaction(transaction: InvestmentTransactionEntity): Long
     suspend fun updateTransaction(transaction: InvestmentTransactionEntity)
@@ -27,8 +27,8 @@ class TransactionRepositoryImpl @Inject constructor(
     override fun getTransactionsByAccount(accountId: Long): Flow<List<InvestmentTransactionEntity>> =
         transactionDao.getTransactionsByAccount(accountId)
 
-    override fun getTransactionsByItem(itemId: Long): Flow<List<InvestmentTransactionEntity>> =
-        transactionDao.getTransactionsByItem(itemId)
+    override fun getTransactionsByTicker(ticker: String): Flow<List<InvestmentTransactionEntity>> =
+        transactionDao.getTransactionsByTicker(ticker)
 
     override fun getTransactionById(id: Long): Flow<InvestmentTransactionEntity?> =
         transactionDao.getTransactionById(id)

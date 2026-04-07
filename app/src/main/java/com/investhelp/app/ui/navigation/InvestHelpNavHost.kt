@@ -27,6 +27,8 @@ import com.investhelp.app.ui.position.PositionScreen
 import com.investhelp.app.ui.position.PositionViewModel
 import com.investhelp.app.ui.settings.SettingsScreen
 import com.investhelp.app.ui.settings.SettingsViewModel
+import com.investhelp.app.ui.simulation.SimulationScreen
+import com.investhelp.app.ui.simulation.SimulationViewModel
 import com.investhelp.app.ui.transaction.TransactionFormScreen
 import com.investhelp.app.ui.transaction.TransactionListScreen
 import com.investhelp.app.ui.transaction.TransactionViewModel
@@ -69,6 +71,9 @@ fun InvestHelpNavHost(
                 },
                 onAddAccount = {
                     navController.navigate(AccountFormRoute())
+                },
+                onNavigateToSimulation = {
+                    navController.navigate(SimulationRoute)
                 }
             )
         }
@@ -190,6 +195,14 @@ fun InvestHelpNavHost(
         composable<PositionListRoute> {
             val viewModel: PositionViewModel = hiltViewModel()
             PositionScreen(viewModel = viewModel)
+        }
+
+        composable<SimulationRoute> {
+            val viewModel: SimulationViewModel = hiltViewModel()
+            SimulationScreen(
+                viewModel = viewModel,
+                onBack = { navController.popBackStack() }
+            )
         }
 
         composable<SettingsRoute> {

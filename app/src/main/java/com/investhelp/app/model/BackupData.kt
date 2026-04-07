@@ -31,10 +31,12 @@ data class BackupItem(
 data class BackupTransaction(
     val id: Long,
     val dateEpochDay: Long,
-    val timeSecondOfDay: Int,
+    val timeSecondOfDay: Int? = null,
     val action: String,
     val accountId: Long,
-    val investmentItemId: Long,
+    val ticker: String,
     val numberOfShares: Double,
-    val pricePerShare: Double
+    val pricePerShare: Double,
+    val totalAmount: Double = 0.0,
+    val note: String = ""
 )

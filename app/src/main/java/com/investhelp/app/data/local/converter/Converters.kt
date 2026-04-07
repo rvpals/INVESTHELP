@@ -15,10 +15,10 @@ class Converters {
     fun toLocalDate(epochDay: Long): LocalDate = LocalDate.ofEpochDay(epochDay)
 
     @TypeConverter
-    fun fromLocalTime(time: LocalTime): Int = time.toSecondOfDay()
+    fun fromLocalTime(time: LocalTime?): Int? = time?.toSecondOfDay()
 
     @TypeConverter
-    fun toLocalTime(secondOfDay: Int): LocalTime = LocalTime.ofSecondOfDay(secondOfDay.toLong())
+    fun toLocalTime(secondOfDay: Int?): LocalTime? = secondOfDay?.let { LocalTime.ofSecondOfDay(it.toLong()) }
 
     @TypeConverter
     fun fromInvestmentType(type: InvestmentType): String = type.name

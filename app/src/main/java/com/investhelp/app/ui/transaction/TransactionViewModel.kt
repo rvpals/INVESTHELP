@@ -3,10 +3,8 @@ package com.investhelp.app.ui.transaction
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.investhelp.app.data.local.entity.InvestmentAccountEntity
-import com.investhelp.app.data.local.entity.InvestmentItemEntity
 import com.investhelp.app.data.local.entity.InvestmentTransactionEntity
 import com.investhelp.app.data.repository.AccountRepository
-import com.investhelp.app.data.repository.InvestmentItemRepository
 import com.investhelp.app.data.repository.TransactionRepository
 import com.investhelp.app.model.TransactionAction
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -23,8 +21,7 @@ import javax.inject.Inject
 @HiltViewModel
 class TransactionViewModel @Inject constructor(
     private val transactionRepository: TransactionRepository,
-    accountRepository: AccountRepository,
-    itemRepository: InvestmentItemRepository
+    accountRepository: AccountRepository
 ) : ViewModel() {
 
     val allTransactions: StateFlow<List<InvestmentTransactionEntity>> =
@@ -33,10 +30,6 @@ class TransactionViewModel @Inject constructor(
 
     val allAccounts: StateFlow<List<InvestmentAccountEntity>> =
         accountRepository.getAllAccounts()
-            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-
-    val allItems: StateFlow<List<InvestmentItemEntity>> =
-        itemRepository.getAllItems()
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     private val _selectedTransaction = MutableStateFlow<InvestmentTransactionEntity?>(null)
@@ -52,12 +45,14 @@ class TransactionViewModel @Inject constructor(
 
     fun saveTransaction(
         date: LocalDate,
-        time: LocalTime,
+        time: LocalTime?,
         action: TransactionAction,
         accountId: Long,
-        investmentItemId: Long,
+        ticker: String,
         numberOfShares: Double,
         pricePerShare: Double,
+        totalAmount: Double,
+        note: String,
         existingId: Long?
     ) {
         viewModelScope.launch {
@@ -67,9 +62,11 @@ class TransactionViewModel @Inject constructor(
                 time = time,
                 action = action,
                 accountId = accountId,
-                investmentItemId = investmentItemId,
+                ticker = ticker,
                 numberOfShares = numberOfShares,
-                pricePerShare = pricePerShare
+                pricePerShare = pricePerShare,
+                totalAmount = totalAmount,
+                note = note
             )
             if (existingId != null) {
                 transactionRepository.updateTransaction(transaction)

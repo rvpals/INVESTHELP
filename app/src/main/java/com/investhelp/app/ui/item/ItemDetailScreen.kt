@@ -1,6 +1,9 @@
 package com.investhelp.app.ui.item
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -10,28 +13,44 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Analytics
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.investhelp.app.data.remote.AnalysisInfo
 import java.text.NumberFormat
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -52,8 +71,18 @@ fun ItemDetailScreen(
     val item by viewModel.selectedItem.collectAsStateWithLifecycle()
     val sharesOwned by viewModel.sharesOwned.collectAsStateWithLifecycle()
     val transactions by viewModel.itemTransactions.collectAsStateWithLifecycle()
+    val analysisInfo by viewModel.analysisInfo.collectAsStateWithLifecycle()
+    val isLoadingAnalysis by viewModel.isLoadingAnalysis.collectAsStateWithLifecycle()
+    val analysisError by viewModel.analysisError.collectAsStateWithLifecycle()
     val currencyFormat = NumberFormat.getCurrencyInstance(Locale.US)
     val dateFormatter = DateTimeFormatter.ofPattern("MMM dd, yyyy")
+
+    var showAnalysisSheet by remember { mutableStateOf(false) }
+
+    // Show sheet when data arrives
+    LaunchedEffect(analysisInfo) {
+        if (analysisInfo != null) showAnalysisSheet = true
+    }
 
     Scaffold(
         topBar = {
@@ -116,6 +145,64 @@ fun ItemDetailScreen(
                     }
 
                     Spacer(modifier = Modifier.height(8.dp))
+
+                    // Analysis Info button
+                    Button(
+                        onClick = {
+                            val ticker = inv.ticker
+                            if (ticker != null) {
+                                viewModel.fetchAnalysisInfo(ticker)
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = !inv.ticker.isNullOrBlank() && !isLoadingAnalysis
+                    ) {
+                        if (isLoadingAnalysis) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.padding(end = 8.dp),
+                                strokeWidth = 2.dp,
+                                color = MaterialTheme.colorScheme.onPrimary
+                            )
+                        } else {
+                            Icon(
+                                Icons.Default.Info,
+                                contentDescription = null,
+                                modifier = Modifier.padding(end = 8.dp)
+                            )
+                        }
+                        Text("Analysis Info")
+                    }
+
+                    if (analysisError != null) {
+                        Text(
+                            text = analysisError!!,
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.padding(top = 4.dp)
+                        )
+                    }
+
+                    // Yahoo Finance web link
+                    if (!inv.ticker.isNullOrBlank()) {
+                        val context = LocalContext.current
+                        OutlinedButton(
+                            onClick = {
+                                val intent = Intent(
+                                    Intent.ACTION_VIEW,
+                                    Uri.parse("https://finance.yahoo.com/quote/${inv.ticker}")
+                                )
+                                context.startActivity(intent)
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(
+                                Icons.Default.OpenInNew,
+                                contentDescription = null,
+                                modifier = Modifier.padding(end = 8.dp)
+                            )
+                            Text("Yahoo Finance")
+                        }
+                    }
 
                     Button(
                         onClick = onViewStatistics,
@@ -181,5 +268,138 @@ fun ItemDetailScreen(
                 }
             }
         }
+    }
+
+    // Analysis Info Bottom Sheet
+    if (showAnalysisSheet && analysisInfo != null) {
+        val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+        ModalBottomSheet(
+            onDismissRequest = {
+                showAnalysisSheet = false
+                viewModel.clearAnalysisInfo()
+            },
+            sheetState = sheetState
+        ) {
+            AnalysisInfoContent(
+                ticker = item?.ticker ?: "",
+                info = analysisInfo!!,
+                currencyFormat = currencyFormat
+            )
+        }
+    }
+}
+
+@Composable
+private fun AnalysisInfoContent(
+    ticker: String,
+    info: AnalysisInfo,
+    currencyFormat: NumberFormat
+) {
+    val percentFormat = NumberFormat.getPercentInstance(Locale.US).apply {
+        maximumFractionDigits = 2
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
+            .padding(bottom = 32.dp)
+            .verticalScroll(rememberScrollState())
+    ) {
+        Text(
+            text = info.shortName ?: ticker,
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold
+        )
+
+        if (info.sector != null || info.industry != null) {
+            Text(
+                text = listOfNotNull(info.sector, info.industry).joinToString(" - "),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Key metrics
+        Text("Key Metrics", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+
+        info.marketCap?.let {
+            InfoRow("Market Cap", formatMarketCap(it))
+        }
+        info.trailingPE?.let { InfoRow("Trailing P/E", "%.2f".format(it)) }
+        info.forwardPE?.let { InfoRow("Forward P/E", "%.2f".format(it)) }
+        info.eps?.let { InfoRow("EPS", currencyFormat.format(it)) }
+        info.dividendYield?.let { InfoRow("Dividend Yield", percentFormat.format(it)) }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // Price range
+        Text("Price Range", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+
+        info.fiftyTwoWeekHigh?.let { InfoRow("52-Week High", currencyFormat.format(it)) }
+        info.fiftyTwoWeekLow?.let { InfoRow("52-Week Low", currencyFormat.format(it)) }
+        info.fiftyDayAverage?.let { InfoRow("50-Day Avg", currencyFormat.format(it)) }
+        info.twoHundredDayAverage?.let { InfoRow("200-Day Avg", currencyFormat.format(it)) }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // Financial data
+        if (info.targetMeanPrice != null || info.revenuePerShare != null ||
+            info.profitMargins != null || info.returnOnEquity != null
+        ) {
+            Text("Financials", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+
+            info.targetMeanPrice?.let { InfoRow("Analyst Target", currencyFormat.format(it)) }
+            info.revenuePerShare?.let { InfoRow("Revenue/Share", currencyFormat.format(it)) }
+            info.profitMargins?.let { InfoRow("Profit Margins", percentFormat.format(it)) }
+            info.returnOnEquity?.let { InfoRow("Return on Equity", percentFormat.format(it)) }
+        }
+
+        // Business summary
+        if (!info.longBusinessSummary.isNullOrBlank()) {
+            Spacer(modifier = Modifier.height(12.dp))
+            Text("About", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+            Text(
+                text = info.longBusinessSummary,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+@Composable
+private fun InfoRow(label: String, value: String) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Medium
+        )
+    }
+}
+
+private fun formatMarketCap(value: Long): String {
+    return when {
+        value >= 1_000_000_000_000 -> "${"%.2f".format(value / 1_000_000_000_000.0)}T"
+        value >= 1_000_000_000 -> "${"%.2f".format(value / 1_000_000_000.0)}B"
+        value >= 1_000_000 -> "${"%.2f".format(value / 1_000_000.0)}M"
+        else -> NumberFormat.getNumberInstance(Locale.US).format(value)
     }
 }

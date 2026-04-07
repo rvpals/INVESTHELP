@@ -1,21 +1,33 @@
 package com.investhelp.app.ui.position
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
@@ -45,6 +57,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -149,6 +166,14 @@ fun PositionScreen(viewModel: PositionViewModel) {
                 Text("Tap + to add one", style = MaterialTheme.typography.bodyMedium)
             }
         } else {
+            // Aggregate values by ticker across all accounts
+            val tickerValues = positions
+                .groupBy { it.ticker }
+                .mapValues { (_, list) -> list.sumOf { it.value } }
+                .filter { it.value > 0 }
+                .toList()
+                .sortedByDescending { it.second }
+
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
@@ -156,6 +181,12 @@ fun PositionScreen(viewModel: PositionViewModel) {
                     .padding(horizontal = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
+                if (tickerValues.isNotEmpty()) {
+                    item(key = "chart_section") {
+                        ChartSection(tickerValues, currencyFormat)
+                    }
+                }
+
                 items(positions, key = { "${it.ticker}:${it.accountId}" }) { position ->
                     PositionCard(
                         position = position,
@@ -255,6 +286,122 @@ private fun PositionCard(
                     contentDescription = "Delete",
                     tint = MaterialTheme.colorScheme.error
                 )
+            }
+        }
+    }
+}
+
+private val chartColors = listOf(
+    Color(0xFF4285F4), // Blue
+    Color(0xFFEA4335), // Red
+    Color(0xFFFBBC04), // Yellow
+    Color(0xFF34A853), // Green
+    Color(0xFFFF6D01), // Orange
+    Color(0xFF46BDC6), // Teal
+    Color(0xFF7B1FA2), // Purple
+    Color(0xFFD81B60), // Pink
+    Color(0xFF00897B), // Dark Teal
+    Color(0xFF5C6BC0), // Indigo
+    Color(0xFFFFA000), // Amber
+    Color(0xFF8D6E63), // Brown
+)
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun ChartSection(
+    tickerValues: List<Pair<String, Double>>,
+    currencyFormat: NumberFormat
+) {
+    var expanded by remember { mutableStateOf(true) }
+    val totalValue = tickerValues.sumOf { it.second }
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+        )
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { expanded = !expanded },
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("Chart", style = MaterialTheme.typography.titleMedium)
+                Icon(
+                    if (expanded) Icons.Default.KeyboardArrowUp
+                    else Icons.Default.KeyboardArrowDown,
+                    contentDescription = if (expanded) "Collapse" else "Expand"
+                )
+            }
+
+            AnimatedVisibility(visible = expanded) {
+                Column(
+                    modifier = Modifier.padding(top = 12.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    // Pie chart
+                    Canvas(
+                        modifier = Modifier
+                            .fillMaxWidth(0.6f)
+                            .aspectRatio(1f)
+                    ) {
+                        val diameter = size.minDimension
+                        val topLeft = Offset(
+                            (size.width - diameter) / 2f,
+                            (size.height - diameter) / 2f
+                        )
+                        var startAngle = -90f
+                        tickerValues.forEachIndexed { index, (_, value) ->
+                            val sweep = (value / totalValue * 360.0).toFloat()
+                            drawArc(
+                                color = chartColors[index % chartColors.size],
+                                startAngle = startAngle,
+                                sweepAngle = sweep,
+                                useCenter = true,
+                                topLeft = topLeft,
+                                size = Size(diameter, diameter)
+                            )
+                            startAngle += sweep
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    // Legend
+                    FlowRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        tickerValues.forEachIndexed { index, (ticker, value) ->
+                            val pct = if (totalValue > 0) value / totalValue * 100 else 0.0
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(10.dp)
+                                        .clip(CircleShape)
+                                        .background(chartColors[index % chartColors.size])
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = "$ticker ${"%.1f".format(pct)}%",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "Total: ${currencyFormat.format(totalValue)}",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
         }
     }

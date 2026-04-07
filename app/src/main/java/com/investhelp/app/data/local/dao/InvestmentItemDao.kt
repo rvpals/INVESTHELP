@@ -41,35 +41,35 @@ interface InvestmentItemDao {
                       ELSE 0 END),
             0.0
         )
-        FROM investment_transactions WHERE investmentItemId = :itemId
+        FROM investment_transactions WHERE ticker = :ticker
         """
     )
-    suspend fun computeSharesOwned(itemId: Long): Double
+    suspend fun computeSharesOwned(ticker: String): Double
 
     @Query(
         """
         SELECT AVG(pricePerShare) FROM investment_transactions
-        WHERE investmentItemId = :itemId AND action = :action
+        WHERE ticker = :ticker AND action = :action
         AND date >= :startDate AND date <= :endDate
         """
     )
-    suspend fun avgPrice(itemId: Long, action: String, startDate: Long, endDate: Long): Double?
+    suspend fun avgPrice(ticker: String, action: String, startDate: Long, endDate: Long): Double?
 
     @Query(
         """
         SELECT MAX(pricePerShare) FROM investment_transactions
-        WHERE investmentItemId = :itemId AND action = :action
+        WHERE ticker = :ticker AND action = :action
         AND date >= :startDate AND date <= :endDate
         """
     )
-    suspend fun maxPrice(itemId: Long, action: String, startDate: Long, endDate: Long): Double?
+    suspend fun maxPrice(ticker: String, action: String, startDate: Long, endDate: Long): Double?
 
     @Query(
         """
         SELECT MIN(pricePerShare) FROM investment_transactions
-        WHERE investmentItemId = :itemId AND action = :action
+        WHERE ticker = :ticker AND action = :action
         AND date >= :startDate AND date <= :endDate
         """
     )
-    suspend fun minPrice(itemId: Long, action: String, startDate: Long, endDate: Long): Double?
+    suspend fun minPrice(ticker: String, action: String, startDate: Long, endDate: Long): Double?
 }

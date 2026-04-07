@@ -8,11 +8,13 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material3.Button
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
@@ -25,6 +27,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuAnchorType
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -39,16 +42,19 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.investhelp.app.model.TransactionAction
+import java.text.NumberFormat
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -60,7 +66,6 @@ fun TransactionFormScreen(
 ) {
     val isEditing = transactionId != null
     val accounts by viewModel.allAccounts.collectAsStateWithLifecycle()
-    val items by viewModel.allItems.collectAsStateWithLifecycle()
     val existingTransaction by viewModel.selectedTransaction.collectAsStateWithLifecycle()
 
     if (isEditing) {
@@ -70,21 +75,28 @@ fun TransactionFormScreen(
     }
 
     var date by remember { mutableStateOf(LocalDate.now()) }
-    var time by remember { mutableStateOf(LocalTime.now()) }
+    var time by remember { mutableStateOf<LocalTime?>(null) }
     var action by remember { mutableStateOf(TransactionAction.Buy) }
     var selectedAccountId by remember { mutableStateOf<Long?>(null) }
-    var selectedItemId by remember { mutableStateOf<Long?>(null) }
+    var ticker by remember { mutableStateOf("") }
     var numberOfShares by remember { mutableStateOf("") }
     var pricePerShare by remember { mutableStateOf("") }
+    var totalAmount by remember { mutableStateOf("") }
+    var note by remember { mutableStateOf("") }
 
     var showDatePicker by remember { mutableStateOf(false) }
     var showTimePicker by remember { mutableStateOf(false) }
     var accountExpanded by remember { mutableStateOf(false) }
-    var itemExpanded by remember { mutableStateOf(false) }
     var initialized by remember { mutableStateOf(false) }
 
     val dateFormatter = DateTimeFormatter.ofPattern("MMM dd, yyyy")
     val timeFormatter = DateTimeFormatter.ofPattern("HH:mm")
+    val currencyFormat = NumberFormat.getCurrencyInstance(Locale.US)
+
+    // Computed total for display
+    val shares = numberOfShares.toDoubleOrNull() ?: 0.0
+    val price = pricePerShare.toDoubleOrNull() ?: 0.0
+    val computedTotal = shares * price
 
     LaunchedEffect(existingTransaction) {
         if (isEditing && existingTransaction != null && !initialized) {
@@ -92,9 +104,12 @@ fun TransactionFormScreen(
             time = existingTransaction!!.time
             action = existingTransaction!!.action
             selectedAccountId = existingTransaction!!.accountId
-            selectedItemId = existingTransaction!!.investmentItemId
+            ticker = existingTransaction!!.ticker
             numberOfShares = existingTransaction!!.numberOfShares.toString()
             pricePerShare = existingTransaction!!.pricePerShare.toString()
+            totalAmount = if (existingTransaction!!.totalAmount != 0.0)
+                existingTransaction!!.totalAmount.toString() else ""
+            note = existingTransaction!!.note
             initialized = true
         }
     }
@@ -118,20 +133,6 @@ fun TransactionFormScreen(
                 .padding(16.dp)
                 .verticalScroll(rememberScrollState())
         ) {
-            // Action toggle
-            Text("Action", style = MaterialTheme.typography.labelLarge)
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                TransactionAction.entries.forEach { txAction ->
-                    FilterChip(
-                        selected = action == txAction,
-                        onClick = { action = txAction },
-                        label = { Text(txAction.name) }
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
             // Date
             OutlinedTextField(
                 value = date.format(dateFormatter),
@@ -139,7 +140,6 @@ fun TransactionFormScreen(
                 readOnly = true,
                 label = { Text("Date") },
                 modifier = Modifier.fillMaxWidth(),
-                enabled = true,
                 interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
                     .also { interactionSource ->
                         LaunchedEffect(interactionSource) {
@@ -154,24 +154,39 @@ fun TransactionFormScreen(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Time
-            OutlinedTextField(
-                value = time.format(timeFormatter),
-                onValueChange = {},
-                readOnly = true,
-                label = { Text("Time") },
+            // Time (optional) with "Now" button
+            Row(
                 modifier = Modifier.fillMaxWidth(),
-                interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
-                    .also { interactionSource ->
-                        LaunchedEffect(interactionSource) {
-                            interactionSource.interactions.collect {
-                                if (it is androidx.compose.foundation.interaction.PressInteraction.Release) {
-                                    showTimePicker = true
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                OutlinedTextField(
+                    value = time?.format(timeFormatter) ?: "",
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text("Time (optional)") },
+                    modifier = Modifier.weight(1f),
+                    interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+                        .also { interactionSource ->
+                            LaunchedEffect(interactionSource) {
+                                interactionSource.interactions.collect {
+                                    if (it is androidx.compose.foundation.interaction.PressInteraction.Release) {
+                                        showTimePicker = true
+                                    }
                                 }
                             }
                         }
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                OutlinedButton(onClick = { time = LocalTime.now() }) {
+                    Text("Now")
+                }
+                if (time != null) {
+                    Spacer(modifier = Modifier.width(4.dp))
+                    OutlinedButton(onClick = { time = null }) {
+                        Text("Clear")
                     }
-            )
+                }
+            }
 
             Spacer(modifier = Modifier.height(12.dp))
 
@@ -208,39 +223,32 @@ fun TransactionFormScreen(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Item dropdown
-            ExposedDropdownMenuBox(
-                expanded = itemExpanded,
-                onExpandedChange = { itemExpanded = it }
-            ) {
-                OutlinedTextField(
-                    value = items.find { it.id == selectedItemId }?.name ?: "",
-                    onValueChange = {},
-                    readOnly = true,
-                    label = { Text("Investment Item") },
-                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = itemExpanded) },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .menuAnchor(MenuAnchorType.PrimaryNotEditable)
-                )
-                ExposedDropdownMenu(
-                    expanded = itemExpanded,
-                    onDismissRequest = { itemExpanded = false }
-                ) {
-                    items.forEach { item ->
-                        DropdownMenuItem(
-                            text = { Text("${item.name} (${item.type.name})") },
-                            onClick = {
-                                selectedItemId = item.id
-                                itemExpanded = false
-                            }
-                        )
-                    }
+            // Action toggle
+            Text("Action", style = MaterialTheme.typography.labelLarge)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                TransactionAction.entries.forEach { txAction ->
+                    FilterChip(
+                        selected = action == txAction,
+                        onClick = { action = txAction },
+                        label = { Text(txAction.name) }
+                    )
                 }
             }
 
             Spacer(modifier = Modifier.height(12.dp))
 
+            // Ticker
+            OutlinedTextField(
+                value = ticker,
+                onValueChange = { ticker = it.uppercase() },
+                label = { Text("Ticker") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Number of Shares
             OutlinedTextField(
                 value = numberOfShares,
                 onValueChange = { numberOfShares = it },
@@ -252,37 +260,86 @@ fun TransactionFormScreen(
 
             Spacer(modifier = Modifier.height(12.dp))
 
+            // Price
             OutlinedTextField(
                 value = pricePerShare,
                 onValueChange = { pricePerShare = it },
-                label = { Text("Price per Share") },
+                label = { Text("Price") },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                 modifier = Modifier.fillMaxWidth()
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Computed Total display + Total Amount input with copy button
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Calculated: ${currencyFormat.format(computedTotal)}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                IconButton(onClick = {
+                    totalAmount = if (computedTotal == 0.0) "" else computedTotal.toString()
+                }) {
+                    Icon(
+                        Icons.Default.ContentCopy,
+                        contentDescription = "Copy calculated total",
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+
+            OutlinedTextField(
+                value = totalAmount,
+                onValueChange = { totalAmount = it },
+                label = { Text("Total Amount") },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Note
+            OutlinedTextField(
+                value = note,
+                onValueChange = { note = it },
+                label = { Text("Note") },
+                modifier = Modifier.fillMaxWidth(),
+                minLines = 2,
+                maxLines = 4
             )
 
             Spacer(modifier = Modifier.height(24.dp))
 
             Button(
                 onClick = {
-                    val shares = numberOfShares.toDoubleOrNull() ?: 0.0
-                    val price = pricePerShare.toDoubleOrNull() ?: 0.0
-                    if (selectedAccountId != null && selectedItemId != null) {
+                    val sharesVal = numberOfShares.toDoubleOrNull() ?: 0.0
+                    val priceVal = pricePerShare.toDoubleOrNull() ?: 0.0
+                    val totalVal = totalAmount.toDoubleOrNull() ?: 0.0
+                    if (selectedAccountId != null && ticker.isNotBlank()) {
                         viewModel.saveTransaction(
                             date = date,
                             time = time,
                             action = action,
                             accountId = selectedAccountId!!,
-                            investmentItemId = selectedItemId!!,
-                            numberOfShares = shares,
-                            pricePerShare = price,
+                            ticker = ticker.trim(),
+                            numberOfShares = sharesVal,
+                            pricePerShare = priceVal,
+                            totalAmount = totalVal,
+                            note = note.trim(),
                             existingId = transactionId
                         )
                         onSaved()
                     }
                 },
                 modifier = Modifier.fillMaxWidth(),
-                enabled = selectedAccountId != null && selectedItemId != null &&
+                enabled = selectedAccountId != null && ticker.isNotBlank() &&
                         numberOfShares.toDoubleOrNull() != null && pricePerShare.toDoubleOrNull() != null
             ) {
                 Text(if (isEditing) "Update" else "Create")
@@ -315,9 +372,10 @@ fun TransactionFormScreen(
 
     // Time picker dialog
     if (showTimePicker) {
+        val currentTime = time ?: LocalTime.now()
         val timePickerState = rememberTimePickerState(
-            initialHour = time.hour,
-            initialMinute = time.minute
+            initialHour = currentTime.hour,
+            initialMinute = currentTime.minute
         )
         androidx.compose.material3.AlertDialog(
             onDismissRequest = { showTimePicker = false },

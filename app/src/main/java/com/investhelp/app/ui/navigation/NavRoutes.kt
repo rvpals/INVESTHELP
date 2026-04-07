@@ -15,4 +15,5 @@ import kotlinx.serialization.Serializable
 @Serializable object TransactionListRoute
 @Serializable data class TransactionFormRoute(val transactionId: Long = -1)
 @Serializable object PositionListRoute
+@Serializable object SimulationRoute
 @Serializable object SettingsRoute

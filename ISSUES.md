@@ -7,3 +7,5 @@
 ## Notes
 - Build requires JAVA_HOME set to JDK 17+ (system default is JDK 8)
 - Migration 4->5 drops existing positions table (fresh install or re-entry needed after upgrade)
+- Migration 5->6 recreates transactions table; existing transactions map investmentItemId to ticker via items table
+- Yahoo Finance API (v8/v10) is undocumented and may change without notice; no API key required

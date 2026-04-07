@@ -8,26 +8,31 @@ Android investment tracking app built with Kotlin, Jetpack Compose, and Material
 - **Min SDK:** 29, Target SDK: 35
 - **Architecture:** MVVM + Repository pattern
 - **DI:** Hilt (KSP)
-- **Database:** Room + SQLCipher (encrypted), version 5
+- **Database:** Room + SQLCipher (encrypted), version 6
 - **Auth:** Biometric + EncryptedSharedPreferences
 - **Navigation:** Compose Navigation (type-safe routes)
 - **Splash:** AndroidX SplashScreen API (core-splashscreen 1.0.1)
+- **Charts:** Custom Canvas-drawn (pie chart, line chart) — no external library
 
 ## Package Structure
 - `auth/` - Authentication (PasswordManager, BiometricHelper, AuthManager)
 - `data/local/` - Room database, entities, DAOs, DatabaseProvider
+- `data/remote/` - StockPriceService (Yahoo Finance API integration)
 - `data/repository/` - Repository interfaces and implementations
 - `di/` - Hilt modules (DatabaseModule, RepositoryModule, AuthModule)
 - `model/` - Domain models and enums
-- `ui/` - Compose screens organized by feature (auth, dashboard, account, item, transaction, position)
+- `ui/` - Compose screens organized by feature (auth, dashboard, account, item, transaction, position, simulation)
 
 ## Key Design Decisions
 - currentValue and sharesOwned are computed from transactions, never stored
 - Position table uses composite PK (ticker + accountId) - same ticker allowed on different accounts
 - Account current value is computed from sum of position values (refreshes with live prices)
+- Transaction table references ticker directly (not investmentItemId FK) — simpler model
+- Transaction time is optional (nullable), totalAmount for verification, note field
 - DatabaseProvider pattern: DB opens lazily after authentication
 - CASCADE deletes: removing account removes associated positions and transactions
 - Dates stored as epoch days for simple SQL range queries
+- Yahoo Finance v8/v10 API for live prices, historical data, and analysis info
 
 ## Build
 Open in Android Studio and sync Gradle. Requires JDK 17+.

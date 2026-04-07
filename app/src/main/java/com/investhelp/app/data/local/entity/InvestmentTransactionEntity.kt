@@ -16,26 +16,22 @@ import java.time.LocalTime
             parentColumns = ["id"],
             childColumns = ["accountId"],
             onDelete = ForeignKey.CASCADE
-        ),
-        ForeignKey(
-            entity = InvestmentItemEntity::class,
-            parentColumns = ["id"],
-            childColumns = ["investmentItemId"],
-            onDelete = ForeignKey.CASCADE
         )
     ],
     indices = [
         Index("accountId"),
-        Index("investmentItemId")
+        Index("ticker")
     ]
 )
 data class InvestmentTransactionEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val date: LocalDate,
-    val time: LocalTime,
+    val time: LocalTime? = null,
     val action: TransactionAction,
     val accountId: Long,
-    val investmentItemId: Long,
+    val ticker: String,
     val numberOfShares: Double,
-    val pricePerShare: Double
+    val pricePerShare: Double,
+    val totalAmount: Double = 0.0,
+    val note: String = ""
 )

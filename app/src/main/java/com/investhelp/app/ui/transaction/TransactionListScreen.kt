@@ -42,10 +42,10 @@ fun TransactionListScreen(
     onEditTransaction: (Long) -> Unit
 ) {
     val transactions by viewModel.allTransactions.collectAsStateWithLifecycle()
-    val items by viewModel.allItems.collectAsStateWithLifecycle()
     val accounts by viewModel.allAccounts.collectAsStateWithLifecycle()
     val currencyFormat = NumberFormat.getCurrencyInstance(Locale.US)
     val dateFormatter = DateTimeFormatter.ofPattern("MMM dd, yyyy")
+    val timeFormatter = DateTimeFormatter.ofPattern("HH:mm")
     var transactionToDelete by remember { mutableStateOf<Long?>(null) }
 
     val deleteTarget = transactionToDelete?.let { id -> transactions.find { it.id == id } }
@@ -91,8 +91,8 @@ fun TransactionListScreen(
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 items(transactions, key = { it.id }) { transaction ->
-                    val itemName = items.find { it.id == transaction.investmentItemId }?.name ?: "Unknown"
                     val accountName = accounts.find { it.id == transaction.accountId }?.name ?: "Unknown"
+                    val timeStr = transaction.time?.format(timeFormatter)?.let { " $it" } ?: ""
 
                     Card(
                         modifier = Modifier.fillMaxWidth(),
@@ -119,12 +119,12 @@ fun TransactionListScreen(
                                             MaterialTheme.colorScheme.error
                                     )
                                     Text(
-                                        text = itemName,
+                                        text = transaction.ticker,
                                         style = MaterialTheme.typography.titleMedium
                                     )
                                 }
                                 Text(
-                                    text = "$accountName | ${transaction.date.format(dateFormatter)}",
+                                    text = "$accountName | ${transaction.date.format(dateFormatter)}$timeStr",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -132,6 +132,20 @@ fun TransactionListScreen(
                                     text = "${transaction.numberOfShares} shares @ ${currencyFormat.format(transaction.pricePerShare)}",
                                     style = MaterialTheme.typography.bodyMedium
                                 )
+                                if (transaction.totalAmount != 0.0) {
+                                    Text(
+                                        text = "Total: ${currencyFormat.format(transaction.totalAmount)}",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                                if (transaction.note.isNotBlank()) {
+                                    Text(
+                                        text = transaction.note,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
                             }
                             IconButton(onClick = { transactionToDelete = transaction.id }) {
                                 Icon(

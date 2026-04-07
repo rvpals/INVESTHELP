@@ -90,9 +90,10 @@ class SettingsViewModel @Inject constructor(
                     },
                     transactions = transactions.map {
                         BackupTransaction(
-                            it.id, it.date.toEpochDay(), it.time.toSecondOfDay(),
-                            it.action.name, it.accountId, it.investmentItemId,
-                            it.numberOfShares, it.pricePerShare
+                            it.id, it.date.toEpochDay(), it.time?.toSecondOfDay(),
+                            it.action.name, it.accountId, it.ticker,
+                            it.numberOfShares, it.pricePerShare,
+                            it.totalAmount, it.note
                         )
                     }
                 )
@@ -162,10 +163,11 @@ class SettingsViewModel @Inject constructor(
                         InvestmentTransactionEntity(
                             t.id,
                             LocalDate.ofEpochDay(t.dateEpochDay),
-                            LocalTime.ofSecondOfDay(t.timeSecondOfDay.toLong()),
+                            t.timeSecondOfDay?.let { LocalTime.ofSecondOfDay(it.toLong()) },
                             TransactionAction.valueOf(t.action),
-                            t.accountId, t.investmentItemId,
-                            t.numberOfShares, t.pricePerShare
+                            t.accountId, t.ticker,
+                            t.numberOfShares, t.pricePerShare,
+                            t.totalAmount, t.note
                         )
                     )
                 }

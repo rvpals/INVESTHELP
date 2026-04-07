@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.investhelp.app.data.local.entity.InvestmentItemEntity
 import com.investhelp.app.data.local.entity.InvestmentTransactionEntity
+import com.investhelp.app.data.remote.AnalysisInfo
 import com.investhelp.app.data.remote.StockPriceService
 import com.investhelp.app.data.repository.InvestmentItemRepository
 import com.investhelp.app.data.repository.TransactionRepository
@@ -56,25 +57,54 @@ class ItemViewModel @Inject constructor(
     private val _statistics = MutableStateFlow(ItemStatistics(null, null, null, null, null, null))
     val statistics: StateFlow<ItemStatistics> = _statistics.asStateFlow()
 
+    private val _analysisInfo = MutableStateFlow<AnalysisInfo?>(null)
+    val analysisInfo: StateFlow<AnalysisInfo?> = _analysisInfo.asStateFlow()
+
+    private val _isLoadingAnalysis = MutableStateFlow(false)
+    val isLoadingAnalysis: StateFlow<Boolean> = _isLoadingAnalysis.asStateFlow()
+
+    private val _analysisError = MutableStateFlow<String?>(null)
+    val analysisError: StateFlow<String?> = _analysisError.asStateFlow()
+
+    fun fetchAnalysisInfo(ticker: String) {
+        viewModelScope.launch {
+            _isLoadingAnalysis.value = true
+            _analysisError.value = null
+            _analysisInfo.value = null
+            try {
+                _analysisInfo.value = stockPriceService.fetchAnalysisInfo(ticker)
+            } catch (e: Exception) {
+                _analysisError.value = "Failed to fetch analysis: ${e.message}"
+            } finally {
+                _isLoadingAnalysis.value = false
+            }
+        }
+    }
+
+    fun clearAnalysisInfo() {
+        _analysisInfo.value = null
+        _analysisError.value = null
+    }
+
     fun loadItem(itemId: Long) {
         viewModelScope.launch {
             itemRepository.getItemById(itemId).collect { item ->
                 _selectedItem.value = item
-            }
-        }
-        viewModelScope.launch {
-            _sharesOwned.value = itemRepository.computeSharesOwned(itemId)
-        }
-        viewModelScope.launch {
-            transactionRepository.getTransactionsByItem(itemId).collect { transactions ->
-                _itemTransactions.value = transactions
+                if (item?.ticker != null) {
+                    _sharesOwned.value = itemRepository.computeSharesOwned(item.ticker)
+                    transactionRepository.getTransactionsByTicker(item.ticker).collect { transactions ->
+                        _itemTransactions.value = transactions
+                    }
+                }
             }
         }
     }
 
     fun loadStatistics(itemId: Long, startDate: LocalDate, endDate: LocalDate) {
         viewModelScope.launch {
-            _statistics.value = itemRepository.getItemStatistics(itemId, startDate, endDate)
+            val item = itemRepository.getItemById(itemId).first()
+            val ticker = item?.ticker ?: return@launch
+            _statistics.value = itemRepository.getItemStatistics(ticker, startDate, endDate)
         }
     }
 

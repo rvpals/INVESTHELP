@@ -30,7 +30,7 @@ class DatabaseProvider @Inject constructor(
             "invest_help.db"
         )
             .openHelperFactory(factory)
-            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
             .build()
     }
 
@@ -86,6 +86,41 @@ class DatabaseProvider @Inject constructor(
                     )"""
                 )
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_positions_accountId ON positions(accountId)")
+            }
+        }
+        val MIGRATION_5_6 = object : Migration(5, 6) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // Recreate investment_transactions with ticker instead of investmentItemId,
+                // nullable time, and new totalAmount + note fields
+                db.execSQL(
+                    """CREATE TABLE IF NOT EXISTS investment_transactions_new (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        date INTEGER NOT NULL,
+                        time INTEGER,
+                        action TEXT NOT NULL,
+                        accountId INTEGER NOT NULL,
+                        ticker TEXT NOT NULL DEFAULT '',
+                        numberOfShares REAL NOT NULL,
+                        pricePerShare REAL NOT NULL,
+                        totalAmount REAL NOT NULL DEFAULT 0.0,
+                        note TEXT NOT NULL DEFAULT '',
+                        FOREIGN KEY(accountId) REFERENCES investment_accounts(id) ON DELETE CASCADE
+                    )"""
+                )
+                // Copy existing data, mapping investmentItemId to ticker via items table
+                db.execSQL(
+                    """INSERT INTO investment_transactions_new
+                        (id, date, time, action, accountId, ticker, numberOfShares, pricePerShare, totalAmount, note)
+                        SELECT t.id, t.date, t.time, t.action, t.accountId,
+                            COALESCE(i.ticker, ''), t.numberOfShares, t.pricePerShare,
+                            (t.numberOfShares * t.pricePerShare), ''
+                        FROM investment_transactions t
+                        LEFT JOIN investment_items i ON t.investmentItemId = i.id"""
+                )
+                db.execSQL("DROP TABLE investment_transactions")
+                db.execSQL("ALTER TABLE investment_transactions_new RENAME TO investment_transactions")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_investment_transactions_accountId ON investment_transactions(accountId)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_investment_transactions_ticker ON investment_transactions(ticker)")
             }
         }
     }
