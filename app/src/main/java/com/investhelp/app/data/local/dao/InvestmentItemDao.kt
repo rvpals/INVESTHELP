@@ -24,6 +24,9 @@ interface InvestmentItemDao {
     @Query("SELECT * FROM investment_items WHERE id = :id")
     fun getItemById(id: Long): Flow<InvestmentItemEntity?>
 
+    @Query("SELECT * FROM investment_items WHERE ticker = :ticker LIMIT 1")
+    suspend fun getItemByTicker(ticker: String): InvestmentItemEntity?
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertItem(item: InvestmentItemEntity): Long
 

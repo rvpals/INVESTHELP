@@ -7,7 +7,8 @@ data class BackupData(
     val version: Int = 1,
     val accounts: List<BackupAccount>,
     val items: List<BackupItem>,
-    val transactions: List<BackupTransaction>
+    val transactions: List<BackupTransaction>,
+    val bankTransfers: List<BackupBankTransfer> = emptyList()
 )
 
 @Serializable
@@ -24,7 +25,8 @@ data class BackupItem(
     val name: String,
     val ticker: String? = null,
     val type: String,
-    val currentPrice: Double
+    val currentPrice: Double,
+    val numShares: Double = 0.0
 )
 
 @Serializable
@@ -38,5 +40,14 @@ data class BackupTransaction(
     val numberOfShares: Double,
     val pricePerShare: Double,
     val totalAmount: Double = 0.0,
+    val note: String = ""
+)
+
+@Serializable
+data class BackupBankTransfer(
+    val id: Long,
+    val dateEpochDay: Long,
+    val amount: Double,
+    val accountId: Long,
     val note: String = ""
 )

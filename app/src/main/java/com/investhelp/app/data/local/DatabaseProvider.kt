@@ -30,7 +30,7 @@ class DatabaseProvider @Inject constructor(
             "invest_help.db"
         )
             .openHelperFactory(factory)
-            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8)
             .build()
     }
 
@@ -121,6 +121,28 @@ class DatabaseProvider @Inject constructor(
                 db.execSQL("ALTER TABLE investment_transactions_new RENAME TO investment_transactions")
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_investment_transactions_accountId ON investment_transactions(accountId)")
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_investment_transactions_ticker ON investment_transactions(ticker)")
+            }
+        }
+
+        val MIGRATION_6_7 = object : Migration(6, 7) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE investment_items ADD COLUMN numShares REAL NOT NULL DEFAULT 0.0")
+            }
+        }
+
+        val MIGRATION_7_8 = object : Migration(7, 8) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """CREATE TABLE IF NOT EXISTS bank_transfers (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        date INTEGER NOT NULL,
+                        amount REAL NOT NULL,
+                        accountId INTEGER NOT NULL,
+                        note TEXT NOT NULL DEFAULT '',
+                        FOREIGN KEY(accountId) REFERENCES investment_accounts(id) ON DELETE CASCADE
+                    )"""
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_bank_transfers_accountId ON bank_transfers(accountId)")
             }
         }
     }

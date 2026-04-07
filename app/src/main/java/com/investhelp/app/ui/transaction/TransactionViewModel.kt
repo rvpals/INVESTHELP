@@ -1,13 +1,19 @@
 package com.investhelp.app.ui.transaction
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.investhelp.app.data.local.dao.InvestmentItemDao
+import com.investhelp.app.data.local.dao.PositionDao
 import com.investhelp.app.data.local.entity.InvestmentAccountEntity
 import com.investhelp.app.data.local.entity.InvestmentTransactionEntity
+import com.investhelp.app.data.local.entity.PositionEntity
 import com.investhelp.app.data.repository.AccountRepository
 import com.investhelp.app.data.repository.TransactionRepository
 import com.investhelp.app.model.TransactionAction
+import com.investhelp.app.ui.settings.SettingsViewModel
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -20,7 +26,10 @@ import javax.inject.Inject
 
 @HiltViewModel
 class TransactionViewModel @Inject constructor(
+    @ApplicationContext private val context: Context,
     private val transactionRepository: TransactionRepository,
+    private val positionDao: PositionDao,
+    private val itemDao: InvestmentItemDao,
     accountRepository: AccountRepository
 ) : ViewModel() {
 
@@ -42,6 +51,10 @@ class TransactionViewModel @Inject constructor(
             }
         }
     }
+
+    private val prefs = context.getSharedPreferences(
+        SettingsViewModel.PREFS_NAME, Context.MODE_PRIVATE
+    )
 
     fun saveTransaction(
         date: LocalDate,
@@ -72,6 +85,40 @@ class TransactionViewModel @Inject constructor(
                 transactionRepository.updateTransaction(transaction)
             } else {
                 transactionRepository.insertTransaction(transaction)
+            }
+
+            // Auto-update position and item shares if enabled
+            if (prefs.getBoolean(SettingsViewModel.KEY_AUTO_UPDATE_SHARES, false)) {
+                val delta = when (action) {
+                    TransactionAction.Buy -> numberOfShares
+                    TransactionAction.Sell -> -numberOfShares
+                }
+
+                // Update position
+                val existing = positionDao.getPosition(ticker, accountId)
+                if (existing != null) {
+                    val newQuantity = (existing.quantity + delta).coerceAtLeast(0.0)
+                    positionDao.upsertPosition(existing.copy(quantity = newQuantity))
+                } else if (action == TransactionAction.Buy) {
+                    positionDao.upsertPosition(
+                        PositionEntity(
+                            ticker = ticker,
+                            accountId = accountId,
+                            quantity = numberOfShares,
+                            cost = pricePerShare * numberOfShares,
+                            dayGainLoss = 0.0,
+                            totalGainLoss = 0.0,
+                            value = pricePerShare * numberOfShares
+                        )
+                    )
+                }
+
+                // Update item numShares
+                val item = itemDao.getItemByTicker(ticker)
+                if (item != null) {
+                    val newShares = (item.numShares + delta).coerceAtLeast(0.0)
+                    itemDao.updateItem(item.copy(numShares = newShares))
+                }
             }
         }
     }

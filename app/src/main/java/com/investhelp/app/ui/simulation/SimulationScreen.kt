@@ -1,6 +1,8 @@
 package com.investhelp.app.ui.simulation
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -16,16 +18,16 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.Fullscreen
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -38,7 +40,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
@@ -47,6 +48,8 @@ import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.investhelp.app.data.remote.HistoricalPrice
 import java.text.NumberFormat
@@ -61,15 +64,14 @@ fun SimulationScreen(
     viewModel: SimulationViewModel,
     onBack: () -> Unit
 ) {
-    val currentPrice by viewModel.currentPrice.collectAsStateWithLifecycle()
-    val isLoadingPrice by viewModel.isLoadingPrice.collectAsStateWithLifecycle()
     val isRunning by viewModel.isRunning.collectAsStateWithLifecycle()
     val result by viewModel.result.collectAsStateWithLifecycle()
     val error by viewModel.error.collectAsStateWithLifecycle()
 
     var ticker by remember { mutableStateOf("") }
     var shares by remember { mutableStateOf("") }
-    var costPerShare by remember { mutableStateOf("") }
+    var selectedRange by remember { mutableStateOf(TimeRange.TWO_WEEKS) }
+    var showChartDialog by remember { mutableStateOf(false) }
 
     val currencyFormat = NumberFormat.getCurrencyInstance(Locale.US)
 
@@ -115,42 +117,21 @@ fun SimulationScreen(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Cost per share with fetch button
+            // Time range selector
+            Text("Time Range", style = MaterialTheme.typography.labelLarge)
+            Spacer(modifier = Modifier.height(4.dp))
             Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                OutlinedTextField(
-                    value = costPerShare,
-                    onValueChange = { costPerShare = it },
-                    label = { Text("Cost per Share") },
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                    modifier = Modifier.weight(1f)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                OutlinedButton(
-                    onClick = {
-                        if (ticker.isNotBlank()) {
-                            viewModel.fetchCurrentPrice(ticker.trim())
-                        }
-                    },
-                    enabled = ticker.isNotBlank() && !isLoadingPrice
-                ) {
-                    if (isLoadingPrice) {
-                        CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
-                    } else {
-                        Icon(Icons.Default.Download, contentDescription = null, modifier = Modifier.size(18.dp))
-                    }
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("Get Price")
-                }
-            }
-
-            // Auto-fill fetched price
-            currentPrice?.let { price ->
-                androidx.compose.runtime.LaunchedEffect(price) {
-                    costPerShare = "%.2f".format(price)
+                TimeRange.entries.forEach { range ->
+                    FilterChip(
+                        selected = selectedRange == range,
+                        onClick = { selectedRange = range },
+                        label = { Text(range.label) }
+                    )
                 }
             }
 
@@ -160,15 +141,13 @@ fun SimulationScreen(
             Button(
                 onClick = {
                     val sharesVal = shares.toDoubleOrNull()
-                    val costVal = costPerShare.toDoubleOrNull()
-                    if (ticker.isNotBlank() && sharesVal != null && costVal != null) {
-                        viewModel.runSimulation(ticker.trim(), sharesVal, costVal)
+                    if (ticker.isNotBlank() && sharesVal != null) {
+                        viewModel.runSimulation(ticker.trim(), sharesVal, selectedRange)
                     }
                 },
                 modifier = Modifier.fillMaxWidth(),
                 enabled = ticker.isNotBlank() &&
                         shares.toDoubleOrNull() != null &&
-                        costPerShare.toDoubleOrNull() != null &&
                         !isRunning
             ) {
                 if (isRunning) {
@@ -196,8 +175,10 @@ fun SimulationScreen(
             result?.let { sim ->
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Summary card
+                val rangeLabel = sim.timeRange.label
                 val isProfit = sim.profitLoss >= 0
+
+                // Summary card
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(
@@ -209,12 +190,12 @@ fun SimulationScreen(
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Text(
-                            text = "If you bought ${sim.shares} shares of ${sim.ticker} 2 weeks ago",
+                            text = "If you bought ${sim.shares} shares of ${sim.ticker} $rangeLabel ago",
                             style = MaterialTheme.typography.titleSmall
                         )
                         Spacer(modifier = Modifier.height(8.dp))
 
-                        ResultRow("Buy Price (2w ago)", currencyFormat.format(sim.costPerShare))
+                        ResultRow("Buy Price ($rangeLabel ago)", currencyFormat.format(sim.startPrice))
                         ResultRow("Current Price", currencyFormat.format(sim.currentPrice))
                         ResultRow("Total Cost", currencyFormat.format(sim.totalCost))
                         ResultRow("Current Value", currencyFormat.format(sim.currentValue))
@@ -235,19 +216,76 @@ fun SimulationScreen(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Price chart
-                Text("Price Trend (Last 2 Weeks)", style = MaterialTheme.typography.titleMedium)
-                Spacer(modifier = Modifier.height(8.dp))
+                // Price chart with enlarge option
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("Price Trend ($rangeLabel)", style = MaterialTheme.typography.titleMedium)
+                    IconButton(onClick = { showChartDialog = true }) {
+                        Icon(
+                            Icons.Default.Fullscreen,
+                            contentDescription = "Enlarge chart",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
 
                 PriceChart(
                     prices = sim.prices,
-                    buyPrice = sim.costPerShare,
+                    startPrice = sim.startPrice,
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(220.dp)
+                        .clickable { showChartDialog = true }
                 )
 
                 Spacer(modifier = Modifier.height(24.dp))
+
+                // Fullscreen chart dialog
+                if (showChartDialog) {
+                    Dialog(
+                        onDismissRequest = { showChartDialog = false },
+                        properties = DialogProperties(usePlatformDefaultWidth = false)
+                    ) {
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surface
+                            )
+                        ) {
+                            Column(modifier = Modifier.padding(16.dp)) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        "${sim.ticker} — Price Trend ($rangeLabel)",
+                                        style = MaterialTheme.typography.titleMedium
+                                    )
+                                    IconButton(onClick = { showChartDialog = false }) {
+                                        Icon(
+                                            Icons.AutoMirrored.Filled.ArrowBack,
+                                            contentDescription = "Close"
+                                        )
+                                    }
+                                }
+                                Spacer(modifier = Modifier.height(8.dp))
+                                PriceChart(
+                                    prices = sim.prices,
+                                    startPrice = sim.startPrice,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(400.dp)
+                                )
+                            }
+                        }
+                    }
+                }
             }
         }
     }
@@ -269,13 +307,13 @@ private fun ResultRow(label: String, value: String) {
 @Composable
 private fun PriceChart(
     prices: List<HistoricalPrice>,
-    buyPrice: Double,
+    startPrice: Double,
     modifier: Modifier = Modifier
 ) {
     if (prices.size < 2) return
 
     val lineColor = MaterialTheme.colorScheme.primary
-    val buyLineColor = MaterialTheme.colorScheme.error
+    val startLineColor = MaterialTheme.colorScheme.error
     val gridColor = MaterialTheme.colorScheme.outlineVariant
     val labelColor = MaterialTheme.colorScheme.onSurfaceVariant
     val fillColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
@@ -284,8 +322,8 @@ private fun PriceChart(
     val currencyFormat = NumberFormat.getCurrencyInstance(Locale.US)
 
     val closes = prices.map { it.close }
-    val minPrice = (closes.min()).coerceAtMost(buyPrice) * 0.998
-    val maxPrice = (closes.max()).coerceAtLeast(buyPrice) * 1.002
+    val minPrice = (closes.min()).coerceAtMost(startPrice) * 0.998
+    val maxPrice = (closes.max()).coerceAtLeast(startPrice) * 1.002
     val priceRange = maxPrice - minPrice
 
     Card(
@@ -325,12 +363,12 @@ private fun PriceChart(
                 )
             }
 
-            // Buy price dashed line
-            val buyY = ((maxPrice - buyPrice) / priceRange * chartHeight).toFloat()
+            // Start price dashed line
+            val startY = ((maxPrice - startPrice) / priceRange * chartHeight).toFloat()
             drawLine(
-                color = buyLineColor,
-                start = Offset(0f, buyY),
-                end = Offset(chartWidth, buyY),
+                color = startLineColor,
+                start = Offset(0f, startY),
+                end = Offset(chartWidth, startY),
                 strokeWidth = 2f,
                 pathEffect = PathEffect.dashPathEffect(floatArrayOf(8f, 6f))
             )

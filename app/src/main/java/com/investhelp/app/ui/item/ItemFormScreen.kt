@@ -55,6 +55,7 @@ fun ItemFormScreen(
     var ticker by remember { mutableStateOf("") }
     var selectedType by remember { mutableStateOf(InvestmentType.Stock) }
     var currentPrice by remember { mutableStateOf("") }
+    var numShares by remember { mutableStateOf("") }
     var typeExpanded by remember { mutableStateOf(false) }
     var initialized by remember { mutableStateOf(false) }
 
@@ -64,6 +65,7 @@ fun ItemFormScreen(
             ticker = existingItem!!.ticker ?: ""
             selectedType = existingItem!!.type
             currentPrice = existingItem!!.currentPrice.toString()
+            numShares = if (existingItem!!.numShares != 0.0) existingItem!!.numShares.toString() else ""
             initialized = true
         }
     }
@@ -148,12 +150,24 @@ fun ItemFormScreen(
                 modifier = Modifier.fillMaxWidth()
             )
 
+            Spacer(modifier = Modifier.height(12.dp))
+
+            OutlinedTextField(
+                value = numShares,
+                onValueChange = { numShares = it },
+                label = { Text("Number of Shares") },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                modifier = Modifier.fillMaxWidth()
+            )
+
             Spacer(modifier = Modifier.height(24.dp))
 
             Button(
                 onClick = {
                     val price = currentPrice.toDoubleOrNull() ?: 0.0
-                    viewModel.saveItem(name, ticker, selectedType, price, itemId)
+                    val shares = numShares.toDoubleOrNull() ?: 0.0
+                    viewModel.saveItem(name, ticker, selectedType, price, shares, itemId)
                     onSaved()
                 },
                 modifier = Modifier.fillMaxWidth(),

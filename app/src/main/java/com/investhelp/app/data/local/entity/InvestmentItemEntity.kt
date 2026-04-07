@@ -10,5 +10,6 @@ data class InvestmentItemEntity(
     val name: String,
     val ticker: String? = null,
     val type: InvestmentType,
-    val currentPrice: Double
+    val currentPrice: Double,
+    val numShares: Double = 0.0
 )

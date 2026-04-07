@@ -5,13 +5,16 @@ import android.net.Uri
 import androidx.documentfile.provider.DocumentFile
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.investhelp.app.data.local.dao.BankTransferDao
 import com.investhelp.app.data.local.dao.InvestmentAccountDao
 import com.investhelp.app.data.local.dao.InvestmentItemDao
 import com.investhelp.app.data.local.dao.InvestmentTransactionDao
+import com.investhelp.app.data.local.entity.BankTransferEntity
 import com.investhelp.app.data.local.entity.InvestmentAccountEntity
 import com.investhelp.app.data.local.entity.InvestmentItemEntity
 import com.investhelp.app.data.local.entity.InvestmentTransactionEntity
 import com.investhelp.app.model.BackupAccount
+import com.investhelp.app.model.BackupBankTransfer
 import com.investhelp.app.model.BackupData
 import com.investhelp.app.model.BackupItem
 import com.investhelp.app.model.BackupTransaction
@@ -37,7 +40,8 @@ data class SettingsUiState(
     val backupFolderName: String? = null,
     val message: String? = null,
     val isExporting: Boolean = false,
-    val isRestoring: Boolean = false
+    val isRestoring: Boolean = false,
+    val autoUpdateShares: Boolean = false
 )
 
 @HiltViewModel
@@ -45,13 +49,30 @@ class SettingsViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     private val accountDao: InvestmentAccountDao,
     private val itemDao: InvestmentItemDao,
-    private val transactionDao: InvestmentTransactionDao
+    private val transactionDao: InvestmentTransactionDao,
+    private val bankTransferDao: BankTransferDao
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(SettingsUiState())
+    companion object {
+        const val PREFS_NAME = "invest_help_settings"
+        const val KEY_AUTO_UPDATE_SHARES = "auto_update_shares"
+    }
+
+    private val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+
+    private val _uiState = MutableStateFlow(
+        SettingsUiState(
+            autoUpdateShares = prefs.getBoolean(KEY_AUTO_UPDATE_SHARES, false)
+        )
+    )
     val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
 
     private val json = Json { prettyPrint = true }
+
+    fun setAutoUpdateShares(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_AUTO_UPDATE_SHARES, enabled).apply()
+        _uiState.value = _uiState.value.copy(autoUpdateShares = enabled)
+    }
 
     fun setBackupFolder(uri: Uri) {
         val docFile = DocumentFile.fromTreeUri(context, uri)
@@ -80,13 +101,14 @@ class SettingsViewModel @Inject constructor(
                 val accounts = accountDao.getAllAccountsSnapshot()
                 val items = itemDao.getAllItemsSnapshot()
                 val transactions = transactionDao.getAllTransactionsSnapshot()
+                val bankTransfers = bankTransferDao.getAllTransfersSnapshot()
 
                 val backupData = BackupData(
                     accounts = accounts.map {
                         BackupAccount(it.id, it.name, it.description, it.initialValue)
                     },
                     items = items.map {
-                        BackupItem(it.id, it.name, it.ticker, it.type.name, it.currentPrice)
+                        BackupItem(it.id, it.name, it.ticker, it.type.name, it.currentPrice, it.numShares)
                     },
                     transactions = transactions.map {
                         BackupTransaction(
@@ -94,6 +116,11 @@ class SettingsViewModel @Inject constructor(
                             it.action.name, it.accountId, it.ticker,
                             it.numberOfShares, it.pricePerShare,
                             it.totalAmount, it.note
+                        )
+                    },
+                    bankTransfers = bankTransfers.map {
+                        BackupBankTransfer(
+                            it.id, it.date.toEpochDay(), it.amount, it.accountId, it.note
                         )
                     }
                 )
@@ -141,6 +168,7 @@ class SettingsViewModel @Inject constructor(
                 val backupData = json.decodeFromString(BackupData.serializer(), jsonString)
 
                 // Delete in reverse dependency order
+                bankTransferDao.deleteAll()
                 transactionDao.deleteAll()
                 itemDao.deleteAll()
                 accountDao.deleteAll()
@@ -154,7 +182,7 @@ class SettingsViewModel @Inject constructor(
                 for (i in backupData.items) {
                     itemDao.insertItem(
                         InvestmentItemEntity(
-                            i.id, i.name, i.ticker, InvestmentType.valueOf(i.type), i.currentPrice
+                            i.id, i.name, i.ticker, InvestmentType.valueOf(i.type), i.currentPrice, i.numShares
                         )
                     )
                 }
@@ -171,10 +199,19 @@ class SettingsViewModel @Inject constructor(
                         )
                     )
                 }
+                for (bt in backupData.bankTransfers) {
+                    bankTransferDao.insertTransfer(
+                        BankTransferEntity(
+                            bt.id,
+                            LocalDate.ofEpochDay(bt.dateEpochDay),
+                            bt.amount, bt.accountId, bt.note
+                        )
+                    )
+                }
 
                 _uiState.value = _uiState.value.copy(
                     isRestoring = false,
-                    message = "Restored ${backupData.accounts.size} accounts, ${backupData.items.size} items, ${backupData.transactions.size} transactions."
+                    message = "Restored ${backupData.accounts.size} accounts, ${backupData.items.size} items, ${backupData.transactions.size} transactions, ${backupData.bankTransfers.size} bank transfers."
                 )
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(

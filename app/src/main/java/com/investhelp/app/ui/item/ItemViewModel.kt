@@ -2,6 +2,7 @@ package com.investhelp.app.ui.item
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.investhelp.app.data.local.dao.PositionDao
 import com.investhelp.app.data.local.entity.InvestmentItemEntity
 import com.investhelp.app.data.local.entity.InvestmentTransactionEntity
 import com.investhelp.app.data.remote.AnalysisInfo
@@ -25,7 +26,8 @@ import javax.inject.Inject
 class ItemViewModel @Inject constructor(
     private val itemRepository: InvestmentItemRepository,
     private val transactionRepository: TransactionRepository,
-    private val stockPriceService: StockPriceService
+    private val stockPriceService: StockPriceService,
+    private val positionDao: PositionDao
 ) : ViewModel() {
 
     private val _refreshingItemIds = MutableStateFlow<Set<Long>>(emptySet())
@@ -33,6 +35,9 @@ class ItemViewModel @Inject constructor(
 
     private val _isRefreshingAll = MutableStateFlow(false)
     val isRefreshingAll: StateFlow<Boolean> = _isRefreshingAll.asStateFlow()
+
+    private val _isUpdatingAll = MutableStateFlow(false)
+    val isUpdatingAll: StateFlow<Boolean> = _isUpdatingAll.asStateFlow()
 
     private val _priceMessage = MutableStateFlow<String?>(null)
     val priceMessage: StateFlow<String?> = _priceMessage.asStateFlow()
@@ -86,12 +91,21 @@ class ItemViewModel @Inject constructor(
         _analysisError.value = null
     }
 
+    suspend fun getItemIdByTicker(ticker: String): Long? {
+        return itemRepository.getItemByTicker(ticker)?.id
+    }
+
     fun loadItem(itemId: Long) {
         viewModelScope.launch {
             itemRepository.getItemById(itemId).collect { item ->
                 _selectedItem.value = item
                 if (item?.ticker != null) {
-                    _sharesOwned.value = itemRepository.computeSharesOwned(item.ticker)
+                    val computed = itemRepository.computeSharesOwned(item.ticker)
+                    _sharesOwned.value = computed
+                    // Sync numShares on the item entity if it differs
+                    if (item.numShares != computed) {
+                        itemRepository.updateItem(item.copy(numShares = computed))
+                    }
                     transactionRepository.getTransactionsByTicker(item.ticker).collect { transactions ->
                         _itemTransactions.value = transactions
                     }
@@ -108,14 +122,15 @@ class ItemViewModel @Inject constructor(
         }
     }
 
-    fun saveItem(name: String, ticker: String?, type: InvestmentType, currentPrice: Double, existingId: Long?) {
+    fun saveItem(name: String, ticker: String?, type: InvestmentType, currentPrice: Double, numShares: Double, existingId: Long?) {
         viewModelScope.launch {
             val item = InvestmentItemEntity(
                 id = existingId ?: 0,
                 name = name,
                 ticker = ticker?.takeIf { it.isNotBlank() },
                 type = type,
-                currentPrice = currentPrice
+                currentPrice = currentPrice,
+                numShares = numShares
             )
             if (existingId != null) {
                 itemRepository.updateItem(item)
@@ -171,6 +186,44 @@ class ItemViewModel @Inject constructor(
             _priceMessage.value = "Updated $successCount prices" +
                     if (failCount > 0) ", $failCount failed" else ""
             _isRefreshingAll.value = false
+        }
+    }
+
+    fun updateAllItems() {
+        viewModelScope.launch {
+            _isUpdatingAll.value = true
+            val items = itemRepository.getAllItems().first()
+            val tickerItems = items.filter { !it.ticker.isNullOrBlank() }
+            if (tickerItems.isEmpty()) {
+                _priceMessage.value = "No items have tickers set."
+                _isUpdatingAll.value = false
+                return@launch
+            }
+            var successCount = 0
+            var failCount = 0
+            for (item in tickerItems) {
+                _refreshingItemIds.value = _refreshingItemIds.value + item.id
+                try {
+                    val totalShares = positionDao.sumQuantityByTicker(item.ticker!!)
+                    val price = stockPriceService.fetchPrice(item.ticker)
+                    itemRepository.updateItem(item.copy(currentPrice = price, numShares = totalShares))
+                    successCount++
+                } catch (_: Exception) {
+                    // Still try to sync shares even if price fetch fails
+                    try {
+                        val totalShares = positionDao.sumQuantityByTicker(item.ticker!!)
+                        if (item.numShares != totalShares) {
+                            itemRepository.updateItem(item.copy(numShares = totalShares))
+                        }
+                    } catch (_: Exception) { }
+                    failCount++
+                } finally {
+                    _refreshingItemIds.value = _refreshingItemIds.value - item.id
+                }
+            }
+            _priceMessage.value = "Updated $successCount items" +
+                    if (failCount > 0) ", $failCount price fetches failed" else ""
+            _isUpdatingAll.value = false
         }
     }
 

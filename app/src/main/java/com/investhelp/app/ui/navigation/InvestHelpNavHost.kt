@@ -9,7 +9,9 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.toRoute
 import com.investhelp.app.auth.BiometricHelper
+import androidx.compose.runtime.rememberCoroutineScope
 import com.investhelp.app.ui.account.AccountDetailScreen
+import kotlinx.coroutines.launch
 import com.investhelp.app.ui.account.AccountFormScreen
 import com.investhelp.app.ui.account.AccountListScreen
 import com.investhelp.app.ui.account.AccountViewModel
@@ -32,6 +34,9 @@ import com.investhelp.app.ui.simulation.SimulationViewModel
 import com.investhelp.app.ui.transaction.TransactionFormScreen
 import com.investhelp.app.ui.transaction.TransactionListScreen
 import com.investhelp.app.ui.transaction.TransactionViewModel
+import com.investhelp.app.ui.transfer.BankTransferFormScreen
+import com.investhelp.app.ui.transfer.BankTransferListScreen
+import com.investhelp.app.ui.transfer.BankTransferViewModel
 
 @Composable
 fun InvestHelpNavHost(
@@ -94,6 +99,8 @@ fun InvestHelpNavHost(
         composable<AccountDetailRoute> { backStackEntry ->
             val route = backStackEntry.toRoute<AccountDetailRoute>()
             val viewModel: AccountViewModel = hiltViewModel()
+            val itemViewModel: ItemViewModel = hiltViewModel()
+            val scope = rememberCoroutineScope()
             AccountDetailScreen(
                 accountId = route.accountId,
                 viewModel = viewModel,
@@ -102,6 +109,14 @@ fun InvestHelpNavHost(
                 },
                 onNavigateToTransaction = { transactionId ->
                     navController.navigate(TransactionFormRoute(transactionId))
+                },
+                onNavigateToItem = { ticker ->
+                    scope.launch {
+                        val itemId = itemViewModel.getItemIdByTicker(ticker)
+                        if (itemId != null) {
+                            navController.navigate(ItemDetailRoute(itemId))
+                        }
+                    }
                 },
                 onBack = { navController.popBackStack() }
             )
@@ -127,6 +142,12 @@ fun InvestHelpNavHost(
                 },
                 onAddItem = {
                     navController.navigate(ItemFormRoute())
+                },
+                onNavigateToTransactions = {
+                    navController.navigate(TransactionListRoute)
+                },
+                onNavigateToTransfers = {
+                    navController.navigate(BankTransferListRoute)
                 }
             )
         }
@@ -186,6 +207,31 @@ fun InvestHelpNavHost(
             val viewModel: TransactionViewModel = hiltViewModel()
             TransactionFormScreen(
                 transactionId = if (route.transactionId == -1L) null else route.transactionId,
+                viewModel = viewModel,
+                onSaved = { navController.popBackStack() },
+                onBack = { navController.popBackStack() }
+            )
+        }
+
+        composable<BankTransferListRoute> {
+            val viewModel: BankTransferViewModel = hiltViewModel()
+            BankTransferListScreen(
+                viewModel = viewModel,
+                onAddTransfer = {
+                    navController.navigate(BankTransferFormRoute())
+                },
+                onEditTransfer = { transferId ->
+                    navController.navigate(BankTransferFormRoute(transferId))
+                },
+                onBack = { navController.popBackStack() }
+            )
+        }
+
+        composable<BankTransferFormRoute> { backStackEntry ->
+            val route = backStackEntry.toRoute<BankTransferFormRoute>()
+            val viewModel: BankTransferViewModel = hiltViewModel()
+            BankTransferFormScreen(
+                transferId = if (route.transferId == -1L) null else route.transferId,
                 viewModel = viewModel,
                 onSaved = { navController.popBackStack() },
                 onBack = { navController.popBackStack() }

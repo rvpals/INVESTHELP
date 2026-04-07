@@ -36,4 +36,7 @@ interface PositionDao {
 
     @Query("SELECT COALESCE(SUM(value), 0.0) FROM positions WHERE accountId = :accountId")
     suspend fun sumValueByAccount(accountId: Long): Double
+
+    @Query("SELECT COALESCE(SUM(quantity), 0.0) FROM positions WHERE ticker = :ticker")
+    suspend fun sumQuantityByTicker(ticker: String): Double
 }

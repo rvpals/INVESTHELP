@@ -11,6 +11,7 @@ import javax.inject.Singleton
 interface InvestmentItemRepository {
     fun getAllItems(): Flow<List<InvestmentItemEntity>>
     fun getItemById(id: Long): Flow<InvestmentItemEntity?>
+    suspend fun getItemByTicker(ticker: String): InvestmentItemEntity?
     suspend fun computeSharesOwned(ticker: String): Double
     suspend fun getItemStatistics(ticker: String, startDate: LocalDate, endDate: LocalDate): ItemStatistics
     suspend fun insertItem(item: InvestmentItemEntity): Long
@@ -28,6 +29,9 @@ class InvestmentItemRepositoryImpl @Inject constructor(
 
     override fun getItemById(id: Long): Flow<InvestmentItemEntity?> =
         itemDao.getItemById(id)
+
+    override suspend fun getItemByTicker(ticker: String): InvestmentItemEntity? =
+        itemDao.getItemByTicker(ticker)
 
     override suspend fun computeSharesOwned(ticker: String): Double =
         itemDao.computeSharesOwned(ticker)

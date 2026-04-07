@@ -11,12 +11,22 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+enum class TimeRange(val label: String, val days: Int) {
+    ONE_WEEK("1W", 7),
+    TWO_WEEKS("2W", 14),
+    ONE_MONTH("1M", 30),
+    THREE_MONTHS("3M", 90),
+    SIX_MONTHS("6M", 180),
+    ONE_YEAR("1Y", 365)
+}
+
 data class SimulationResult(
     val ticker: String,
     val shares: Double,
-    val costPerShare: Double,
-    val totalCost: Double,
+    val timeRange: TimeRange,
+    val startPrice: Double,
     val currentPrice: Double,
+    val totalCost: Double,
     val currentValue: Double,
     val profitLoss: Double,
     val profitLossPct: Double,
@@ -28,14 +38,8 @@ class SimulationViewModel @Inject constructor(
     private val stockPriceService: StockPriceService
 ) : ViewModel() {
 
-    private val _isLoadingPrice = MutableStateFlow(false)
-    val isLoadingPrice: StateFlow<Boolean> = _isLoadingPrice.asStateFlow()
-
     private val _isRunning = MutableStateFlow(false)
     val isRunning: StateFlow<Boolean> = _isRunning.asStateFlow()
-
-    private val _currentPrice = MutableStateFlow<Double?>(null)
-    val currentPrice: StateFlow<Double?> = _currentPrice.asStateFlow()
 
     private val _result = MutableStateFlow<SimulationResult?>(null)
     val result: StateFlow<SimulationResult?> = _result.asStateFlow()
@@ -43,43 +47,31 @@ class SimulationViewModel @Inject constructor(
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
 
-    fun fetchCurrentPrice(ticker: String) {
-        viewModelScope.launch {
-            _isLoadingPrice.value = true
-            _error.value = null
-            try {
-                _currentPrice.value = stockPriceService.fetchPrice(ticker)
-            } catch (e: Exception) {
-                _error.value = "Failed to fetch price: ${e.message}"
-            } finally {
-                _isLoadingPrice.value = false
-            }
-        }
-    }
-
-    fun runSimulation(ticker: String, shares: Double, costPerShare: Double) {
+    fun runSimulation(ticker: String, shares: Double, timeRange: TimeRange) {
         viewModelScope.launch {
             _isRunning.value = true
             _error.value = null
             _result.value = null
             try {
-                val prices = stockPriceService.fetchHistoricalPrices(ticker, 14)
-                if (prices.isEmpty()) {
-                    _error.value = "No historical data available for $ticker"
+                val prices = stockPriceService.fetchHistoricalPrices(ticker, timeRange.days)
+                if (prices.size < 2) {
+                    _error.value = "Not enough historical data for $ticker"
                     return@launch
                 }
-                val latestPrice = prices.last().close
-                val totalCost = shares * costPerShare
-                val currentValue = shares * latestPrice
+                val startPrice = prices.first().close
+                val currentPrice = prices.last().close
+                val totalCost = shares * startPrice
+                val currentValue = shares * currentPrice
                 val profitLoss = currentValue - totalCost
                 val profitLossPct = if (totalCost > 0) profitLoss / totalCost * 100 else 0.0
 
                 _result.value = SimulationResult(
                     ticker = ticker,
                     shares = shares,
-                    costPerShare = costPerShare,
+                    timeRange = timeRange,
+                    startPrice = startPrice,
+                    currentPrice = currentPrice,
                     totalCost = totalCost,
-                    currentPrice = latestPrice,
                     currentValue = currentValue,
                     profitLoss = profitLoss,
                     profitLossPct = profitLossPct,

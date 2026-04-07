@@ -2,6 +2,7 @@ package com.investhelp.app.di
 
 import android.content.Context
 import com.investhelp.app.data.local.DatabaseProvider
+import com.investhelp.app.data.local.dao.BankTransferDao
 import com.investhelp.app.data.local.dao.InvestmentAccountDao
 import com.investhelp.app.data.local.dao.InvestmentItemDao
 import com.investhelp.app.data.local.dao.InvestmentTransactionDao
@@ -41,5 +42,10 @@ object DatabaseModule {
     @Provides
     fun providePositionDao(dbProvider: DatabaseProvider): PositionDao {
         return dbProvider.database.positionDao()
+    }
+
+    @Provides
+    fun provideBankTransferDao(dbProvider: DatabaseProvider): BankTransferDao {
+        return dbProvider.database.bankTransferDao()
     }
 }

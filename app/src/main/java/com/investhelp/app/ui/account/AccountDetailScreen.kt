@@ -47,6 +47,7 @@ fun AccountDetailScreen(
     viewModel: AccountViewModel,
     onEditAccount: () -> Unit,
     onNavigateToTransaction: (Long) -> Unit,
+    onNavigateToItem: (String) -> Unit,
     onBack: () -> Unit
 ) {
     LaunchedEffect(accountId) {
@@ -144,7 +145,7 @@ fun AccountDetailScreen(
 
             // Tab content
             when (selectedTab) {
-                0 -> PositionsTab(positions, currencyFormat)
+                0 -> PositionsTab(positions, currencyFormat, onNavigateToItem)
                 1 -> TransactionsTab(transactions, currencyFormat, dateFormatter, timeFormatter, onNavigateToTransaction)
             }
         }
@@ -154,7 +155,8 @@ fun AccountDetailScreen(
 @Composable
 private fun PositionsTab(
     positions: List<PositionEntity>,
-    currencyFormat: NumberFormat
+    currencyFormat: NumberFormat,
+    onNavigateToItem: (String) -> Unit
 ) {
     if (positions.isEmpty()) {
         Column(
@@ -174,7 +176,10 @@ private fun PositionsTab(
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             items(positions, key = { it.ticker }) { position ->
-                Card(modifier = Modifier.fillMaxWidth()) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    onClick = { onNavigateToItem(position.ticker) }
+                ) {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
