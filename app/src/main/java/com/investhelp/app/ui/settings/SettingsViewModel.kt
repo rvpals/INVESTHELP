@@ -1,0 +1,185 @@
+package com.investhelp.app.ui.settings
+
+import android.content.Context
+import android.net.Uri
+import androidx.documentfile.provider.DocumentFile
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.investhelp.app.data.local.dao.InvestmentAccountDao
+import com.investhelp.app.data.local.dao.InvestmentItemDao
+import com.investhelp.app.data.local.dao.InvestmentTransactionDao
+import com.investhelp.app.data.local.entity.InvestmentAccountEntity
+import com.investhelp.app.data.local.entity.InvestmentItemEntity
+import com.investhelp.app.data.local.entity.InvestmentTransactionEntity
+import com.investhelp.app.model.BackupAccount
+import com.investhelp.app.model.BackupData
+import com.investhelp.app.model.BackupItem
+import com.investhelp.app.model.BackupTransaction
+import com.investhelp.app.model.InvestmentType
+import com.investhelp.app.model.TransactionAction
+import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.Json
+import java.time.LocalDate
+import java.time.LocalDateTime
+import java.time.LocalTime
+import java.time.format.DateTimeFormatter
+import javax.inject.Inject
+
+data class SettingsUiState(
+    val backupFolderUri: Uri? = null,
+    val backupFolderName: String? = null,
+    val message: String? = null,
+    val isExporting: Boolean = false,
+    val isRestoring: Boolean = false
+)
+
+@HiltViewModel
+class SettingsViewModel @Inject constructor(
+    @ApplicationContext private val context: Context,
+    private val accountDao: InvestmentAccountDao,
+    private val itemDao: InvestmentItemDao,
+    private val transactionDao: InvestmentTransactionDao
+) : ViewModel() {
+
+    private val _uiState = MutableStateFlow(SettingsUiState())
+    val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
+
+    private val json = Json { prettyPrint = true }
+
+    fun setBackupFolder(uri: Uri) {
+        val docFile = DocumentFile.fromTreeUri(context, uri)
+        _uiState.value = _uiState.value.copy(
+            backupFolderUri = uri,
+            backupFolderName = docFile?.name ?: uri.lastPathSegment,
+            message = null
+        )
+    }
+
+    fun clearMessage() {
+        _uiState.value = _uiState.value.copy(message = null)
+    }
+
+    fun exportData() {
+        val folderUri = _uiState.value.backupFolderUri
+        if (folderUri == null) {
+            _uiState.value = _uiState.value.copy(message = "Please select a backup folder first.")
+            return
+        }
+
+        _uiState.value = _uiState.value.copy(isExporting = true, message = null)
+
+        viewModelScope.launch {
+            try {
+                val accounts = accountDao.getAllAccountsSnapshot()
+                val items = itemDao.getAllItemsSnapshot()
+                val transactions = transactionDao.getAllTransactionsSnapshot()
+
+                val backupData = BackupData(
+                    accounts = accounts.map {
+                        BackupAccount(it.id, it.name, it.description, it.initialValue)
+                    },
+                    items = items.map {
+                        BackupItem(it.id, it.name, it.ticker, it.type.name, it.currentPrice)
+                    },
+                    transactions = transactions.map {
+                        BackupTransaction(
+                            it.id, it.date.toEpochDay(), it.time.toSecondOfDay(),
+                            it.action.name, it.accountId, it.investmentItemId,
+                            it.numberOfShares, it.pricePerShare
+                        )
+                    }
+                )
+
+                val jsonString = json.encodeToString(BackupData.serializer(), backupData)
+                val timestamp = LocalDateTime.now().format(
+                    DateTimeFormatter.ofPattern("yyyy-MM-dd_HHmmss")
+                )
+                val fileName = "invest_help_backup_$timestamp.json"
+
+                withContext(Dispatchers.IO) {
+                    val folder = DocumentFile.fromTreeUri(context, folderUri)
+                        ?: throw Exception("Cannot access backup folder.")
+                    val file = folder.createFile("application/json", fileName)
+                        ?: throw Exception("Cannot create backup file.")
+                    context.contentResolver.openOutputStream(file.uri)?.use { out ->
+                        out.write(jsonString.toByteArray())
+                    } ?: throw Exception("Cannot write to backup file.")
+                }
+
+                _uiState.value = _uiState.value.copy(
+                    isExporting = false,
+                    message = "Exported to $fileName"
+                )
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(
+                    isExporting = false,
+                    message = "Export failed: ${e.message}"
+                )
+            }
+        }
+    }
+
+    fun restoreData(fileUri: Uri) {
+        _uiState.value = _uiState.value.copy(isRestoring = true, message = null)
+
+        viewModelScope.launch {
+            try {
+                val jsonString = withContext(Dispatchers.IO) {
+                    context.contentResolver.openInputStream(fileUri)?.use { input ->
+                        input.bufferedReader().readText()
+                    } ?: throw Exception("Cannot read backup file.")
+                }
+
+                val backupData = json.decodeFromString(BackupData.serializer(), jsonString)
+
+                // Delete in reverse dependency order
+                transactionDao.deleteAll()
+                itemDao.deleteAll()
+                accountDao.deleteAll()
+
+                // Insert in dependency order
+                for (a in backupData.accounts) {
+                    accountDao.insertAccount(
+                        InvestmentAccountEntity(a.id, a.name, a.description, a.initialValue)
+                    )
+                }
+                for (i in backupData.items) {
+                    itemDao.insertItem(
+                        InvestmentItemEntity(
+                            i.id, i.name, i.ticker, InvestmentType.valueOf(i.type), i.currentPrice
+                        )
+                    )
+                }
+                for (t in backupData.transactions) {
+                    transactionDao.insertTransaction(
+                        InvestmentTransactionEntity(
+                            t.id,
+                            LocalDate.ofEpochDay(t.dateEpochDay),
+                            LocalTime.ofSecondOfDay(t.timeSecondOfDay.toLong()),
+                            TransactionAction.valueOf(t.action),
+                            t.accountId, t.investmentItemId,
+                            t.numberOfShares, t.pricePerShare
+                        )
+                    )
+                }
+
+                _uiState.value = _uiState.value.copy(
+                    isRestoring = false,
+                    message = "Restored ${backupData.accounts.size} accounts, ${backupData.items.size} items, ${backupData.transactions.size} transactions."
+                )
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(
+                    isRestoring = false,
+                    message = "Restore failed: ${e.message}"
+                )
+            }
+        }
+    }
+}

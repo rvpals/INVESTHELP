@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.InvestHelp" parent="Theme.AppCompat.Light.NoActionBar" />
+
+    <style name="Theme.InvestHelp.Splash" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">#E3EDF7</item>
+        <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher_foreground</item>
+        <item name="postSplashScreenTheme">@style/Theme.InvestHelp</item>
+    </style>
+</resources>
