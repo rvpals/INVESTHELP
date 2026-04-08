@@ -16,8 +16,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.AccountBalanceWallet
-import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
@@ -58,9 +56,7 @@ import java.util.Locale
 fun ItemListScreen(
     viewModel: ItemViewModel,
     onNavigateToItem: (Long) -> Unit,
-    onAddItem: () -> Unit,
-    onNavigateToTransactions: () -> Unit,
-    onNavigateToTransfers: () -> Unit
+    onAddItem: () -> Unit
 ) {
     val items by viewModel.allItems.collectAsStateWithLifecycle()
     val refreshingIds by viewModel.refreshingItemIds.collectAsStateWithLifecycle()
@@ -105,18 +101,6 @@ fun ItemListScreen(
             TopAppBar(
                 title = { Text("Investment Items") },
                 actions = {
-                    IconButton(onClick = onNavigateToTransfers) {
-                        Icon(
-                            Icons.Default.AccountBalanceWallet,
-                            contentDescription = "Transfers"
-                        )
-                    }
-                    IconButton(onClick = onNavigateToTransactions) {
-                        Icon(
-                            Icons.Default.Receipt,
-                            contentDescription = "Transactions"
-                        )
-                    }
                     TextButton(
                         onClick = { viewModel.updateAllItems() },
                         enabled = !isUpdatingAll && !isRefreshingAll

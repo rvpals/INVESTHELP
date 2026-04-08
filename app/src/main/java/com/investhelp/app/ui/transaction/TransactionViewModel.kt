@@ -6,10 +6,12 @@ import androidx.lifecycle.viewModelScope
 import com.investhelp.app.data.local.dao.InvestmentItemDao
 import com.investhelp.app.data.local.dao.PositionDao
 import com.investhelp.app.data.local.entity.InvestmentAccountEntity
+import com.investhelp.app.data.local.entity.InvestmentItemEntity
 import com.investhelp.app.data.local.entity.InvestmentTransactionEntity
 import com.investhelp.app.data.local.entity.PositionEntity
 import com.investhelp.app.data.repository.AccountRepository
 import com.investhelp.app.data.repository.TransactionRepository
+import com.investhelp.app.model.InvestmentType
 import com.investhelp.app.model.TransactionAction
 import com.investhelp.app.ui.settings.SettingsViewModel
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -85,6 +87,19 @@ class TransactionViewModel @Inject constructor(
                 transactionRepository.updateTransaction(transaction)
             } else {
                 transactionRepository.insertTransaction(transaction)
+            }
+
+            // Auto-create investment item if none exists for this ticker
+            if (itemDao.getItemByTicker(ticker) == null) {
+                itemDao.insertItem(
+                    InvestmentItemEntity(
+                        name = ticker,
+                        ticker = ticker,
+                        type = InvestmentType.Stock,
+                        currentPrice = pricePerShare,
+                        numShares = 0.0
+                    )
+                )
             }
 
             // Auto-update position and item shares if enabled

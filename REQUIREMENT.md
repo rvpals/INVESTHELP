@@ -21,6 +21,7 @@ Android app to track personal investments.
 - Ticker symbol (optional)
 - Type (ETF, Stock, Bond, MutualFund, Crypto, Other)
 - Current price
+- Auto-created when a transaction references a new ticker (defaults to Stock type)
 
 ### Position
 - Ticker (part of composite PK)
@@ -44,6 +45,17 @@ Android app to track personal investments.
 
 ## Features
 
+### Navigation
+- **Global top bar** — persistent across all screens when unlocked:
+  - Portfolio value 3D button (tap to navigate to Dashboard)
+  - Hamburger menu (Accounts, Items, Settings, About)
+- **Bottom nav** — Dashboard, Positions, Transfer, Transaction, Simulation (colorful icons with shadow)
+
+### Dashboard
+- Accounts list with current values
+- **Positions pie chart** — shows all positions by ticker value with shares labels inside slices and legend below
+- FAB to add accounts
+
 ### Account Detail with Tabs
 - **Positions tab** — lists all positions for the account (ticker, value, quantity, cost, day/total gain/loss)
 - **Transactions tab** — lists all transactions for the account (ordered by date DESC, time DESC)
@@ -62,12 +74,14 @@ Android app to track personal investments.
 - **View Statistics** — average/max/min buy/sell prices filterable by date range
 
 ### Simulation
-- Accessible from Dashboard toolbar (trending icon)
-- Enter ticker, number of shares, cost per share
-- **Get Price** button fetches current Yahoo Finance price
-- **Run Sim** — fetches last 2 weeks of daily prices, shows:
-  - Summary card with buy price vs current price, profit/loss amount and percentage
-  - Trending line chart with filled area, buy price reference line, date labels
+- Accessible from bottom navigation bar
+- Enter ticker, number of shares
+- Time range selection in 3 rows: Week (1W, 2W), Month (1M, 3M, 6M), Year (1Y, 2Y, 5Y, 10Y, MAX)
+- **Run Sim** — fetches historical prices, shows:
+  - Summary card with start price vs current price, profit/loss amount and percentage
+  - Trending line chart with filled area, start price reference line, date labels
+  - Tap-to-select on chart points shows tooltip with price and date
+- Large ranges (5Y+) use weekly interval; MAX uses Yahoo Finance `range=max`
 
 ### Backup & Restore
 - Export all data to JSON file

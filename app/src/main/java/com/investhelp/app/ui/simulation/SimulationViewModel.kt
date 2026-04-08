@@ -11,13 +11,17 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-enum class TimeRange(val label: String, val days: Int) {
-    ONE_WEEK("1W", 7),
-    TWO_WEEKS("2W", 14),
-    ONE_MONTH("1M", 30),
-    THREE_MONTHS("3M", 90),
-    SIX_MONTHS("6M", 180),
-    ONE_YEAR("1Y", 365)
+enum class TimeRange(val label: String, val days: Int, val group: String) {
+    ONE_WEEK("1W", 7, "Week"),
+    TWO_WEEKS("2W", 14, "Week"),
+    ONE_MONTH("1M", 30, "Month"),
+    THREE_MONTHS("3M", 90, "Month"),
+    SIX_MONTHS("6M", 180, "Month"),
+    ONE_YEAR("1Y", 365, "Year"),
+    TWO_YEARS("2Y", 730, "Year"),
+    FIVE_YEARS("5Y", 1825, "Year"),
+    TEN_YEARS("10Y", 3650, "Year"),
+    MAX("MAX", Int.MAX_VALUE, "Year")
 }
 
 data class SimulationResult(

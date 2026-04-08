@@ -76,9 +76,6 @@ fun InvestHelpNavHost(
                 },
                 onAddAccount = {
                     navController.navigate(AccountFormRoute())
-                },
-                onNavigateToSimulation = {
-                    navController.navigate(SimulationRoute)
                 }
             )
         }
@@ -142,12 +139,6 @@ fun InvestHelpNavHost(
                 },
                 onAddItem = {
                     navController.navigate(ItemFormRoute())
-                },
-                onNavigateToTransactions = {
-                    navController.navigate(TransactionListRoute)
-                },
-                onNavigateToTransfers = {
-                    navController.navigate(BankTransferListRoute)
                 }
             )
         }
@@ -222,8 +213,7 @@ fun InvestHelpNavHost(
                 },
                 onEditTransfer = { transferId ->
                     navController.navigate(BankTransferFormRoute(transferId))
-                },
-                onBack = { navController.popBackStack() }
+                }
             )
         }
 
@@ -246,8 +236,7 @@ fun InvestHelpNavHost(
         composable<SimulationRoute> {
             val viewModel: SimulationViewModel = hiltViewModel()
             SimulationScreen(
-                viewModel = viewModel,
-                onBack = { navController.popBackStack() }
+                viewModel = viewModel
             )
         }
 

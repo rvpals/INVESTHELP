@@ -109,12 +109,14 @@ class StockPriceService @Inject constructor() {
 
     suspend fun fetchHistoricalPrices(ticker: String, rangeDays: Int = 14): List<HistoricalPrice> =
         withContext(Dispatchers.IO) {
-            val url = URL("https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?range=${rangeDays}d&interval=1d")
+            val rangeParam = if (rangeDays == Int.MAX_VALUE) "max" else "${rangeDays}d"
+            val intervalParam = if (rangeDays > 1825) "1wk" else if (rangeDays > 180) "1d" else "1d"
+            val url = URL("https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?range=${rangeParam}&interval=${intervalParam}")
             val connection = url.openConnection() as HttpURLConnection
             connection.instanceFollowRedirects = true
             connection.setRequestProperty("User-Agent", "Mozilla/5.0")
-            connection.connectTimeout = 10_000
-            connection.readTimeout = 10_000
+            connection.connectTimeout = 15_000
+            connection.readTimeout = 30_000
 
             try {
                 if (connection.responseCode != 200) {

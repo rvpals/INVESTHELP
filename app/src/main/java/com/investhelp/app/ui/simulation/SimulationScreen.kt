@@ -2,7 +2,7 @@ package com.investhelp.app.ui.simulation
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -39,12 +39,16 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -61,8 +65,7 @@ import java.util.Locale
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SimulationScreen(
-    viewModel: SimulationViewModel,
-    onBack: () -> Unit
+    viewModel: SimulationViewModel
 ) {
     val isRunning by viewModel.isRunning.collectAsStateWithLifecycle()
     val result by viewModel.result.collectAsStateWithLifecycle()
@@ -78,12 +81,7 @@ fun SimulationScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Simulation") },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                }
+                title = { Text("Simulation") }
             )
         }
     ) { padding ->
@@ -120,18 +118,17 @@ fun SimulationScreen(
             // Time range selector
             Text("Time Range", style = MaterialTheme.typography.labelLarge)
             Spacer(modifier = Modifier.height(4.dp))
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                TimeRange.entries.forEach { range ->
-                    FilterChip(
-                        selected = selectedRange == range,
-                        onClick = { selectedRange = range },
-                        label = { Text(range.label) }
-                    )
+            listOf("Week", "Month", "Year").forEach { group ->
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    TimeRange.entries.filter { it.group == group }.forEach { range ->
+                        FilterChip(
+                            selected = selectedRange == range,
+                            onClick = { selectedRange = range },
+                            label = { Text(range.label) }
+                        )
+                    }
                 }
             }
 
@@ -317,6 +314,8 @@ private fun PriceChart(
     val gridColor = MaterialTheme.colorScheme.outlineVariant
     val labelColor = MaterialTheme.colorScheme.onSurfaceVariant
     val fillColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
+    val tooltipBg = MaterialTheme.colorScheme.inverseSurface
+    val tooltipText = MaterialTheme.colorScheme.inverseOnSurface
 
     val dateFormatter = DateTimeFormatter.ofPattern("MM/dd")
     val currencyFormat = NumberFormat.getCurrencyInstance(Locale.US)
@@ -325,6 +324,8 @@ private fun PriceChart(
     val minPrice = (closes.min()).coerceAtMost(startPrice) * 0.998
     val maxPrice = (closes.max()).coerceAtLeast(startPrice) * 1.002
     val priceRange = maxPrice - minPrice
+
+    var selectedIndex by remember { mutableStateOf<Int?>(null) }
 
     Card(
         modifier = modifier,
@@ -336,6 +337,15 @@ private fun PriceChart(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(top = 12.dp, bottom = 24.dp, start = 48.dp, end = 12.dp)
+                .pointerInput(prices) {
+                    detectTapGestures { offset ->
+                        val stepX = size.width / (prices.size - 1).toFloat()
+                        val tappedIndex = ((offset.x + stepX / 2) / stepX)
+                            .toInt()
+                            .coerceIn(0, prices.size - 1)
+                        selectedIndex = if (selectedIndex == tappedIndex) null else tappedIndex
+                    }
+                }
         ) {
             val chartWidth = size.width
             val chartHeight = size.height
@@ -411,6 +421,58 @@ private fun PriceChart(
                     color = lineColor,
                     radius = 4f,
                     center = Offset(x, y)
+                )
+            }
+
+            // Selected point highlight + tooltip
+            selectedIndex?.let { idx ->
+                val hp = prices[idx]
+                val x = idx * stepX
+                val y = ((maxPrice - hp.close) / priceRange * chartHeight).toFloat()
+
+                // Vertical crosshair line
+                drawLine(
+                    color = labelColor.copy(alpha = 0.4f),
+                    start = Offset(x, 0f),
+                    end = Offset(x, chartHeight),
+                    strokeWidth = 1f,
+                    pathEffect = PathEffect.dashPathEffect(floatArrayOf(6f, 4f))
+                )
+
+                // Highlighted dot
+                drawCircle(color = Color.White, radius = 7f, center = Offset(x, y))
+                drawCircle(color = lineColor, radius = 5f, center = Offset(x, y))
+
+                // Tooltip text
+                val date = Instant.ofEpochSecond(hp.timestamp)
+                    .atZone(ZoneId.systemDefault()).toLocalDate()
+                val tooltipStr = "${currencyFormat.format(hp.close)}  ${date.format(dateFormatter)}"
+                val paint = android.graphics.Paint().apply {
+                    textSize = 11.dp.toPx()
+                    isAntiAlias = true
+                }
+                val textWidth = paint.measureText(tooltipStr)
+                val tooltipPadH = 8.dp.toPx()
+                val tooltipPadV = 5.dp.toPx()
+                val tooltipW = textWidth + tooltipPadH * 2
+                val tooltipH = paint.textSize + tooltipPadV * 2
+                // Position tooltip above point, clamp to chart bounds
+                val tooltipX = (x - tooltipW / 2).coerceIn(0f, chartWidth - tooltipW)
+                val tooltipY = (y - tooltipH - 12.dp.toPx()).coerceAtLeast(0f)
+
+                drawRoundRect(
+                    color = tooltipBg,
+                    topLeft = Offset(tooltipX, tooltipY),
+                    size = Size(tooltipW, tooltipH),
+                    cornerRadius = CornerRadius(6.dp.toPx())
+                )
+                drawContext.canvas.nativeCanvas.drawText(
+                    tooltipStr,
+                    tooltipX + tooltipPadH,
+                    tooltipY + tooltipPadV + paint.textSize * 0.85f,
+                    paint.apply {
+                        color = tooltipText.hashCode()
+                    }
                 )
             }
 

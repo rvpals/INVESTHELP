@@ -1,7 +1,8 @@
 # Invest Help - Known Issues
 
 ## Minor
-- Deprecation warning: `Icons.Filled.ShowChart` should use `Icons.AutoMirrored.Filled.ShowChart` (MainActivity.kt:55)
+- Deprecation warning: `Icons.Filled.ShowChart` should use `Icons.AutoMirrored.Filled.ShowChart` (DashboardScreen.kt, MainActivity.kt)
+- Deprecation warning: `Icons.Filled.OpenInNew` should use `Icons.AutoMirrored.Filled.OpenInNew` (ItemDetailScreen.kt)
 - Deprecation warning: `statusBarColor` deprecated in Java (Theme.kt:51)
 
 ## Notes
@@ -9,3 +10,5 @@
 - Migration 4->5 drops existing positions table (fresh install or re-entry needed after upgrade)
 - Migration 5->6 recreates transactions table; existing transactions map investmentItemId to ticker via items table
 - Yahoo Finance API (v8/v10) is undocumented and may change without notice; no API key required
+- Yahoo Finance historical data for large ranges (5Y+) uses weekly interval to reduce data volume
+- Uninstalling app clears all data (encrypted DB); signature mismatch requires uninstall before reinstall

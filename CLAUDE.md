@@ -33,9 +33,15 @@ Android investment tracking app built with Kotlin, Jetpack Compose, and Material
 - DatabaseProvider pattern: DB opens lazily after authentication
 - CASCADE deletes: removing account removes associated positions, transactions, and bank transfers
 - Bank transfers table tracks fund transfers to investment accounts (date, amount, account, note)
-- Investment Items screen has STOCK/ETF tabs, toolbar buttons for Transactions and Transfers
+- Investment Items screen has STOCK/ETF tabs with Update All and Refresh Price toolbar actions
+- Auto-create InvestmentItem when transaction references a new ticker (defaults to Stock type)
 - Dates stored as epoch days for simple SQL range queries
 - Yahoo Finance v8/v10 API for live prices, historical data, and analysis info
+- Global top bar: portfolio value 3D button (navigates to Dashboard) + hamburger menu (Accounts, Items, Settings, About)
+- Bottom nav: Dashboard, Positions, Transfer, Transaction, Simulation (colorful icons with shadow)
+- Simulation time ranges: 1W, 2W, 1M, 3M, 6M, 1Y, 2Y, 5Y, 10Y, MAX (grouped in Week/Month/Year rows)
+- Simulation chart supports tap-to-select with tooltip (price + date)
+- Dashboard pie chart shows all positions by ticker with shares labels inside slices
 
 ## Build
 Open in Android Studio and sync Gradle. Requires JDK 17+.
