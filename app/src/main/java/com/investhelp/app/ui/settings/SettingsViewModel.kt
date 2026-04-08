@@ -108,7 +108,18 @@ class SettingsViewModel @Inject constructor(
                         BackupAccount(it.id, it.name, it.description, it.initialValue)
                     },
                     items = items.map {
-                        BackupItem(it.id, it.name, it.ticker, it.type.name, it.currentPrice, it.numShares)
+                        BackupItem(
+                            ticker = it.ticker,
+                            accountId = it.accountId,
+                            name = it.name,
+                            type = it.type.name,
+                            currentPrice = it.currentPrice,
+                            quantity = it.quantity,
+                            cost = it.cost,
+                            dayGainLoss = it.dayGainLoss,
+                            totalGainLoss = it.totalGainLoss,
+                            value = it.value
+                        )
                     },
                     transactions = transactions.map {
                         BackupTransaction(
@@ -179,12 +190,42 @@ class SettingsViewModel @Inject constructor(
                         InvestmentAccountEntity(a.id, a.name, a.description, a.initialValue)
                     )
                 }
+                val firstAccountId = backupData.accounts.firstOrNull()?.id ?: 1L
                 for (i in backupData.items) {
-                    itemDao.insertItem(
-                        InvestmentItemEntity(
-                            i.id, i.name, i.ticker, InvestmentType.valueOf(i.type), i.currentPrice, i.numShares
+                    if (backupData.version >= 2) {
+                        // v2 format: all fields present
+                        itemDao.upsertItem(
+                            InvestmentItemEntity(
+                                ticker = i.ticker,
+                                accountId = i.accountId,
+                                name = i.name,
+                                type = InvestmentType.valueOf(i.type),
+                                currentPrice = i.currentPrice,
+                                quantity = i.quantity,
+                                cost = i.cost,
+                                dayGainLoss = i.dayGainLoss,
+                                totalGainLoss = i.totalGainLoss,
+                                value = i.value
+                            )
                         )
-                    )
+                    } else {
+                        // v1 format: assign to first account, use numShares as quantity
+                        val ticker = i.ticker.ifBlank { "UNKNOWN" }
+                        itemDao.upsertItem(
+                            InvestmentItemEntity(
+                                ticker = ticker,
+                                accountId = firstAccountId,
+                                name = i.name,
+                                type = InvestmentType.valueOf(i.type),
+                                currentPrice = i.currentPrice,
+                                quantity = i.numShares,
+                                cost = 0.0,
+                                dayGainLoss = 0.0,
+                                totalGainLoss = 0.0,
+                                value = i.numShares * i.currentPrice
+                            )
+                        )
+                    }
                 }
                 for (t in backupData.transactions) {
                     transactionDao.insertTransaction(

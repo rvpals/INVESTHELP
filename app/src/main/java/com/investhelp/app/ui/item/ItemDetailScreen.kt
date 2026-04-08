@@ -3,7 +3,6 @@ package com.investhelp.app.ui.item
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -17,6 +16,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.Analytics
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Info
@@ -58,28 +58,36 @@ import java.util.Locale
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ItemDetailScreen(
-    itemId: Long,
+    ticker: String,
     viewModel: ItemViewModel,
     onEditItem: () -> Unit,
     onViewStatistics: () -> Unit,
+    onSimulate: (ticker: String, shares: Double) -> Unit,
     onBack: () -> Unit
 ) {
-    LaunchedEffect(itemId) {
-        viewModel.loadItem(itemId)
+    LaunchedEffect(ticker) {
+        viewModel.loadItem(ticker)
     }
 
-    val item by viewModel.selectedItem.collectAsStateWithLifecycle()
-    val sharesOwned by viewModel.sharesOwned.collectAsStateWithLifecycle()
+    val itemRows by viewModel.selectedItemRows.collectAsStateWithLifecycle()
     val transactions by viewModel.itemTransactions.collectAsStateWithLifecycle()
+    val accounts by viewModel.accounts.collectAsStateWithLifecycle()
     val analysisInfo by viewModel.analysisInfo.collectAsStateWithLifecycle()
     val isLoadingAnalysis by viewModel.isLoadingAnalysis.collectAsStateWithLifecycle()
     val analysisError by viewModel.analysisError.collectAsStateWithLifecycle()
     val currencyFormat = NumberFormat.getCurrencyInstance(Locale.US)
     val dateFormatter = DateTimeFormatter.ofPattern("MMM dd, yyyy")
 
+    val accountMap = accounts.associateBy { it.id }
+    val firstRow = itemRows.firstOrNull()
+    val totalQuantity = itemRows.sumOf { it.quantity }
+    val totalValue = itemRows.sumOf { it.value }
+    val totalCost = itemRows.sumOf { it.cost }
+    val totalGainLoss = itemRows.sumOf { it.totalGainLoss }
+    val totalDayGainLoss = itemRows.sumOf { it.dayGainLoss }
+
     var showAnalysisSheet by remember { mutableStateOf(false) }
 
-    // Show sheet when data arrives
     LaunchedEffect(analysisInfo) {
         if (analysisInfo != null) showAnalysisSheet = true
     }
@@ -87,7 +95,7 @@ fun ItemDetailScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(item?.name ?: "Item") },
+                title = { Text(firstRow?.name ?: ticker) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -108,8 +116,9 @@ fun ItemDetailScreen(
                 .padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
+            // Header card with aggregate info
             item {
-                item?.let { inv ->
+                firstRow?.let { inv ->
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         colors = CardDefaults.cardColors(
@@ -133,29 +142,94 @@ fun ItemDetailScreen(
                             }
                             Spacer(modifier = Modifier.height(8.dp))
                             Text(
-                                text = "Shares Owned: ${"%.4f".format(sharesOwned)}",
+                                text = "Total Shares: ${"%.4f".format(totalQuantity)}",
                                 style = MaterialTheme.typography.titleMedium
                             )
                             Text(
-                                text = "Total Value: ${currencyFormat.format(sharesOwned * inv.currentPrice)}",
+                                text = "Total Value: ${currencyFormat.format(totalValue)}",
                                 style = MaterialTheme.typography.titleLarge,
                                 color = MaterialTheme.colorScheme.primary
                             )
+                            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                                Column {
+                                    Text("Cost", style = MaterialTheme.typography.labelSmall)
+                                    Text(currencyFormat.format(totalCost), style = MaterialTheme.typography.bodyMedium)
+                                }
+                                Column {
+                                    Text("Day G/L", style = MaterialTheme.typography.labelSmall)
+                                    Text(
+                                        currencyFormat.format(totalDayGainLoss),
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = if (totalDayGainLoss >= 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
+                                    )
+                                }
+                                Column {
+                                    Text("Total G/L", style = MaterialTheme.typography.labelSmall)
+                                    Text(
+                                        currencyFormat.format(totalGainLoss),
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = if (totalGainLoss >= 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
+                                    )
+                                }
+                            }
                         }
                     }
+                }
+            }
 
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    // Analysis Info button
-                    Button(
-                        onClick = {
-                            val ticker = inv.ticker
-                            if (ticker != null) {
-                                viewModel.fetchAnalysisInfo(ticker)
-                            }
-                        },
+            // Per-account breakdown
+            if (itemRows.size > 1) {
+                item {
+                    Text("Per Account", style = MaterialTheme.typography.titleMedium)
+                }
+                items(itemRows, key = { "${it.ticker}:${it.accountId}" }) { row ->
+                    Card(
                         modifier = Modifier.fillMaxWidth(),
-                        enabled = !inv.ticker.isNullOrBlank() && !isLoadingAnalysis
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                        )
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Text(
+                                text = accountMap[row.accountId]?.name ?: "Account ${row.accountId}",
+                                style = MaterialTheme.typography.labelLarge
+                            )
+                            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                                Column {
+                                    Text("Qty", style = MaterialTheme.typography.labelSmall)
+                                    Text("%.4f".format(row.quantity), style = MaterialTheme.typography.bodySmall)
+                                }
+                                Column {
+                                    Text("Value", style = MaterialTheme.typography.labelSmall)
+                                    Text(currencyFormat.format(row.value), style = MaterialTheme.typography.bodySmall)
+                                }
+                                Column {
+                                    Text("Cost", style = MaterialTheme.typography.labelSmall)
+                                    Text(currencyFormat.format(row.cost), style = MaterialTheme.typography.bodySmall)
+                                }
+                                Column {
+                                    Text("G/L", style = MaterialTheme.typography.labelSmall)
+                                    Text(
+                                        currencyFormat.format(row.totalGainLoss),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = if (row.totalGainLoss >= 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Action buttons
+            item {
+                firstRow?.let { inv ->
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    Button(
+                        onClick = { viewModel.fetchAnalysisInfo(ticker) },
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = !isLoadingAnalysis
                     ) {
                         if (isLoadingAnalysis) {
                             CircularProgressIndicator(
@@ -182,26 +256,23 @@ fun ItemDetailScreen(
                         )
                     }
 
-                    // Yahoo Finance web link
-                    if (!inv.ticker.isNullOrBlank()) {
-                        val context = LocalContext.current
-                        OutlinedButton(
-                            onClick = {
-                                val intent = Intent(
-                                    Intent.ACTION_VIEW,
-                                    Uri.parse("https://finance.yahoo.com/quote/${inv.ticker}")
-                                )
-                                context.startActivity(intent)
-                            },
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Icon(
-                                Icons.Default.OpenInNew,
-                                contentDescription = null,
-                                modifier = Modifier.padding(end = 8.dp)
+                    val context = LocalContext.current
+                    OutlinedButton(
+                        onClick = {
+                            val intent = Intent(
+                                Intent.ACTION_VIEW,
+                                Uri.parse("https://finance.yahoo.com/quote/$ticker")
                             )
-                            Text("Yahoo Finance")
-                        }
+                            context.startActivity(intent)
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(
+                            Icons.Default.OpenInNew,
+                            contentDescription = null,
+                            modifier = Modifier.padding(end = 8.dp)
+                        )
+                        Text("Yahoo Finance")
                     }
 
                     Button(
@@ -214,6 +285,21 @@ fun ItemDetailScreen(
                             modifier = Modifier.padding(end = 8.dp)
                         )
                         Text("View Statistics")
+                    }
+
+                    Button(
+                        onClick = { onSimulate(ticker, totalQuantity) },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.tertiary
+                        )
+                    ) {
+                        Icon(
+                            Icons.AutoMirrored.Filled.TrendingUp,
+                            contentDescription = null,
+                            modifier = Modifier.padding(end = 8.dp)
+                        )
+                        Text("Simulate")
                     }
 
                     Spacer(modifier = Modifier.height(8.dp))
@@ -281,7 +367,7 @@ fun ItemDetailScreen(
             sheetState = sheetState
         ) {
             AnalysisInfoContent(
-                ticker = item?.ticker ?: "",
+                ticker = ticker,
                 info = analysisInfo!!,
                 currencyFormat = currencyFormat
             )
@@ -322,13 +408,10 @@ private fun AnalysisInfoContent(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Key metrics
         Text("Key Metrics", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
         HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
 
-        info.marketCap?.let {
-            InfoRow("Market Cap", formatMarketCap(it))
-        }
+        info.marketCap?.let { InfoRow("Market Cap", formatMarketCap(it)) }
         info.trailingPE?.let { InfoRow("Trailing P/E", "%.2f".format(it)) }
         info.forwardPE?.let { InfoRow("Forward P/E", "%.2f".format(it)) }
         info.eps?.let { InfoRow("EPS", currencyFormat.format(it)) }
@@ -336,7 +419,6 @@ private fun AnalysisInfoContent(
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        // Price range
         Text("Price Range", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
         HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
 
@@ -347,7 +429,6 @@ private fun AnalysisInfoContent(
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        // Financial data
         if (info.targetMeanPrice != null || info.revenuePerShare != null ||
             info.profitMargins != null || info.returnOnEquity != null
         ) {
@@ -360,7 +441,6 @@ private fun AnalysisInfoContent(
             info.returnOnEquity?.let { InfoRow("Return on Equity", percentFormat.format(it)) }
         }
 
-        // Business summary
         if (!info.longBusinessSummary.isNullOrBlank()) {
             Spacer(modifier = Modifier.height(12.dp))
             Text("About", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)

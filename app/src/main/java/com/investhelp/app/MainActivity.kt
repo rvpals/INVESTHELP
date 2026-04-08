@@ -22,7 +22,6 @@ import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.PieChart
 import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.ShowChart
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
@@ -67,7 +66,6 @@ import com.investhelp.app.ui.navigation.BankTransferListRoute
 import com.investhelp.app.ui.navigation.DashboardRoute
 import com.investhelp.app.ui.navigation.InvestHelpNavHost
 import com.investhelp.app.ui.navigation.ItemListRoute
-import com.investhelp.app.ui.navigation.PositionListRoute
 import com.investhelp.app.ui.navigation.SettingsRoute
 import com.investhelp.app.ui.navigation.SetupRoute
 import com.investhelp.app.ui.navigation.SimulationRoute
@@ -87,10 +85,10 @@ data class BottomNavItem(
 
 val bottomNavItems = listOf(
     BottomNavItem("Dashboard", Icons.Default.Dashboard, DashboardRoute, Color(0xFF1E88E5)),
-    BottomNavItem("Positions", Icons.Default.PieChart, PositionListRoute, Color(0xFF43A047)),
+    BottomNavItem("Items", Icons.Default.PieChart, ItemListRoute, Color(0xFF43A047)),
     BottomNavItem("Transfer", Icons.Default.AccountBalanceWallet, BankTransferListRoute, Color(0xFFF57C00)),
     BottomNavItem("Transaction", Icons.Default.Receipt, TransactionListRoute, Color(0xFF8E24AA)),
-    BottomNavItem("Simulation", Icons.AutoMirrored.Filled.TrendingUp, SimulationRoute, Color(0xFFE53935))
+    BottomNavItem("Simulation", Icons.AutoMirrored.Filled.TrendingUp, SimulationRoute(), Color(0xFFE53935))
 )
 
 @AndroidEntryPoint
@@ -238,18 +236,6 @@ fun GlobalTopBar(navController: NavHostController) {
                         }
                     },
                     leadingIcon = { Icon(Icons.Default.AccountBalance, contentDescription = null) }
-                )
-                DropdownMenuItem(
-                    text = { Text("Items") },
-                    onClick = {
-                        menuExpanded = false
-                        navController.navigate(ItemListRoute) {
-                            popUpTo(DashboardRoute) { saveState = true }
-                            launchSingleTop = true
-                            restoreState = true
-                        }
-                    },
-                    leadingIcon = { Icon(Icons.Default.ShowChart, contentDescription = null) }
                 )
                 DropdownMenuItem(
                     text = { Text("Settings") },

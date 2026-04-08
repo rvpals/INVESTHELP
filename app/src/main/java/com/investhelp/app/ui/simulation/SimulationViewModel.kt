@@ -37,6 +37,13 @@ data class SimulationResult(
     val prices: List<HistoricalPrice>
 )
 
+data class DetailChartData(
+    val label: String,
+    val timeRange: TimeRange,
+    val prices: List<HistoricalPrice>,
+    val startPrice: Double
+)
+
 @HiltViewModel
 class SimulationViewModel @Inject constructor(
     private val stockPriceService: StockPriceService
@@ -45,42 +52,93 @@ class SimulationViewModel @Inject constructor(
     private val _isRunning = MutableStateFlow(false)
     val isRunning: StateFlow<Boolean> = _isRunning.asStateFlow()
 
-    private val _result = MutableStateFlow<SimulationResult?>(null)
-    val result: StateFlow<SimulationResult?> = _result.asStateFlow()
+    private val _results = MutableStateFlow<List<SimulationResult>>(emptyList())
+    val results: StateFlow<List<SimulationResult>> = _results.asStateFlow()
 
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
 
-    fun runSimulation(ticker: String, shares: Double, timeRange: TimeRange) {
+    private val _detailCharts = MutableStateFlow<List<DetailChartData>>(emptyList())
+    val detailCharts: StateFlow<List<DetailChartData>> = _detailCharts.asStateFlow()
+
+    private val _isRunningDetail = MutableStateFlow(false)
+    val isRunningDetail: StateFlow<Boolean> = _isRunningDetail.asStateFlow()
+
+    private val _detailError = MutableStateFlow<String?>(null)
+    val detailError: StateFlow<String?> = _detailError.asStateFlow()
+
+    fun runDetailSimulation(ticker: String) {
+        viewModelScope.launch {
+            _isRunningDetail.value = true
+            _detailError.value = null
+            _detailCharts.value = emptyList()
+
+            val ranges = listOf(
+                "1 Week" to TimeRange.ONE_WEEK,
+                "3 Months" to TimeRange.THREE_MONTHS,
+                "5 Years" to TimeRange.FIVE_YEARS,
+                "Max" to TimeRange.MAX
+            )
+
+            val results = mutableListOf<DetailChartData>()
+            try {
+                for ((label, range) in ranges) {
+                    val prices = stockPriceService.fetchHistoricalPrices(ticker, range.days)
+                    if (prices.size >= 2) {
+                        results.add(DetailChartData(label, range, prices, prices.first().close))
+                    }
+                }
+                if (results.isEmpty()) {
+                    _detailError.value = "Not enough historical data for $ticker"
+                } else {
+                    _detailCharts.value = results
+                }
+            } catch (e: Exception) {
+                _detailError.value = "Detail simulation failed: ${e.message}"
+            } finally {
+                _isRunningDetail.value = false
+            }
+        }
+    }
+
+    fun runSimulation(ticker: String, shares: Double, selectedRanges: Set<TimeRange>) {
         viewModelScope.launch {
             _isRunning.value = true
             _error.value = null
-            _result.value = null
+            _results.value = emptyList()
             try {
-                val prices = stockPriceService.fetchHistoricalPrices(ticker, timeRange.days)
-                if (prices.size < 2) {
-                    _error.value = "Not enough historical data for $ticker"
-                    return@launch
+                val sorted = selectedRanges.sortedBy { it.days }
+                val resultList = mutableListOf<SimulationResult>()
+                for (range in sorted) {
+                    val prices = stockPriceService.fetchHistoricalPrices(ticker, range.days)
+                    if (prices.size >= 2) {
+                        val startPrice = prices.first().close
+                        val currentPrice = prices.last().close
+                        val totalCost = shares * startPrice
+                        val currentValue = shares * currentPrice
+                        val profitLoss = currentValue - totalCost
+                        val profitLossPct = if (totalCost > 0) profitLoss / totalCost * 100 else 0.0
+                        resultList.add(
+                            SimulationResult(
+                                ticker = ticker,
+                                shares = shares,
+                                timeRange = range,
+                                startPrice = startPrice,
+                                currentPrice = currentPrice,
+                                totalCost = totalCost,
+                                currentValue = currentValue,
+                                profitLoss = profitLoss,
+                                profitLossPct = profitLossPct,
+                                prices = prices
+                            )
+                        )
+                    }
                 }
-                val startPrice = prices.first().close
-                val currentPrice = prices.last().close
-                val totalCost = shares * startPrice
-                val currentValue = shares * currentPrice
-                val profitLoss = currentValue - totalCost
-                val profitLossPct = if (totalCost > 0) profitLoss / totalCost * 100 else 0.0
-
-                _result.value = SimulationResult(
-                    ticker = ticker,
-                    shares = shares,
-                    timeRange = timeRange,
-                    startPrice = startPrice,
-                    currentPrice = currentPrice,
-                    totalCost = totalCost,
-                    currentValue = currentValue,
-                    profitLoss = profitLoss,
-                    profitLossPct = profitLossPct,
-                    prices = prices
-                )
+                if (resultList.isEmpty()) {
+                    _error.value = "Not enough historical data for $ticker"
+                } else {
+                    _results.value = resultList
+                }
             } catch (e: Exception) {
                 _error.value = "Simulation failed: ${e.message}"
             } finally {
@@ -89,8 +147,8 @@ class SimulationViewModel @Inject constructor(
         }
     }
 
-    fun clearResult() {
-        _result.value = null
+    fun clearResults() {
+        _results.value = emptyList()
         _error.value = null
     }
 }

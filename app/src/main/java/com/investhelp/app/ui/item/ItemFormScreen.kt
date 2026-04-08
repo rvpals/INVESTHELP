@@ -31,41 +31,51 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.investhelp.app.data.local.entity.InvestmentAccountEntity
 import com.investhelp.app.model.InvestmentType
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ItemFormScreen(
-    itemId: Long?,
+    ticker: String?,
+    accountId: Long?,
     viewModel: ItemViewModel,
     onSaved: () -> Unit,
     onBack: () -> Unit
 ) {
-    val isEditing = itemId != null
+    val isEditing = !ticker.isNullOrBlank()
 
     if (isEditing) {
-        LaunchedEffect(itemId) {
-            viewModel.loadItem(itemId!!)
+        LaunchedEffect(ticker) {
+            viewModel.loadItem(ticker!!)
         }
     }
 
-    val existingItem by viewModel.selectedItem.collectAsStateWithLifecycle()
+    val itemRows by viewModel.selectedItemRows.collectAsStateWithLifecycle()
+    val accounts by viewModel.accounts.collectAsStateWithLifecycle()
+
+    // Find the specific row being edited (if accountId given) or first row
+    val existingItem = if (isEditing) {
+        if (accountId != null && accountId != -1L) {
+            itemRows.find { it.accountId == accountId }
+        } else {
+            itemRows.firstOrNull()
+        }
+    } else null
 
     var name by remember { mutableStateOf("") }
-    var ticker by remember { mutableStateOf("") }
+    var tickerInput by remember { mutableStateOf("") }
     var selectedType by remember { mutableStateOf(InvestmentType.Stock) }
     var currentPrice by remember { mutableStateOf("") }
-    var numShares by remember { mutableStateOf("") }
     var typeExpanded by remember { mutableStateOf(false) }
     var initialized by remember { mutableStateOf(false) }
 
     LaunchedEffect(existingItem) {
         if (isEditing && existingItem != null && !initialized) {
-            name = existingItem!!.name
-            ticker = existingItem!!.ticker ?: ""
-            selectedType = existingItem!!.type
-            currentPrice = existingItem!!.currentPrice.toString()
-            numShares = if (existingItem!!.numShares != 0.0) existingItem!!.numShares.toString() else ""
+            name = existingItem.name
+            tickerInput = existingItem.ticker
+            selectedType = existingItem.type
+            currentPrice = existingItem.currentPrice.toString()
             initialized = true
         }
     }
@@ -99,11 +109,12 @@ fun ItemFormScreen(
             Spacer(modifier = Modifier.height(12.dp))
 
             OutlinedTextField(
-                value = ticker,
-                onValueChange = { ticker = it.uppercase() },
-                label = { Text("Ticker Symbol (optional)") },
+                value = tickerInput,
+                onValueChange = { tickerInput = it.uppercase() },
+                label = { Text("Ticker Symbol") },
                 placeholder = { Text("e.g. AAPL, MSFT") },
                 singleLine = true,
+                readOnly = isEditing,
                 modifier = Modifier.fillMaxWidth()
             )
 
@@ -150,28 +161,28 @@ fun ItemFormScreen(
                 modifier = Modifier.fillMaxWidth()
             )
 
-            Spacer(modifier = Modifier.height(12.dp))
-
-            OutlinedTextField(
-                value = numShares,
-                onValueChange = { numShares = it },
-                label = { Text("Number of Shares") },
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                modifier = Modifier.fillMaxWidth()
-            )
-
             Spacer(modifier = Modifier.height(24.dp))
 
             Button(
                 onClick = {
                     val price = currentPrice.toDoubleOrNull() ?: 0.0
-                    val shares = numShares.toDoubleOrNull() ?: 0.0
-                    viewModel.saveItem(name, ticker, selectedType, price, shares, itemId)
-                    onSaved()
+                    val resolvedTicker = tickerInput.trim().uppercase()
+                    if (resolvedTicker.isNotBlank()) {
+                        // Update metadata for all rows of this ticker
+                        viewModel.saveItem(
+                            ticker = resolvedTicker,
+                            accountId = existingItem?.accountId ?: accounts.firstOrNull()?.id ?: return@Button,
+                            name = name,
+                            type = selectedType,
+                            currentPrice = price,
+                            quantity = existingItem?.quantity ?: 0.0,
+                            cost = existingItem?.cost ?: 0.0
+                        )
+                        onSaved()
+                    }
                 },
                 modifier = Modifier.fillMaxWidth(),
-                enabled = name.isNotBlank()
+                enabled = name.isNotBlank() && tickerInput.isNotBlank()
             ) {
                 Text(if (isEditing) "Update" else "Create")
             }

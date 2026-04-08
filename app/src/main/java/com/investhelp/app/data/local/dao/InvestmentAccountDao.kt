@@ -36,7 +36,7 @@ interface InvestmentAccountDao {
     @Query(
         """
         SELECT COALESCE(SUM(p.value), 0.0)
-        FROM positions p
+        FROM investment_items p
         WHERE p.accountId = :accountId
         """
     )

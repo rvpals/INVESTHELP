@@ -2,11 +2,10 @@ package com.investhelp.app.ui.dashboard
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.investhelp.app.data.local.dao.PositionDao
 import com.investhelp.app.data.repository.AccountRepository
+import com.investhelp.app.data.repository.InvestmentItemRepository
 import com.investhelp.app.model.AccountWithValue
 import dagger.hilt.android.lifecycle.HiltViewModel
-import com.investhelp.app.data.local.entity.PositionEntity
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -28,14 +27,14 @@ data class DashboardUiState(
 @HiltViewModel
 class DashboardViewModel @Inject constructor(
     accountRepository: AccountRepository,
-    positionDao: PositionDao
+    itemRepository: InvestmentItemRepository
 ) : ViewModel() {
 
     val uiState: StateFlow<DashboardUiState> = combine(
         accountRepository.getAllAccountsWithValues(),
-        positionDao.getAllPositions()
-    ) { accounts, positions ->
-        val tickerPositions = positions
+        itemRepository.getAllItems()
+    ) { accounts, items ->
+        val tickerPositions = items
             .groupBy { it.ticker }
             .map { (ticker, list) ->
                 TickerPosition(
@@ -49,7 +48,7 @@ class DashboardViewModel @Inject constructor(
 
         DashboardUiState(
             accounts = accounts,
-            totalPortfolioValue = accounts.sumOf { it.currentValue },
+            totalPortfolioValue = items.sumOf { it.value },
             positions = tickerPositions
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), DashboardUiState())

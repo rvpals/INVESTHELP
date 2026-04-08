@@ -2,11 +2,11 @@ package com.investhelp.app.ui.account
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.investhelp.app.data.local.dao.PositionDao
 import com.investhelp.app.data.local.entity.InvestmentAccountEntity
+import com.investhelp.app.data.local.entity.InvestmentItemEntity
 import com.investhelp.app.data.local.entity.InvestmentTransactionEntity
-import com.investhelp.app.data.local.entity.PositionEntity
 import com.investhelp.app.data.repository.AccountRepository
+import com.investhelp.app.data.repository.InvestmentItemRepository
 import com.investhelp.app.data.repository.TransactionRepository
 import com.investhelp.app.model.AccountWithValue
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -22,7 +22,7 @@ import javax.inject.Inject
 class AccountViewModel @Inject constructor(
     private val accountRepository: AccountRepository,
     private val transactionRepository: TransactionRepository,
-    private val positionDao: PositionDao
+    private val itemRepository: InvestmentItemRepository
 ) : ViewModel() {
 
     val accountsWithValues: StateFlow<List<AccountWithValue>> =
@@ -35,8 +35,8 @@ class AccountViewModel @Inject constructor(
     private val _accountTransactions = MutableStateFlow<List<InvestmentTransactionEntity>>(emptyList())
     val accountTransactions: StateFlow<List<InvestmentTransactionEntity>> = _accountTransactions.asStateFlow()
 
-    private val _accountPositions = MutableStateFlow<List<PositionEntity>>(emptyList())
-    val accountPositions: StateFlow<List<PositionEntity>> = _accountPositions.asStateFlow()
+    private val _accountPositions = MutableStateFlow<List<InvestmentItemEntity>>(emptyList())
+    val accountPositions: StateFlow<List<InvestmentItemEntity>> = _accountPositions.asStateFlow()
 
     private val _currentValue = MutableStateFlow(0.0)
     val currentValue: StateFlow<Double> = _currentValue.asStateFlow()
@@ -53,7 +53,7 @@ class AccountViewModel @Inject constructor(
             }
         }
         viewModelScope.launch {
-            positionDao.getPositionsByAccount(accountId).collect { positions ->
+            itemRepository.getItemsByAccount(accountId).collect { positions ->
                 _accountPositions.value = positions
             }
         }

@@ -25,8 +25,6 @@ import com.investhelp.app.ui.item.ItemFormScreen
 import com.investhelp.app.ui.item.ItemListScreen
 import com.investhelp.app.ui.item.ItemStatisticsScreen
 import com.investhelp.app.ui.item.ItemViewModel
-import com.investhelp.app.ui.position.PositionScreen
-import com.investhelp.app.ui.position.PositionViewModel
 import com.investhelp.app.ui.settings.SettingsScreen
 import com.investhelp.app.ui.settings.SettingsViewModel
 import com.investhelp.app.ui.simulation.SimulationScreen
@@ -96,8 +94,6 @@ fun InvestHelpNavHost(
         composable<AccountDetailRoute> { backStackEntry ->
             val route = backStackEntry.toRoute<AccountDetailRoute>()
             val viewModel: AccountViewModel = hiltViewModel()
-            val itemViewModel: ItemViewModel = hiltViewModel()
-            val scope = rememberCoroutineScope()
             AccountDetailScreen(
                 accountId = route.accountId,
                 viewModel = viewModel,
@@ -108,12 +104,7 @@ fun InvestHelpNavHost(
                     navController.navigate(TransactionFormRoute(transactionId))
                 },
                 onNavigateToItem = { ticker ->
-                    scope.launch {
-                        val itemId = itemViewModel.getItemIdByTicker(ticker)
-                        if (itemId != null) {
-                            navController.navigate(ItemDetailRoute(itemId))
-                        }
-                    }
+                    navController.navigate(ItemDetailRoute(ticker))
                 },
                 onBack = { navController.popBackStack() }
             )
@@ -134,8 +125,8 @@ fun InvestHelpNavHost(
             val viewModel: ItemViewModel = hiltViewModel()
             ItemListScreen(
                 viewModel = viewModel,
-                onNavigateToItem = { itemId ->
-                    navController.navigate(ItemDetailRoute(itemId))
+                onNavigateToItem = { ticker ->
+                    navController.navigate(ItemDetailRoute(ticker))
                 },
                 onAddItem = {
                     navController.navigate(ItemFormRoute())
@@ -147,13 +138,16 @@ fun InvestHelpNavHost(
             val route = backStackEntry.toRoute<ItemDetailRoute>()
             val viewModel: ItemViewModel = hiltViewModel()
             ItemDetailScreen(
-                itemId = route.itemId,
+                ticker = route.ticker,
                 viewModel = viewModel,
                 onEditItem = {
-                    navController.navigate(ItemFormRoute(route.itemId))
+                    navController.navigate(ItemFormRoute(ticker = route.ticker))
                 },
                 onViewStatistics = {
-                    navController.navigate(ItemStatisticsRoute(route.itemId))
+                    navController.navigate(ItemStatisticsRoute(route.ticker))
+                },
+                onSimulate = { ticker, shares ->
+                    navController.navigate(SimulationRoute(ticker = ticker, shares = shares))
                 },
                 onBack = { navController.popBackStack() }
             )
@@ -163,7 +157,8 @@ fun InvestHelpNavHost(
             val route = backStackEntry.toRoute<ItemFormRoute>()
             val viewModel: ItemViewModel = hiltViewModel()
             ItemFormScreen(
-                itemId = if (route.itemId == -1L) null else route.itemId,
+                ticker = route.ticker.takeIf { it.isNotBlank() },
+                accountId = if (route.accountId == -1L) null else route.accountId,
                 viewModel = viewModel,
                 onSaved = { navController.popBackStack() },
                 onBack = { navController.popBackStack() }
@@ -174,7 +169,7 @@ fun InvestHelpNavHost(
             val route = backStackEntry.toRoute<ItemStatisticsRoute>()
             val viewModel: ItemViewModel = hiltViewModel()
             ItemStatisticsScreen(
-                itemId = route.itemId,
+                ticker = route.ticker,
                 viewModel = viewModel,
                 onBack = { navController.popBackStack() }
             )
@@ -228,15 +223,13 @@ fun InvestHelpNavHost(
             )
         }
 
-        composable<PositionListRoute> {
-            val viewModel: PositionViewModel = hiltViewModel()
-            PositionScreen(viewModel = viewModel)
-        }
-
-        composable<SimulationRoute> {
+        composable<SimulationRoute> { backStackEntry ->
+            val route = backStackEntry.toRoute<SimulationRoute>()
             val viewModel: SimulationViewModel = hiltViewModel()
             SimulationScreen(
-                viewModel = viewModel
+                viewModel = viewModel,
+                initialTicker = route.ticker,
+                initialShares = if (route.shares > 0.0) route.shares.toBigDecimal().stripTrailingZeros().toPlainString() else ""
             )
         }
 

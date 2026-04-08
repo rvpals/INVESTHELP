@@ -23,8 +23,16 @@
 - [x] Simulation chart tap-to-select with tooltip (price + date)
 - [x] Fix MAX time range using Yahoo Finance `range=max` parameter
 - [x] Dashboard positions pie chart with shares labels inside slices
+- [x] Merge InvestmentItem + Position into single table with composite PK (ticker + accountId)
+- [x] Combine Items and Positions screens into unified Items screen with pie chart + tabs
+- [x] Ticker-based navigation routes (replacing Long ID-based routes)
+- [x] Database migration v8 -> v9 (merge positions into investment_items)
+- [x] Backup format v2 with merged entity fields and v1 backward compatibility
+- [x] Portfolio value top bar auto-refreshes when item values change
+- [x] Bottom nav updated: Dashboard, Items, Transfer, Transaction, Simulation
+- [x] Hamburger menu simplified: Accounts, Settings, About
 
 ## Pending
 - [ ] Increment versionCode/versionName for next release
-- [ ] Fix deprecation warning: Icons.Filled.ShowChart -> Icons.AutoMirrored.Filled.ShowChart
+- [ ] Fix deprecation warning: Icons.Filled.OpenInNew -> Icons.AutoMirrored.Filled.OpenInNew (ItemDetailScreen.kt)
 - [ ] Fix deprecation warning: statusBarColor in Theme.kt

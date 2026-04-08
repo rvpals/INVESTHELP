@@ -36,28 +36,30 @@ import java.util.Locale
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ItemStatisticsScreen(
-    itemId: Long,
+    ticker: String,
     viewModel: ItemViewModel,
     onBack: () -> Unit
 ) {
     var startDate by remember { mutableStateOf(LocalDate.now().minusYears(1)) }
     var endDate by remember { mutableStateOf(LocalDate.now()) }
-    val item by viewModel.selectedItem.collectAsStateWithLifecycle()
+    val itemRows by viewModel.selectedItemRows.collectAsStateWithLifecycle()
     val statistics by viewModel.statistics.collectAsStateWithLifecycle()
     val currencyFormat = NumberFormat.getCurrencyInstance(Locale.US)
 
-    LaunchedEffect(itemId) {
-        viewModel.loadItem(itemId)
+    val itemName = itemRows.firstOrNull()?.name ?: ticker
+
+    LaunchedEffect(ticker) {
+        viewModel.loadItem(ticker)
     }
 
-    LaunchedEffect(itemId, startDate, endDate) {
-        viewModel.loadStatistics(itemId, startDate, endDate)
+    LaunchedEffect(ticker, startDate, endDate) {
+        viewModel.loadStatistics(ticker, startDate, endDate)
     }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("${item?.name ?: "Item"} Statistics") },
+                title = { Text("$itemName Statistics") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")

@@ -30,7 +30,7 @@ class DatabaseProvider @Inject constructor(
             "invest_help.db"
         )
             .openHelperFactory(factory)
-            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9)
             .build()
     }
 
@@ -143,6 +143,45 @@ class DatabaseProvider @Inject constructor(
                     )"""
                 )
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_bank_transfers_accountId ON bank_transfers(accountId)")
+            }
+        }
+
+        val MIGRATION_8_9 = object : Migration(8, 9) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // Merge investment_items + positions into a single table with composite PK
+                db.execSQL(
+                    """CREATE TABLE IF NOT EXISTS investment_items_new (
+                        ticker TEXT NOT NULL,
+                        accountId INTEGER NOT NULL,
+                        name TEXT NOT NULL,
+                        type TEXT NOT NULL,
+                        currentPrice REAL NOT NULL,
+                        quantity REAL NOT NULL,
+                        cost REAL NOT NULL,
+                        dayGainLoss REAL NOT NULL,
+                        totalGainLoss REAL NOT NULL,
+                        value REAL NOT NULL,
+                        PRIMARY KEY(ticker, accountId),
+                        FOREIGN KEY(accountId) REFERENCES investment_accounts(id) ON DELETE CASCADE
+                    )"""
+                )
+                // Populate from positions joined with old items for metadata
+                db.execSQL(
+                    """INSERT INTO investment_items_new
+                        (ticker, accountId, name, type, currentPrice, quantity, cost, dayGainLoss, totalGainLoss, value)
+                        SELECT p.ticker, p.accountId,
+                            COALESCE(i.name, p.ticker),
+                            COALESCE(i.type, 'Stock'),
+                            COALESCE(i.currentPrice, 0.0),
+                            p.quantity, p.cost, p.dayGainLoss, p.totalGainLoss, p.value
+                        FROM positions p
+                        LEFT JOIN investment_items i ON UPPER(p.ticker) = UPPER(i.ticker)"""
+                )
+                db.execSQL("DROP TABLE IF EXISTS investment_items")
+                db.execSQL("DROP TABLE IF EXISTS positions")
+                db.execSQL("ALTER TABLE investment_items_new RENAME TO investment_items")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_investment_items_accountId ON investment_items(accountId)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_investment_items_ticker ON investment_items(ticker)")
             }
         }
     }

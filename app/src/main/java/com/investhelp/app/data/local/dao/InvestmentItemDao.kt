@@ -1,18 +1,17 @@
 package com.investhelp.app.data.local.dao
 
 import androidx.room.Dao
-import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
-import androidx.room.Update
 import com.investhelp.app.data.local.entity.InvestmentItemEntity
+import com.investhelp.app.model.InvestmentType
 import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface InvestmentItemDao {
 
-    @Query("SELECT * FROM investment_items ORDER BY name ASC")
+    @Query("SELECT * FROM investment_items ORDER BY ticker ASC")
     fun getAllItems(): Flow<List<InvestmentItemEntity>>
 
     @Query("SELECT * FROM investment_items")
@@ -21,20 +20,47 @@ interface InvestmentItemDao {
     @Query("DELETE FROM investment_items")
     suspend fun deleteAll()
 
-    @Query("SELECT * FROM investment_items WHERE id = :id")
-    fun getItemById(id: Long): Flow<InvestmentItemEntity?>
+    @Query("SELECT * FROM investment_items WHERE ticker = :ticker")
+    fun getItemsByTicker(ticker: String): Flow<List<InvestmentItemEntity>>
 
     @Query("SELECT * FROM investment_items WHERE ticker = :ticker LIMIT 1")
-    suspend fun getItemByTicker(ticker: String): InvestmentItemEntity?
+    suspend fun getFirstByTicker(ticker: String): InvestmentItemEntity?
+
+    @Query("SELECT * FROM investment_items WHERE ticker = :ticker AND accountId = :accountId")
+    suspend fun getItem(ticker: String, accountId: Long): InvestmentItemEntity?
+
+    @Query("SELECT * FROM investment_items WHERE accountId = :accountId ORDER BY ticker ASC")
+    fun getItemsByAccount(accountId: Long): Flow<List<InvestmentItemEntity>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertItem(item: InvestmentItemEntity): Long
+    suspend fun upsertItem(item: InvestmentItemEntity)
 
-    @Update
-    suspend fun updateItem(item: InvestmentItemEntity)
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertAll(items: List<InvestmentItemEntity>)
 
-    @Delete
-    suspend fun deleteItem(item: InvestmentItemEntity)
+    @Query("DELETE FROM investment_items WHERE ticker = :ticker AND accountId = :accountId")
+    suspend fun deleteItem(ticker: String, accountId: Long)
+
+    @Query("DELETE FROM investment_items WHERE ticker = :ticker")
+    suspend fun deleteByTicker(ticker: String)
+
+    @Query("UPDATE investment_items SET currentPrice = :price WHERE ticker = :ticker")
+    suspend fun updatePriceByTicker(ticker: String, price: Double)
+
+    @Query(
+        """
+        UPDATE investment_items
+        SET name = :name, type = :type, currentPrice = :currentPrice
+        WHERE ticker = :ticker
+        """
+    )
+    suspend fun updateMetadataByTicker(ticker: String, name: String, type: InvestmentType, currentPrice: Double)
+
+    @Query("SELECT COALESCE(SUM(value), 0.0) FROM investment_items WHERE accountId = :accountId")
+    suspend fun sumValueByAccount(accountId: Long): Double
+
+    @Query("SELECT COALESCE(SUM(quantity), 0.0) FROM investment_items WHERE ticker = :ticker")
+    suspend fun sumQuantityByTicker(ticker: String): Double
 
     @Query(
         """

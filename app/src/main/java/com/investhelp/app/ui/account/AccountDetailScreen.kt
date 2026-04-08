@@ -35,7 +35,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.investhelp.app.data.local.entity.InvestmentTransactionEntity
-import com.investhelp.app.data.local.entity.PositionEntity
+import com.investhelp.app.data.local.entity.InvestmentItemEntity
 import java.text.NumberFormat
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -154,7 +154,7 @@ fun AccountDetailScreen(
 
 @Composable
 private fun PositionsTab(
-    positions: List<PositionEntity>,
+    positions: List<InvestmentItemEntity>,
     currencyFormat: NumberFormat,
     onNavigateToItem: (String) -> Unit
 ) {

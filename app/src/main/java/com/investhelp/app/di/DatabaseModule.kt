@@ -6,7 +6,6 @@ import com.investhelp.app.data.local.dao.BankTransferDao
 import com.investhelp.app.data.local.dao.InvestmentAccountDao
 import com.investhelp.app.data.local.dao.InvestmentItemDao
 import com.investhelp.app.data.local.dao.InvestmentTransactionDao
-import com.investhelp.app.data.local.dao.PositionDao
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -37,11 +36,6 @@ object DatabaseModule {
     @Provides
     fun provideTransactionDao(dbProvider: DatabaseProvider): InvestmentTransactionDao {
         return dbProvider.database.transactionDao()
-    }
-
-    @Provides
-    fun providePositionDao(dbProvider: DatabaseProvider): PositionDao {
-        return dbProvider.database.positionDao()
     }
 
     @Provides
