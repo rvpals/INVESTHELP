@@ -22,7 +22,7 @@ Android investment tracking app built with Kotlin, Jetpack Compose, and Material
 - `data/repository/` - Repository interfaces and implementations
 - `di/` - Hilt modules (DatabaseModule, RepositoryModule, AuthModule)
 - `model/` - Domain models and enums
-- `ui/` - Compose screens organized by feature (auth, dashboard, account, item, transaction, transfer, simulation)
+- `ui/` - Compose screens organized by feature (auth, dashboard, account, item, transaction, transfer, simulation, sqlexplorer)
 
 ## Key Design Decisions
 - Merged InvestmentItem + Position into single `investment_items` table with composite PK (ticker + accountId)
@@ -41,7 +41,7 @@ Android investment tracking app built with Kotlin, Jetpack Compose, and Material
 - Auto-create InvestmentItem when transaction references a new ticker (defaults to Stock type, changeable via type selector)
 - Dates stored as epoch days for simple SQL range queries
 - Yahoo Finance v8/v10 API for live prices, historical data, and analysis info
-- Global top bar: portfolio value 3D button (refreshes all prices + navigates to Dashboard) + hamburger menu (Accounts, Settings, About)
+- Global top bar: portfolio value 3D button (refreshes all prices + navigates to Dashboard) + hamburger menu (Accounts, Settings, SQL Explorer, About)
 - Top bar shows spinner while refreshing prices
 - Bottom nav: Dashboard, Items, Transfer, Transaction, Simulation (colorful icons with shadow)
 - Simulation time ranges: 1W, 2W, 1M, 3M, 6M, 1Y, 2Y, 5Y, 10Y, MAX (grouped in Week/Month/Year rows)
@@ -64,6 +64,9 @@ Android investment tracking app built with Kotlin, Jetpack Compose, and Material
 - Settings: "Warn before delete" toggle (default: on) — when off, skips confirmation dialogs for delete actions
 - Transaction form: "Simulate" button calculates days since transaction date and opens simulation with custom range
 - Simulation: supports custom day ranges from transaction simulation (auto-runs on navigation)
+- SQL Explorer: accessible from hamburger menu, runs raw SQL via Room's SupportSQLiteDatabase
+- SQL Explorer: detects SELECT/PRAGMA/EXPLAIN queries vs DML/DDL statements
+- SQL Explorer: CSV export via FileProvider + share intent
 - Backup format v2: includes full merged entity fields; v1 backward compat on restore
 
 ## Build

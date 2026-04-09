@@ -51,7 +51,7 @@ Android app to track personal investments.
 ### Navigation
 - **Global top bar** — persistent across all screens when unlocked:
   - Portfolio value 3D button (tap to navigate to Dashboard, auto-refreshes)
-  - Hamburger menu (Accounts, Settings, About)
+  - Hamburger menu (Accounts, Settings, SQL Explorer, About)
 - **Bottom nav** — Dashboard, Items, Transfer, Transaction, Simulation (colorful icons with shadow)
 
 ### Dashboard
@@ -105,6 +105,14 @@ Android app to track personal investments.
   - Tap-to-select on chart points shows tooltip with price and date
 - Large ranges (5Y+) use weekly interval; MAX uses Yahoo Finance `range=max`
 - **Custom day ranges** from transaction simulation: auto-runs with human-readable label (e.g. "1y 3m", "2m 15d")
+
+### SQL Explorer
+- Accessible from hamburger menu in top bar
+- Execute raw SQL queries against the encrypted database
+- Auto-detects query type: SELECT/PRAGMA/EXPLAIN show results table; other statements show success message
+- Result table with column headers, horizontal scrolling, monospace font
+- Export results to CSV via share intent (FileProvider)
+- Error display for invalid SQL
 
 ### Backup & Restore
 - Export all data to JSON file (v2 format with full merged entity fields)

@@ -19,3 +19,4 @@ import kotlinx.serialization.Serializable
 @Serializable object BankTransferListRoute
 @Serializable data class BankTransferFormRoute(val transferId: Long = -1)
 @Serializable object SettingsRoute
+@Serializable object SqlExplorerRoute

@@ -28,6 +28,8 @@ import com.investhelp.app.ui.settings.SettingsScreen
 import com.investhelp.app.ui.settings.SettingsViewModel
 import com.investhelp.app.ui.simulation.SimulationScreen
 import com.investhelp.app.ui.simulation.SimulationViewModel
+import com.investhelp.app.ui.sqlexplorer.SqlExplorerScreen
+import com.investhelp.app.ui.sqlexplorer.SqlExplorerViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.investhelp.app.ui.transaction.AnalyzePriceScreen
 import com.investhelp.app.ui.transaction.AnalyzePriceViewModel
@@ -258,6 +260,11 @@ fun InvestHelpNavHost(
         composable<SettingsRoute> {
             val viewModel: SettingsViewModel = hiltViewModel()
             SettingsScreen(viewModel = viewModel)
+        }
+
+        composable<SqlExplorerRoute> {
+            val viewModel: SqlExplorerViewModel = hiltViewModel()
+            SqlExplorerScreen(viewModel = viewModel)
         }
     }
 }

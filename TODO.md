@@ -58,6 +58,11 @@
 - [x] Delete without confirmation when "Warn before delete" is unchecked (items, accounts, transactions, transfers)
 - [x] Transaction form: "Simulate" button opens simulation from transaction date to today
 - [x] Simulation: custom day range support with auto-run and human-readable label
+- [x] SQL Explorer screen accessible from hamburger menu
+- [x] SQL Explorer: raw SQL query execution (SELECT/PRAGMA/EXPLAIN + DML/DDL)
+- [x] SQL Explorer: result table with horizontal scrolling
+- [x] SQL Explorer: CSV export via FileProvider share intent
+- [x] FileProvider registered in AndroidManifest for cache directory
 
 ## Pending
 - [ ] Increment versionCode/versionName for next release

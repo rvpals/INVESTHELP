@@ -24,6 +24,7 @@ import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.PieChart
 import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.AlertDialog
@@ -71,6 +72,7 @@ import com.investhelp.app.ui.navigation.InvestHelpNavHost
 import com.investhelp.app.ui.navigation.ItemListRoute
 import com.investhelp.app.ui.navigation.SettingsRoute
 import com.investhelp.app.ui.navigation.SetupRoute
+import com.investhelp.app.ui.navigation.SqlExplorerRoute
 import com.investhelp.app.ui.navigation.SimulationRoute
 import com.investhelp.app.ui.navigation.TransactionListRoute
 import com.investhelp.app.ui.navigation.UnlockRoute
@@ -261,6 +263,18 @@ fun GlobalTopBar(navController: NavHostController) {
                         }
                     },
                     leadingIcon = { Icon(Icons.Default.Settings, contentDescription = null) }
+                )
+                DropdownMenuItem(
+                    text = { Text("SQL Explorer") },
+                    onClick = {
+                        menuExpanded = false
+                        navController.navigate(SqlExplorerRoute) {
+                            popUpTo(DashboardRoute) { saveState = true }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    },
+                    leadingIcon = { Icon(Icons.Default.Storage, contentDescription = null) }
                 )
                 HorizontalDivider()
                 DropdownMenuItem(

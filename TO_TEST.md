@@ -119,6 +119,20 @@
 - [ ] Item metadata (name, type, price) preserved after migration
 - [ ] Items without positions are dropped (cannot assign accountId)
 
+## SQL Explorer
+- [ ] SQL Explorer accessible from hamburger menu
+- [ ] Text field accepts SQL input (monospace, multi-line)
+- [ ] Run button executes SELECT queries and shows result table
+- [ ] Run button executes DML/DDL statements and shows success message
+- [ ] PRAGMA queries work (e.g., `PRAGMA table_info(investment_items)`)
+- [ ] Result table shows header row with column names (bold)
+- [ ] Result table scrolls horizontally for wide results
+- [ ] Error messages displayed in red monospace text for invalid SQL
+- [ ] Loading spinner shown while query is running
+- [ ] Export CSV button enabled only when results have columns
+- [ ] Export CSV opens share sheet with CSV file
+- [ ] CSV file contains correct headers and data
+
 ## App Icon & Splash
 - [ ] App icon appears correctly on home screen / app drawer
 - [ ] Adaptive icon renders properly on API 26+ (round, squircle, etc.)
