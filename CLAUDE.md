@@ -12,7 +12,8 @@ Android investment tracking app built with Kotlin, Jetpack Compose, and Material
 - **Auth:** Biometric + EncryptedSharedPreferences
 - **Navigation:** Compose Navigation (type-safe routes)
 - **Splash:** AndroidX SplashScreen API (core-splashscreen 1.0.1)
-- **Charts:** Custom Canvas-drawn (pie chart, line chart) — no external library
+- **Charts:** Custom Canvas-drawn (pie chart, line chart) — no external chart library
+- **Images:** Coil 2.7.0 for async image loading (company logos)
 
 ## Package Structure
 - `auth/` - Authentication (PasswordManager, BiometricHelper, AuthManager)
@@ -35,14 +36,34 @@ Android investment tracking app built with Kotlin, Jetpack Compose, and Material
 - CASCADE deletes: removing account removes associated items, transactions, and bank transfers
 - Bank transfers table tracks fund transfers to investment accounts (date, amount, account, note)
 - Items screen combines pie chart + STOCK/ETF tabs with Refresh All toolbar action
-- Auto-create InvestmentItem when transaction references a new ticker (defaults to Stock type)
+- Item cards show company logo (from companiesmarketcap.com CDN) with letter-avatar fallback
+- Company full name fetched from Yahoo Finance `shortName` during price refresh
+- Auto-create InvestmentItem when transaction references a new ticker (defaults to Stock type, changeable via type selector)
 - Dates stored as epoch days for simple SQL range queries
 - Yahoo Finance v8/v10 API for live prices, historical data, and analysis info
-- Global top bar: portfolio value 3D button (navigates to Dashboard) + hamburger menu (Accounts, Settings, About)
+- Global top bar: portfolio value 3D button (refreshes all prices + navigates to Dashboard) + hamburger menu (Accounts, Settings, About)
+- Top bar shows spinner while refreshing prices
 - Bottom nav: Dashboard, Items, Transfer, Transaction, Simulation (colorful icons with shadow)
 - Simulation time ranges: 1W, 2W, 1M, 3M, 6M, 1Y, 2Y, 5Y, 10Y, MAX (grouped in Week/Month/Year rows)
 - Simulation chart supports tap-to-select with tooltip (price + date)
 - Dashboard pie chart shows all items by ticker with shares labels inside slices
+- Dashboard pie chart legend uses grid-line table with Ticker, Shares, % columns
+- Transaction form: "Analyze Price" button next to Price field opens price analysis screen
+- Analyze Price screen: current price, transaction avg/max/min, historic high/low (week/month/year/max)
+- Clicking a price in Analyze Price copies it back to the transaction form Price field
+- Transaction form: "View" button next to Ticker opens item detail; form state preserved via rememberSaveable
+- Transaction form: auto-selects first account for new transactions
+- Item detail: "Analysis Info" and "Yahoo Finance" buttons on same row
+- Item detail: collapsible "<TICKER> Stats" section (replaces separate statistics screen)
+- Item detail: collapsible "Transactions" section
+- Bank Transfers screen: total amount summary grouped by account at top
+- **Image loading:** Coil 2.7.0 for company logos
+- Item add/edit dialog: type selector dropdown (Stock, ETF, Bond, MutualFund, Crypto, Other); auto-fills type when selecting existing ticker
+- Item detail: "Daily/Share" column shows per-share daily price change
+- Dashboard positions pie chart: collapsible card, legend limited to top 20 with "More" button to show all
+- Settings: "Warn before delete" toggle (default: on) — when off, skips confirmation dialogs for delete actions
+- Transaction form: "Simulate" button calculates days since transaction date and opens simulation with custom range
+- Simulation: supports custom day ranges from transaction simulation (auto-runs on navigation)
 - Backup format v2: includes full merged entity fields; v1 backward compat on restore
 
 ## Build

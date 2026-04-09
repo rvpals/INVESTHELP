@@ -41,7 +41,8 @@ data class SettingsUiState(
     val message: String? = null,
     val isExporting: Boolean = false,
     val isRestoring: Boolean = false,
-    val autoUpdateShares: Boolean = false
+    val autoUpdateShares: Boolean = false,
+    val warnBeforeDelete: Boolean = true
 )
 
 @HiltViewModel
@@ -56,13 +57,15 @@ class SettingsViewModel @Inject constructor(
     companion object {
         const val PREFS_NAME = "invest_help_settings"
         const val KEY_AUTO_UPDATE_SHARES = "auto_update_shares"
+        const val KEY_WARN_BEFORE_DELETE = "warn_before_delete"
     }
 
     private val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
     private val _uiState = MutableStateFlow(
         SettingsUiState(
-            autoUpdateShares = prefs.getBoolean(KEY_AUTO_UPDATE_SHARES, false)
+            autoUpdateShares = prefs.getBoolean(KEY_AUTO_UPDATE_SHARES, false),
+            warnBeforeDelete = prefs.getBoolean(KEY_WARN_BEFORE_DELETE, true)
         )
     )
     val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
@@ -72,6 +75,11 @@ class SettingsViewModel @Inject constructor(
     fun setAutoUpdateShares(enabled: Boolean) {
         prefs.edit().putBoolean(KEY_AUTO_UPDATE_SHARES, enabled).apply()
         _uiState.value = _uiState.value.copy(autoUpdateShares = enabled)
+    }
+
+    fun setWarnBeforeDelete(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_WARN_BEFORE_DELETE, enabled).apply()
+        _uiState.value = _uiState.value.copy(warnBeforeDelete = enabled)
     }
 
     fun setBackupFolder(uri: Uri) {

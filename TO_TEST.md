@@ -4,29 +4,33 @@
 - [ ] Items screen shows pie chart with allocation by ticker value
 - [ ] Pie chart section collapses/expands on tap
 - [ ] STOCK/ETF tabs filter items by type
-- [ ] Item card shows ticker, name, account, quantity, cost, value, day/total G/L
+- [ ] Item card shows company logo (or letter fallback), ticker, full name, account, quantity, cost, value, day/total G/L
+- [ ] Company name updates from Yahoo Finance after Refresh All
 - [ ] Clicking item card navigates to Item detail screen
-- [ ] Add new item via FAB — name, ticker, type, price fields work
-- [ ] Edit existing item metadata (name, type, price)
+- [ ] Add new item via FAB — type selector dropdown works (Stock, ETF, Bond, MutualFund, Crypto, Other)
+- [ ] Add item: selecting existing ticker from autocomplete auto-fills the type
+- [ ] Edit existing item — type dropdown shows current type and allows changing
+- [ ] Type change syncs across all accounts for the same ticker
 - [ ] Delete item from detail screen
 - [ ] Refresh All updates live prices and recalculates values for all items
 - [ ] Same ticker on two different accounts shows as separate rows
 - [ ] Delete an account — items under that account cascade delete
 
 ## Item Detail Screen
-- [ ] Shows aggregate info: total quantity, total value, total cost, total G/L across all accounts
+- [ ] Shows aggregate info: total quantity, total value, total cost, daily/share, day G/L, total G/L across all accounts
+- [ ] Daily/Share column shows per-share daily price change with correct color (green/red)
 - [ ] Per-account breakdown section shows individual account rows
-- [ ] Transactions section lists all transactions for the ticker
+- [ ] Analysis Info and Yahoo Finance buttons on same row
 - [ ] Analysis Info button fetches Yahoo Finance data and shows bottom sheet
 - [ ] Yahoo Finance link opens browser to correct ticker page
-- [ ] View Statistics navigates to statistics screen
 - [ ] Simulate button navigates to simulation with ticker and shares pre-filled
-
-## Item Statistics
-- [ ] Date range selector works (start/end dates)
-- [ ] Buy statistics show average/max/min prices
-- [ ] Sell statistics show average/max/min prices
-- [ ] N/A shown when no transactions in range
+- [ ] Collapsible "<TICKER> Stats" section expands/collapses on tap
+- [ ] Stats section: date range selector works (start/end dates)
+- [ ] Stats section: buy statistics show average/max/min prices
+- [ ] Stats section: sell statistics show average/max/min prices
+- [ ] Stats section: N/A shown when no transactions in range
+- [ ] Collapsible "Transactions" section expands/collapses on tap
+- [ ] Transactions section lists all transactions for the ticker
 
 ## Account Value from Items
 - [ ] Add items to an account, verify account value = sum of item values
@@ -47,6 +51,10 @@
 - [ ] Calculated total (price * shares) displays correctly
 - [ ] Copy button copies calculated total to Total Amount field
 - [ ] Note field accepts multi-line text
+- [ ] Simulate button opens simulation with ticker, shares, and days from transaction date
+- [ ] Simulate button disabled when transaction date is today (0 days)
+- [ ] Simulate button disabled when ticker or shares are empty
+- [ ] Simulation auto-runs and shows profit/loss from transaction date to now
 - [ ] Create and Update both work correctly
 
 ## Auto-Create Investment Item
@@ -72,10 +80,20 @@
 
 ## Dashboard Pie Chart
 - [ ] Pie chart appears when items exist
+- [ ] Positions card collapses/expands on header tap
 - [ ] Slices represent aggregated items by ticker (across all accounts)
 - [ ] Number of shares displayed inside each slice (white bold text)
-- [ ] Legend shows ticker, shares count, and percentage
+- [ ] Legend shows top 20 items by default with Ticker, Shares, % columns
+- [ ] "More (N remaining)" button appears when >20 items, shows all when clicked
+- [ ] "Show Less" button collapses back to top 20
 - [ ] No chart shown when no items exist
+
+## Settings
+- [ ] "Warn before delete" toggle visible under General section in Preferences tab
+- [ ] Toggle defaults to ON (checked)
+- [ ] With toggle ON: deleting items/accounts/transactions/transfers shows confirmation dialog
+- [ ] With toggle OFF: deleting items/accounts/transactions/transfers happens immediately (no dialog)
+- [ ] Setting persists after app restart
 
 ## Simulation
 - [ ] Time range chips displayed in 3 rows: Week, Month, Year
@@ -85,6 +103,7 @@
 - [ ] Tapping same point again dismisses tooltip
 - [ ] Vertical crosshair line appears at selected point
 - [ ] Summary card shows correct profit/loss calculation
+- [ ] Custom day range from transaction: auto-runs on navigation, shows human-readable label (e.g. "1y 3m")
 - [ ] Error handling for invalid ticker
 
 ## Backup & Restore

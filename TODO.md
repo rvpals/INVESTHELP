@@ -32,7 +32,35 @@
 - [x] Bottom nav updated: Dashboard, Items, Transfer, Transaction, Simulation
 - [x] Hamburger menu simplified: Accounts, Settings, About
 
+- [x] Top bar portfolio button triggers full price refresh + navigates to Dashboard
+- [x] Top bar shows loading spinner during price refresh
+- [x] Transaction form: "Analyze Price" button with price analysis screen (current, avg/max/min, historic high/low)
+- [x] Analyze Price: select a price to copy it back to transaction form
+- [x] Transaction form: "View" button next to Ticker opens item detail screen
+- [x] Transaction form state preserved during navigation (rememberSaveable)
+- [x] Transaction form auto-selects first account for new transactions
+- [x] Item detail: "Analysis Info" and "Yahoo Finance" on same row
+- [x] Item detail: collapsible Stats section (inlined from separate statistics screen)
+- [x] Item detail: collapsible Transactions section
+- [x] Removed separate Statistics screen (merged into item detail)
+- [x] Bank Transfers screen: total amount summary grouped by account
+- [x] Dashboard pie chart legend: grid-line table with Ticker, Shares, % columns
+- [x] Items screen: company logos via Coil (companiesmarketcap.com CDN with letter fallback)
+- [x] Items screen: full company name from Yahoo Finance shortName (updated on price refresh)
+- [x] Added Coil 2.7.0 image loading dependency
+- [x] Item add/edit form: type selector dropdown (Stock/ETF/Bond/MutualFund/Crypto/Other)
+- [x] Item add/edit form: auto-fills type when selecting existing ticker from autocomplete
+- [x] savePosition accepts optional type parameter and syncs type across accounts
+- [x] Item detail: Daily/Share column showing per-share daily price change
+- [x] Dashboard positions pie chart: collapsible with expand/collapse toggle
+- [x] Dashboard positions legend: top 20 limit with "More/Show Less" button
+- [x] Settings: "Warn before delete" toggle under General section (default: on)
+- [x] Delete without confirmation when "Warn before delete" is unchecked (items, accounts, transactions, transfers)
+- [x] Transaction form: "Simulate" button opens simulation from transaction date to today
+- [x] Simulation: custom day range support with auto-run and human-readable label
+
 ## Pending
 - [ ] Increment versionCode/versionName for next release
 - [ ] Fix deprecation warning: Icons.Filled.OpenInNew -> Icons.AutoMirrored.Filled.OpenInNew (ItemDetailScreen.kt)
 - [ ] Fix deprecation warning: statusBarColor in Theme.kt
+- [ ] Clean up unused ItemStatisticsScreen.kt and ItemStatisticsRoute

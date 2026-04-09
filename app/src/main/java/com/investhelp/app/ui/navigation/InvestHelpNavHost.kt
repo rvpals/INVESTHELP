@@ -23,12 +23,14 @@ import com.investhelp.app.ui.dashboard.DashboardViewModel
 import com.investhelp.app.ui.item.ItemDetailScreen
 import com.investhelp.app.ui.item.ItemFormScreen
 import com.investhelp.app.ui.item.ItemListScreen
-import com.investhelp.app.ui.item.ItemStatisticsScreen
 import com.investhelp.app.ui.item.ItemViewModel
 import com.investhelp.app.ui.settings.SettingsScreen
 import com.investhelp.app.ui.settings.SettingsViewModel
 import com.investhelp.app.ui.simulation.SimulationScreen
 import com.investhelp.app.ui.simulation.SimulationViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.investhelp.app.ui.transaction.AnalyzePriceScreen
+import com.investhelp.app.ui.transaction.AnalyzePriceViewModel
 import com.investhelp.app.ui.transaction.TransactionFormScreen
 import com.investhelp.app.ui.transaction.TransactionListScreen
 import com.investhelp.app.ui.transaction.TransactionViewModel
@@ -143,9 +145,6 @@ fun InvestHelpNavHost(
                 onEditItem = {
                     navController.navigate(ItemFormRoute(ticker = route.ticker))
                 },
-                onViewStatistics = {
-                    navController.navigate(ItemStatisticsRoute(route.ticker))
-                },
                 onSimulate = { ticker, shares ->
                     navController.navigate(SimulationRoute(ticker = ticker, shares = shares))
                 },
@@ -161,16 +160,6 @@ fun InvestHelpNavHost(
                 accountId = if (route.accountId == -1L) null else route.accountId,
                 viewModel = viewModel,
                 onSaved = { navController.popBackStack() },
-                onBack = { navController.popBackStack() }
-            )
-        }
-
-        composable<ItemStatisticsRoute> { backStackEntry ->
-            val route = backStackEntry.toRoute<ItemStatisticsRoute>()
-            val viewModel: ItemViewModel = hiltViewModel()
-            ItemStatisticsScreen(
-                ticker = route.ticker,
-                viewModel = viewModel,
                 onBack = { navController.popBackStack() }
             )
         }
@@ -191,10 +180,42 @@ fun InvestHelpNavHost(
         composable<TransactionFormRoute> { backStackEntry ->
             val route = backStackEntry.toRoute<TransactionFormRoute>()
             val viewModel: TransactionViewModel = hiltViewModel()
+            val selectedPrice = backStackEntry.savedStateHandle
+                .getStateFlow<String?>("selected_price", null)
+                .collectAsStateWithLifecycle()
             TransactionFormScreen(
                 transactionId = if (route.transactionId == -1L) null else route.transactionId,
                 viewModel = viewModel,
+                selectedPrice = selectedPrice.value,
+                onAnalyzePrice = { ticker ->
+                    navController.navigate(AnalyzePriceRoute(ticker))
+                },
+                onClearSelectedPrice = {
+                    backStackEntry.savedStateHandle["selected_price"] = null
+                },
+                onViewItem = { ticker ->
+                    navController.navigate(ItemDetailRoute(ticker))
+                },
+                onSimulate = { ticker, shares, days ->
+                    navController.navigate(SimulationRoute(ticker = ticker, shares = shares, customDays = days))
+                },
                 onSaved = { navController.popBackStack() },
+                onBack = { navController.popBackStack() }
+            )
+        }
+
+        composable<AnalyzePriceRoute> { backStackEntry ->
+            val route = backStackEntry.toRoute<AnalyzePriceRoute>()
+            val viewModel: AnalyzePriceViewModel = hiltViewModel()
+            AnalyzePriceScreen(
+                ticker = route.ticker,
+                viewModel = viewModel,
+                onSelectPrice = { price ->
+                    navController.previousBackStackEntry?.savedStateHandle?.set(
+                        "selected_price", price.toString()
+                    )
+                    navController.popBackStack()
+                },
                 onBack = { navController.popBackStack() }
             )
         }
@@ -229,7 +250,8 @@ fun InvestHelpNavHost(
             SimulationScreen(
                 viewModel = viewModel,
                 initialTicker = route.ticker,
-                initialShares = if (route.shares > 0.0) route.shares.toBigDecimal().stripTrailingZeros().toPlainString() else ""
+                initialShares = if (route.shares > 0.0) route.shares.toBigDecimal().stripTrailingZeros().toPlainString() else "",
+                customDays = route.customDays
             )
         }
 

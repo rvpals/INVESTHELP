@@ -14,8 +14,10 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DropdownMenuItem
@@ -41,6 +43,8 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.Saver
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -54,6 +58,7 @@ import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.time.temporal.ChronoUnit
 import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -61,6 +66,11 @@ import java.util.Locale
 fun TransactionFormScreen(
     transactionId: Long?,
     viewModel: TransactionViewModel,
+    selectedPrice: String? = null,
+    onAnalyzePrice: (String) -> Unit = {},
+    onClearSelectedPrice: () -> Unit = {},
+    onViewItem: (String) -> Unit = {},
+    onSimulate: (ticker: String, shares: Double, days: Int) -> Unit = { _, _, _ -> },
     onSaved: () -> Unit,
     onBack: () -> Unit
 ) {
@@ -74,20 +84,32 @@ fun TransactionFormScreen(
         }
     }
 
-    var date by remember { mutableStateOf(LocalDate.now()) }
-    var time by remember { mutableStateOf<LocalTime?>(null) }
-    var action by remember { mutableStateOf(TransactionAction.Buy) }
-    var selectedAccountId by remember { mutableStateOf<Long?>(null) }
-    var ticker by remember { mutableStateOf("") }
-    var numberOfShares by remember { mutableStateOf("") }
-    var pricePerShare by remember { mutableStateOf("") }
-    var totalAmount by remember { mutableStateOf("") }
-    var note by remember { mutableStateOf("") }
+    var date by rememberSaveable(stateSaver = Saver<LocalDate, Long>(
+        save = { it.toEpochDay() },
+        restore = { LocalDate.ofEpochDay(it) }
+    )) { mutableStateOf(LocalDate.now()) }
+    var time by rememberSaveable(stateSaver = Saver<LocalTime?, Int>(
+        save = { it?.toSecondOfDay() ?: -1 },
+        restore = { if (it == -1) null else LocalTime.ofSecondOfDay(it.toLong()) }
+    )) { mutableStateOf<LocalTime?>(null) }
+    var action by rememberSaveable(stateSaver = Saver<TransactionAction, String>(
+        save = { it.name },
+        restore = { TransactionAction.valueOf(it) }
+    )) { mutableStateOf(TransactionAction.Buy) }
+    var selectedAccountId by rememberSaveable(stateSaver = Saver<Long?, Long>(
+        save = { it ?: -1L },
+        restore = { if (it == -1L) null else it }
+    )) { mutableStateOf<Long?>(null) }
+    var ticker by rememberSaveable { mutableStateOf("") }
+    var numberOfShares by rememberSaveable { mutableStateOf("") }
+    var pricePerShare by rememberSaveable { mutableStateOf("") }
+    var totalAmount by rememberSaveable { mutableStateOf("") }
+    var note by rememberSaveable { mutableStateOf("") }
 
     var showDatePicker by remember { mutableStateOf(false) }
     var showTimePicker by remember { mutableStateOf(false) }
     var accountExpanded by remember { mutableStateOf(false) }
-    var initialized by remember { mutableStateOf(false) }
+    var initialized by rememberSaveable { mutableStateOf(false) }
 
     val dateFormatter = DateTimeFormatter.ofPattern("MMM dd, yyyy")
     val timeFormatter = DateTimeFormatter.ofPattern("HH:mm")
@@ -97,6 +119,13 @@ fun TransactionFormScreen(
     val shares = numberOfShares.toDoubleOrNull() ?: 0.0
     val price = pricePerShare.toDoubleOrNull() ?: 0.0
     val computedTotal = shares * price
+
+    // Auto-select first account for new transactions
+    LaunchedEffect(accounts) {
+        if (!isEditing && selectedAccountId == null && accounts.isNotEmpty()) {
+            selectedAccountId = accounts.first().id
+        }
+    }
 
     LaunchedEffect(existingTransaction) {
         if (isEditing && existingTransaction != null && !initialized) {
@@ -111,6 +140,13 @@ fun TransactionFormScreen(
                 existingTransaction!!.totalAmount.toString() else ""
             note = existingTransaction!!.note
             initialized = true
+        }
+    }
+
+    LaunchedEffect(selectedPrice) {
+        if (selectedPrice != null) {
+            pricePerShare = selectedPrice
+            onClearSelectedPrice()
         }
     }
 
@@ -238,13 +274,25 @@ fun TransactionFormScreen(
             Spacer(modifier = Modifier.height(12.dp))
 
             // Ticker
-            OutlinedTextField(
-                value = ticker,
-                onValueChange = { ticker = it.uppercase() },
-                label = { Text("Ticker") },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth()
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                OutlinedTextField(
+                    value = ticker,
+                    onValueChange = { ticker = it.uppercase() },
+                    label = { Text("Ticker") },
+                    singleLine = true,
+                    modifier = Modifier.weight(1f)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                OutlinedButton(
+                    onClick = { if (ticker.isNotBlank()) onViewItem(ticker.trim()) },
+                    enabled = ticker.isNotBlank()
+                ) {
+                    Text("View")
+                }
+            }
 
             Spacer(modifier = Modifier.height(12.dp))
 
@@ -261,14 +309,26 @@ fun TransactionFormScreen(
             Spacer(modifier = Modifier.height(12.dp))
 
             // Price
-            OutlinedTextField(
-                value = pricePerShare,
-                onValueChange = { pricePerShare = it },
-                label = { Text("Price") },
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                modifier = Modifier.fillMaxWidth()
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                OutlinedTextField(
+                    value = pricePerShare,
+                    onValueChange = { pricePerShare = it },
+                    label = { Text("Price") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    modifier = Modifier.weight(1f)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                OutlinedButton(
+                    onClick = { if (ticker.isNotBlank()) onAnalyzePrice(ticker.trim()) },
+                    enabled = ticker.isNotBlank()
+                ) {
+                    Text("Analyze Price")
+                }
+            }
 
             Spacer(modifier = Modifier.height(12.dp))
 
@@ -315,7 +375,30 @@ fun TransactionFormScreen(
                 maxLines = 4
             )
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Simulate button - shows price movement from transaction date to now
+            val daysSinceTransaction = ChronoUnit.DAYS.between(date, LocalDate.now()).toInt()
+            Button(
+                onClick = {
+                    val sharesVal = numberOfShares.toDoubleOrNull() ?: 0.0
+                    onSimulate(ticker.trim(), sharesVal, daysSinceTransaction)
+                },
+                modifier = Modifier.fillMaxWidth(),
+                enabled = ticker.isNotBlank() && numberOfShares.toDoubleOrNull() != null && daysSinceTransaction > 0,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.tertiary
+                )
+            ) {
+                Icon(
+                    Icons.AutoMirrored.Filled.TrendingUp,
+                    contentDescription = null,
+                    modifier = Modifier.padding(end = 8.dp)
+                )
+                Text("Simulate")
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
 
             Button(
                 onClick = {

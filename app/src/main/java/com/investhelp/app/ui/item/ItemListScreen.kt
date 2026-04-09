@@ -73,6 +73,11 @@ import com.investhelp.app.data.local.entity.InvestmentAccountEntity
 import com.investhelp.app.data.local.entity.InvestmentItemEntity
 import com.investhelp.app.model.InvestmentType
 import com.investhelp.app.ui.components.ConfirmDeleteDialog
+import com.investhelp.app.ui.settings.SettingsViewModel
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.foundation.border
 import java.text.NumberFormat
 import java.util.Locale
 
@@ -92,6 +97,11 @@ fun ItemListScreen(
     val message by viewModel.message.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     val currencyFormat = NumberFormat.getCurrencyInstance(Locale.US)
+    val context = LocalContext.current
+    val warnBeforeDelete = remember {
+        context.getSharedPreferences(SettingsViewModel.PREFS_NAME, android.content.Context.MODE_PRIVATE)
+            .getBoolean(SettingsViewModel.KEY_WARN_BEFORE_DELETE, true)
+    }
     var deleteTarget by remember { mutableStateOf<InvestmentItemEntity?>(null) }
     var editingItem by remember { mutableStateOf<InvestmentItemEntity?>(null) }
     var showForm by remember { mutableStateOf(false) }
@@ -148,8 +158,8 @@ fun ItemListScreen(
                 showForm = false
                 editingItem = null
             },
-            onSave = { ticker, quantity, cost, accountId ->
-                viewModel.savePosition(ticker, quantity, cost, accountId)
+            onSave = { ticker, quantity, cost, accountId, type ->
+                viewModel.savePosition(ticker, quantity, cost, accountId, type)
                 showForm = false
                 editingItem = null
             }
@@ -235,7 +245,13 @@ fun ItemListScreen(
                             currencyFormat = currencyFormat,
                             onClick = { onNavigateToItem(item.ticker) },
                             onEdit = { editingItem = item },
-                            onDelete = { deleteTarget = item }
+                            onDelete = {
+                                if (warnBeforeDelete) {
+                                    deleteTarget = item
+                                } else {
+                                    viewModel.deleteItem(item.ticker, item.accountId)
+                                }
+                            }
                         )
                     }
                 }
@@ -263,6 +279,8 @@ private fun ItemCard(
     else
         MaterialTheme.colorScheme.error
 
+    val context = LocalContext.current
+
     Card(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
@@ -276,19 +294,42 @@ private fun ItemCard(
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            // Company logo
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .border(1.dp, MaterialTheme.colorScheme.outlineVariant, CircleShape)
+                    .background(MaterialTheme.colorScheme.surfaceVariant),
+                contentAlignment = Alignment.Center
+            ) {
+                // Fallback letter (shown when image hasn't loaded or fails)
+                Text(
+                    text = (if (item.name != item.ticker) item.name else item.ticker)
+                        .first().uppercase(),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                // Logo image overlays the letter when loaded
+                AsyncImage(
+                    model = ImageRequest.Builder(context)
+                        .data("https://companiesmarketcap.com/img/company-logos/64/${item.ticker}.webp")
+                        .crossfade(true)
+                        .build(),
+                    contentDescription = "${item.ticker} logo",
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(CircleShape)
+                )
+            }
+            Spacer(modifier = Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Text(item.ticker, style = MaterialTheme.typography.titleMedium)
-                    if (item.name != item.ticker) {
-                        Text(
-                            text = item.name,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
                     if (accountName != null) {
                         Text(
                             text = accountName,
@@ -296,6 +337,14 @@ private fun ItemCard(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
+                }
+                if (item.name != item.ticker) {
+                    Text(
+                        text = item.name,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1
+                    )
                 }
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
@@ -467,7 +516,7 @@ private fun ItemFormDialog(
     items: List<InvestmentItemEntity>,
     accounts: List<InvestmentAccountEntity>,
     onDismiss: () -> Unit,
-    onSave: (ticker: String, quantity: Double, cost: Double, accountId: Long?) -> Unit
+    onSave: (ticker: String, quantity: Double, cost: Double, accountId: Long?, type: InvestmentType) -> Unit
 ) {
     val distinctTickers = items.map { it.ticker }.distinct()
     val existingKeys = items.map { "${it.ticker.uppercase()}:${it.accountId}" }.toSet()
@@ -476,8 +525,10 @@ private fun ItemFormDialog(
     var quantity by remember { mutableStateOf(existing?.quantity?.toString() ?: "") }
     var cost by remember { mutableStateOf(existing?.cost?.toString() ?: "") }
     var selectedAccountId by remember { mutableStateOf(existing?.accountId) }
+    var selectedType by remember { mutableStateOf(existing?.type ?: InvestmentType.Stock) }
     var tickerExpanded by remember { mutableStateOf(false) }
     var accountExpanded by remember { mutableStateOf(false) }
+    var typeExpanded by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
 
     val isEditing = existing != null
@@ -523,6 +574,10 @@ private fun ItemFormDialog(
                                     tickerInput = ticker
                                     tickerExpanded = false
                                     error = null
+                                    // Auto-fill type from existing item
+                                    items.firstOrNull { it.ticker == ticker }?.type?.let {
+                                        selectedType = it
+                                    }
                                 }
                             )
                         }
@@ -555,6 +610,38 @@ private fun ItemFormDialog(
                                 onClick = {
                                     selectedAccountId = account.id
                                     accountExpanded = false
+                                }
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                ExposedDropdownMenuBox(
+                    expanded = typeExpanded,
+                    onExpandedChange = { typeExpanded = it }
+                ) {
+                    OutlinedTextField(
+                        value = selectedType.name,
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Type") },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = typeExpanded) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .menuAnchor(MenuAnchorType.PrimaryNotEditable)
+                    )
+                    ExposedDropdownMenu(
+                        expanded = typeExpanded,
+                        onDismissRequest = { typeExpanded = false }
+                    ) {
+                        InvestmentType.entries.forEach { type ->
+                            DropdownMenuItem(
+                                text = { Text(type.name) },
+                                onClick = {
+                                    selectedType = type
+                                    typeExpanded = false
                                 }
                             )
                         }
@@ -607,7 +694,7 @@ private fun ItemFormDialog(
                     !isEditing && key in existingKeys -> error = "$ticker already exists in this account"
                     qty == null || qty <= 0 -> error = "Enter a valid quantity"
                     c == null || c < 0 -> error = "Enter a valid cost"
-                    else -> onSave(ticker, qty, c, selectedAccountId)
+                    else -> onSave(ticker, qty, c, selectedAccountId, selectedType)
                 }
             }) {
                 Text("Save")

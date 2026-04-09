@@ -37,6 +37,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.investhelp.app.ui.components.ConfirmDeleteDialog
+import com.investhelp.app.ui.settings.SettingsViewModel
+import androidx.compose.ui.platform.LocalContext
 import java.text.NumberFormat
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -53,6 +55,11 @@ fun TransactionListScreen(
     val currencyFormat = NumberFormat.getCurrencyInstance(Locale.US)
     val dateFormatter = DateTimeFormatter.ofPattern("MMM dd, yyyy")
     val timeFormatter = DateTimeFormatter.ofPattern("HH:mm")
+    val context = LocalContext.current
+    val warnBeforeDelete = remember {
+        context.getSharedPreferences(SettingsViewModel.PREFS_NAME, android.content.Context.MODE_PRIVATE)
+            .getBoolean(SettingsViewModel.KEY_WARN_BEFORE_DELETE, true)
+    }
     var transactionToDelete by remember { mutableStateOf<Long?>(null) }
     var selectedAccountId by rememberSaveable { mutableLongStateOf(-1L) }
     var accountDropdownExpanded by remember { mutableStateOf(false) }
@@ -213,7 +220,13 @@ fun TransactionListScreen(
                                         )
                                     }
                                 }
-                                IconButton(onClick = { transactionToDelete = transaction.id }) {
+                                IconButton(onClick = {
+                                    if (warnBeforeDelete) {
+                                        transactionToDelete = transaction.id
+                                    } else {
+                                        viewModel.deleteTransaction(transaction)
+                                    }
+                                }) {
                                     Icon(
                                         Icons.Default.Close,
                                         contentDescription = "Delete",

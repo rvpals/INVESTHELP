@@ -33,6 +33,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.investhelp.app.ui.components.ConfirmDeleteDialog
+import com.investhelp.app.ui.settings.SettingsViewModel
+import androidx.compose.ui.platform.LocalContext
 import java.text.NumberFormat
 import java.util.Locale
 
@@ -45,6 +47,11 @@ fun AccountListScreen(
 ) {
     val accounts by viewModel.accountsWithValues.collectAsStateWithLifecycle()
     val currencyFormat = NumberFormat.getCurrencyInstance(Locale.US)
+    val context = LocalContext.current
+    val warnBeforeDelete = remember {
+        context.getSharedPreferences(SettingsViewModel.PREFS_NAME, android.content.Context.MODE_PRIVATE)
+            .getBoolean(SettingsViewModel.KEY_WARN_BEFORE_DELETE, true)
+    }
     var accountToDelete by remember { mutableStateOf<Long?>(null) }
 
     if (accountToDelete != null) {
@@ -124,7 +131,13 @@ fun AccountListScreen(
                                     color = MaterialTheme.colorScheme.primary
                                 )
                             }
-                            IconButton(onClick = { accountToDelete = accountWithValue.account.id }) {
+                            IconButton(onClick = {
+                                if (warnBeforeDelete) {
+                                    accountToDelete = accountWithValue.account.id
+                                } else {
+                                    viewModel.deleteAccount(accountWithValue.account)
+                                }
+                            }) {
                                 Icon(
                                     Icons.Default.Delete,
                                     contentDescription = "Delete",

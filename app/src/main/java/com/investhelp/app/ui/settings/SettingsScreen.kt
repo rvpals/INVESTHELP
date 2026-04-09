@@ -112,6 +112,34 @@ private fun PreferencesTab(viewModel: SettingsViewModel, uiState: SettingsUiStat
                 onCheckedChange = { viewModel.setAutoUpdateShares(it) }
             )
         }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        Text("General", style = MaterialTheme.typography.titleMedium)
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    "Warn before delete",
+                    style = MaterialTheme.typography.bodyLarge
+                )
+                Text(
+                    "Show a confirmation dialog before deleting items, transactions, transfers, or accounts",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Switch(
+                checked = uiState.warnBeforeDelete,
+                onCheckedChange = { viewModel.setWarnBeforeDelete(it) }
+            )
+        }
     }
 }
 

@@ -2,6 +2,8 @@ package com.investhelp.app.ui.item
 
 import android.content.Intent
 import android.net.Uri
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -17,8 +19,9 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
-import androidx.compose.material.icons.filled.Analytics
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material3.AssistChip
@@ -51,7 +54,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.investhelp.app.data.remote.AnalysisInfo
+import com.investhelp.app.ui.components.DateRangeSelector
 import java.text.NumberFormat
+import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
@@ -61,7 +66,6 @@ fun ItemDetailScreen(
     ticker: String,
     viewModel: ItemViewModel,
     onEditItem: () -> Unit,
-    onViewStatistics: () -> Unit,
     onSimulate: (ticker: String, shares: Double) -> Unit,
     onBack: () -> Unit
 ) {
@@ -75,6 +79,7 @@ fun ItemDetailScreen(
     val analysisInfo by viewModel.analysisInfo.collectAsStateWithLifecycle()
     val isLoadingAnalysis by viewModel.isLoadingAnalysis.collectAsStateWithLifecycle()
     val analysisError by viewModel.analysisError.collectAsStateWithLifecycle()
+    val statistics by viewModel.statistics.collectAsStateWithLifecycle()
     val currencyFormat = NumberFormat.getCurrencyInstance(Locale.US)
     val dateFormatter = DateTimeFormatter.ofPattern("MMM dd, yyyy")
 
@@ -87,6 +92,14 @@ fun ItemDetailScreen(
     val totalDayGainLoss = itemRows.sumOf { it.dayGainLoss }
 
     var showAnalysisSheet by remember { mutableStateOf(false) }
+    var statsExpanded by remember { mutableStateOf(false) }
+    var transactionsExpanded by remember { mutableStateOf(false) }
+    var statsStartDate by remember { mutableStateOf(LocalDate.now().minusYears(1)) }
+    var statsEndDate by remember { mutableStateOf(LocalDate.now()) }
+
+    LaunchedEffect(ticker, statsStartDate, statsEndDate) {
+        viewModel.loadStatistics(ticker, statsStartDate, statsEndDate)
+    }
 
     LaunchedEffect(analysisInfo) {
         if (analysisInfo != null) showAnalysisSheet = true
@@ -150,10 +163,19 @@ fun ItemDetailScreen(
                                 style = MaterialTheme.typography.titleLarge,
                                 color = MaterialTheme.colorScheme.primary
                             )
+                            val dailyChangePerShare = if (totalQuantity > 0) totalDayGainLoss / totalQuantity else 0.0
                             Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                                 Column {
                                     Text("Cost", style = MaterialTheme.typography.labelSmall)
                                     Text(currencyFormat.format(totalCost), style = MaterialTheme.typography.bodyMedium)
+                                }
+                                Column {
+                                    Text("Daily/Share", style = MaterialTheme.typography.labelSmall)
+                                    Text(
+                                        currencyFormat.format(dailyChangePerShare),
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = if (dailyChangePerShare >= 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
+                                    )
                                 }
                                 Column {
                                     Text("Day G/L", style = MaterialTheme.typography.labelSmall)
@@ -221,30 +243,54 @@ fun ItemDetailScreen(
                 }
             }
 
-            // Action buttons
+            // Action buttons row: Analysis Info + Yahoo Finance
             item {
                 firstRow?.let { inv ->
                     Spacer(modifier = Modifier.height(4.dp))
 
-                    Button(
-                        onClick = { viewModel.fetchAnalysisInfo(ticker) },
+                    Row(
                         modifier = Modifier.fillMaxWidth(),
-                        enabled = !isLoadingAnalysis
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        if (isLoadingAnalysis) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.padding(end = 8.dp),
-                                strokeWidth = 2.dp,
-                                color = MaterialTheme.colorScheme.onPrimary
-                            )
-                        } else {
+                        val context = LocalContext.current
+                        Button(
+                            onClick = { viewModel.fetchAnalysisInfo(ticker) },
+                            modifier = Modifier.weight(1f),
+                            enabled = !isLoadingAnalysis
+                        ) {
+                            if (isLoadingAnalysis) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.padding(end = 8.dp),
+                                    strokeWidth = 2.dp,
+                                    color = MaterialTheme.colorScheme.onPrimary
+                                )
+                            } else {
+                                Icon(
+                                    Icons.Default.Info,
+                                    contentDescription = null,
+                                    modifier = Modifier.padding(end = 8.dp)
+                                )
+                            }
+                            Text("Analysis Info")
+                        }
+
+                        OutlinedButton(
+                            onClick = {
+                                val intent = Intent(
+                                    Intent.ACTION_VIEW,
+                                    Uri.parse("https://finance.yahoo.com/quote/$ticker")
+                                )
+                                context.startActivity(intent)
+                            },
+                            modifier = Modifier.weight(1f)
+                        ) {
                             Icon(
-                                Icons.Default.Info,
+                                Icons.Default.OpenInNew,
                                 contentDescription = null,
                                 modifier = Modifier.padding(end = 8.dp)
                             )
+                            Text("Yahoo Finance")
                         }
-                        Text("Analysis Info")
                     }
 
                     if (analysisError != null) {
@@ -254,37 +300,6 @@ fun ItemDetailScreen(
                             style = MaterialTheme.typography.bodySmall,
                             modifier = Modifier.padding(top = 4.dp)
                         )
-                    }
-
-                    val context = LocalContext.current
-                    OutlinedButton(
-                        onClick = {
-                            val intent = Intent(
-                                Intent.ACTION_VIEW,
-                                Uri.parse("https://finance.yahoo.com/quote/$ticker")
-                            )
-                            context.startActivity(intent)
-                        },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Icon(
-                            Icons.Default.OpenInNew,
-                            contentDescription = null,
-                            modifier = Modifier.padding(end = 8.dp)
-                        )
-                        Text("Yahoo Finance")
-                    }
-
-                    Button(
-                        onClick = onViewStatistics,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Icon(
-                            Icons.Default.Analytics,
-                            contentDescription = null,
-                            modifier = Modifier.padding(end = 8.dp)
-                        )
-                        Text("View Statistics")
                     }
 
                     Button(
@@ -301,54 +316,158 @@ fun ItemDetailScreen(
                         )
                         Text("Simulate")
                     }
-
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text("Transactions", style = MaterialTheme.typography.titleLarge)
                 }
             }
 
-            if (transactions.isEmpty()) {
-                item {
+            // Collapsible Stats section
+            item {
+                Spacer(modifier = Modifier.height(4.dp))
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { statsExpanded = !statsExpanded }
+                        .padding(vertical = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     Text(
-                        "No transactions for this item",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(16.dp)
+                        "$ticker Stats",
+                        style = MaterialTheme.typography.titleLarge
+                    )
+                    Icon(
+                        if (statsExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                        contentDescription = if (statsExpanded) "Collapse" else "Expand"
+                    )
+                }
+
+                AnimatedVisibility(visible = statsExpanded) {
+                    Column {
+                        DateRangeSelector(
+                            startDate = statsStartDate,
+                            endDate = statsEndDate,
+                            onStartDateChanged = { statsStartDate = it },
+                            onEndDateChanged = { statsEndDate = it }
+                        )
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        Text("Buy Statistics", style = MaterialTheme.typography.titleMedium)
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            StatCard(
+                                label = "Average",
+                                value = statistics.avgBuyPrice?.let { currencyFormat.format(it) } ?: "N/A",
+                                modifier = Modifier.weight(1f)
+                            )
+                            StatCard(
+                                label = "Max",
+                                value = statistics.maxBuyPrice?.let { currencyFormat.format(it) } ?: "N/A",
+                                modifier = Modifier.weight(1f)
+                            )
+                            StatCard(
+                                label = "Min",
+                                value = statistics.minBuyPrice?.let { currencyFormat.format(it) } ?: "N/A",
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        Text("Sell Statistics", style = MaterialTheme.typography.titleMedium)
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            StatCard(
+                                label = "Average",
+                                value = statistics.avgSellPrice?.let { currencyFormat.format(it) } ?: "N/A",
+                                modifier = Modifier.weight(1f)
+                            )
+                            StatCard(
+                                label = "Max",
+                                value = statistics.maxSellPrice?.let { currencyFormat.format(it) } ?: "N/A",
+                                modifier = Modifier.weight(1f)
+                            )
+                            StatCard(
+                                label = "Min",
+                                value = statistics.minSellPrice?.let { currencyFormat.format(it) } ?: "N/A",
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                    }
+                }
+            }
+
+            // Collapsible Transactions section
+            item {
+                Spacer(modifier = Modifier.height(4.dp))
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { transactionsExpanded = !transactionsExpanded }
+                        .padding(vertical = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        "Transactions",
+                        style = MaterialTheme.typography.titleLarge
+                    )
+                    Icon(
+                        if (transactionsExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                        contentDescription = if (transactionsExpanded) "Collapse" else "Expand"
                     )
                 }
             }
 
-            items(transactions, key = { it.id }) { transaction ->
-                Card(modifier = Modifier.fillMaxWidth()) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(12.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Column {
-                            Text(
-                                text = transaction.action.name,
-                                style = MaterialTheme.typography.labelLarge,
-                                color = if (transaction.action.name == "Buy")
-                                    MaterialTheme.colorScheme.primary
-                                else
-                                    MaterialTheme.colorScheme.error
-                            )
-                            Text(
-                                text = transaction.date.format(dateFormatter),
-                                style = MaterialTheme.typography.bodySmall
-                            )
-                        }
-                        Column(horizontalAlignment = Alignment.End) {
-                            Text(
-                                text = "${transaction.numberOfShares} shares",
-                                style = MaterialTheme.typography.bodyMedium
-                            )
-                            Text(
-                                text = "@ ${currencyFormat.format(transaction.pricePerShare)}",
-                                style = MaterialTheme.typography.bodySmall
-                            )
+            if (transactionsExpanded) {
+                if (transactions.isEmpty()) {
+                    item {
+                        Text(
+                            "No transactions for this item",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(16.dp)
+                        )
+                    }
+                }
+
+                items(transactions, key = { it.id }) { transaction ->
+                    Card(modifier = Modifier.fillMaxWidth()) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(12.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column {
+                                Text(
+                                    text = transaction.action.name,
+                                    style = MaterialTheme.typography.labelLarge,
+                                    color = if (transaction.action.name == "Buy")
+                                        MaterialTheme.colorScheme.primary
+                                    else
+                                        MaterialTheme.colorScheme.error
+                                )
+                                Text(
+                                    text = transaction.date.format(dateFormatter),
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                            }
+                            Column(horizontalAlignment = Alignment.End) {
+                                Text(
+                                    text = "${transaction.numberOfShares} shares",
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                                Text(
+                                    text = "@ ${currencyFormat.format(transaction.pricePerShare)}",
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                            }
                         }
                     }
                 }
@@ -481,5 +600,32 @@ private fun formatMarketCap(value: Long): String {
         value >= 1_000_000_000 -> "${"%.2f".format(value / 1_000_000_000.0)}B"
         value >= 1_000_000 -> "${"%.2f".format(value / 1_000_000.0)}M"
         else -> NumberFormat.getNumberInstance(Locale.US).format(value)
+    }
+}
+
+@Composable
+private fun StatCard(
+    label: String,
+    value: String,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        )
+    ) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = value,
+                style = MaterialTheme.typography.titleMedium
+            )
+        }
     }
 }

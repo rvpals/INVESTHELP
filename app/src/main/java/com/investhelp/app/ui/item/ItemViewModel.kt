@@ -159,7 +159,7 @@ class ItemViewModel @Inject constructor(
     }
 
     // --- Save position (from add form) ---
-    fun savePosition(ticker: String, quantity: Double, cost: Double, accountId: Long?) {
+    fun savePosition(ticker: String, quantity: Double, cost: Double, accountId: Long?, type: InvestmentType? = null) {
         viewModelScope.launch {
             val resolvedAccountId = accountId ?: accountDao.getAllAccounts().first().firstOrNull()?.id
                 ?: run {
@@ -169,6 +169,7 @@ class ItemViewModel @Inject constructor(
 
             val existing = itemRepository.getItem(ticker, resolvedAccountId)
             val metadata = existing ?: itemRepository.getFirstByTicker(ticker)
+            val resolvedType = type ?: metadata?.type ?: InvestmentType.Stock
             val value = existing?.value ?: 0.0
             val dayGainLoss = existing?.dayGainLoss ?: 0.0
             val totalGainLoss = value - cost
@@ -178,7 +179,7 @@ class ItemViewModel @Inject constructor(
                     ticker = ticker,
                     accountId = resolvedAccountId,
                     name = metadata?.name ?: ticker,
-                    type = metadata?.type ?: InvestmentType.Stock,
+                    type = resolvedType,
                     currentPrice = metadata?.currentPrice ?: 0.0,
                     quantity = quantity,
                     cost = cost,
@@ -187,6 +188,12 @@ class ItemViewModel @Inject constructor(
                     value = value
                 )
             )
+            // Sync type across all accounts for same ticker
+            if (type != null) {
+                val name = metadata?.name ?: ticker
+                val price = metadata?.currentPrice ?: 0.0
+                itemRepository.updateMetadataByTicker(ticker, name, resolvedType, price)
+            }
         }
     }
 
@@ -232,11 +239,13 @@ class ItemViewModel @Inject constructor(
             for ((ticker, rows) in byTicker) {
                 try {
                     val quote = stockPriceService.fetchQuote(ticker)
+                    val resolvedName = quote.shortName ?: rows.first().name
                     for (row in rows) {
                         val newValue = quote.price * row.quantity
                         val dayChange = (quote.price - quote.previousClose) * row.quantity
                         itemRepository.upsertItem(
                             row.copy(
+                                name = resolvedName,
                                 currentPrice = quote.price,
                                 value = newValue,
                                 dayGainLoss = dayChange,
@@ -274,11 +283,13 @@ class ItemViewModel @Inject constructor(
                 try {
                     val quote = stockPriceService.fetchQuote(ticker)
                     val rows = allPositions.filter { it.ticker == ticker }
+                    val resolvedName = quote.shortName ?: rows.first().name
                     for (row in rows) {
                         val newValue = quote.price * row.quantity
                         val dayChange = (quote.price - quote.previousClose) * row.quantity
                         itemRepository.upsertItem(
                             row.copy(
+                                name = resolvedName,
                                 currentPrice = quote.price,
                                 value = newValue,
                                 dayGainLoss = dayChange,

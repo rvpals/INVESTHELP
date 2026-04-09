@@ -37,6 +37,7 @@ import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -92,11 +93,19 @@ private data class ChartSeries(
 fun SimulationScreen(
     viewModel: SimulationViewModel,
     initialTicker: String = "",
-    initialShares: String = ""
+    initialShares: String = "",
+    customDays: Int = 0
 ) {
     var ticker by remember { mutableStateOf(initialTicker) }
     var shares by remember { mutableStateOf(initialShares) }
     var selectedTab by remember { mutableIntStateOf(0) }
+
+    // Auto-run transaction simulation when customDays is provided
+    LaunchedEffect(customDays) {
+        if (customDays > 0 && initialTicker.isNotBlank() && initialShares.toDoubleOrNull() != null) {
+            viewModel.runTransactionSimulation(initialTicker.trim(), initialShares.toDouble(), customDays)
+        }
+    }
     val tabTitles = listOf("Main", "Detail Simulation")
 
     Scaffold(
@@ -248,7 +257,7 @@ private fun MainSimulationTab(
 
             // Summary cards
             results.forEach { sim ->
-                val rangeLabel = sim.timeRange.label
+                val rangeLabel = sim.customLabel ?: sim.timeRange.label
                 val isProfit = sim.profitLoss >= 0
 
                 Card(

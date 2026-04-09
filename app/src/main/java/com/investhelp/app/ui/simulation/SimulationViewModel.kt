@@ -34,7 +34,8 @@ data class SimulationResult(
     val currentValue: Double,
     val profitLoss: Double,
     val profitLossPct: Double,
-    val prices: List<HistoricalPrice>
+    val prices: List<HistoricalPrice>,
+    val customLabel: String? = null
 )
 
 data class DetailChartData(
@@ -138,6 +139,52 @@ class SimulationViewModel @Inject constructor(
                     _error.value = "Not enough historical data for $ticker"
                 } else {
                     _results.value = resultList
+                }
+            } catch (e: Exception) {
+                _error.value = "Simulation failed: ${e.message}"
+            } finally {
+                _isRunning.value = false
+            }
+        }
+    }
+
+    fun runTransactionSimulation(ticker: String, shares: Double, rangeDays: Int) {
+        viewModelScope.launch {
+            _isRunning.value = true
+            _error.value = null
+            _results.value = emptyList()
+            try {
+                val prices = stockPriceService.fetchHistoricalPrices(ticker, rangeDays)
+                if (prices.size >= 2) {
+                    val startPrice = prices.first().close
+                    val currentPrice = prices.last().close
+                    val totalCost = shares * startPrice
+                    val currentValue = shares * currentPrice
+                    val profitLoss = currentValue - totalCost
+                    val profitLossPct = if (totalCost > 0) profitLoss / totalCost * 100 else 0.0
+                    val label = when {
+                        rangeDays < 7 -> "${rangeDays}d"
+                        rangeDays < 30 -> "${rangeDays / 7}w ${rangeDays % 7}d"
+                        rangeDays < 365 -> "${rangeDays / 30}m ${rangeDays % 30}d"
+                        else -> "${rangeDays / 365}y ${(rangeDays % 365) / 30}m"
+                    }
+                    _results.value = listOf(
+                        SimulationResult(
+                            ticker = ticker,
+                            shares = shares,
+                            timeRange = TimeRange.entries.lastOrNull { it.days <= rangeDays } ?: TimeRange.MAX,
+                            startPrice = startPrice,
+                            currentPrice = currentPrice,
+                            totalCost = totalCost,
+                            currentValue = currentValue,
+                            profitLoss = profitLoss,
+                            profitLossPct = profitLossPct,
+                            prices = prices,
+                            customLabel = label
+                        )
+                    )
+                } else {
+                    _error.value = "Not enough historical data for $ticker"
                 }
             } catch (e: Exception) {
                 _error.value = "Simulation failed: ${e.message}"
