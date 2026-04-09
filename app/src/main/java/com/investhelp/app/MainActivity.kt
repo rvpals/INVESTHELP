@@ -13,6 +13,8 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountBalance
 import androidx.compose.material.icons.filled.AccountBalanceWallet
@@ -23,6 +25,7 @@ import androidx.compose.material.icons.filled.PieChart
 import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -151,6 +154,7 @@ class MainActivity : AppCompatActivity() {
 fun GlobalTopBar(navController: NavHostController) {
     val dashboardViewModel: DashboardViewModel = hiltViewModel()
     val uiState by dashboardViewModel.uiState.collectAsStateWithLifecycle()
+    val isRefreshing by dashboardViewModel.isRefreshing.collectAsStateWithLifecycle()
     val currencyFormat = NumberFormat.getCurrencyInstance(Locale.US)
     var menuExpanded by remember { mutableStateOf(false) }
     var showAbout by remember { mutableStateOf(false) }
@@ -181,6 +185,7 @@ fun GlobalTopBar(navController: NavHostController) {
         title = {
             Card(
                 onClick = {
+                    dashboardViewModel.refreshAllPrices()
                     navController.navigate(DashboardRoute) {
                         popUpTo(DashboardRoute) { inclusive = true }
                         launchSingleTop = true
@@ -208,6 +213,14 @@ fun GlobalTopBar(navController: NavHostController) {
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.onPrimaryContainer
                     )
+                    if (isRefreshing) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(18.dp),
+                            strokeWidth = 2.dp,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                    }
                     Text(
                         text = currencyFormat.format(uiState.totalPortfolioValue),
                         style = MaterialTheme.typography.titleMedium,

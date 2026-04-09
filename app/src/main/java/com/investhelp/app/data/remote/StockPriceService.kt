@@ -20,7 +20,8 @@ import javax.inject.Singleton
 
 data class StockQuote(
     val price: Double,
-    val previousClose: Double
+    val previousClose: Double,
+    val shortName: String? = null
 )
 
 data class HistoricalPrice(
@@ -244,7 +245,9 @@ class StockPriceService @Inject constructor() {
                 price = meta["regularMarketPrice"]!!.jsonPrimitive.double,
                 previousClose = meta["chartPreviousClose"]?.jsonPrimitive?.double
                     ?: meta["previousClose"]?.jsonPrimitive?.double
-                    ?: meta["regularMarketPrice"]!!.jsonPrimitive.double
+                    ?: meta["regularMarketPrice"]!!.jsonPrimitive.double,
+                shortName = meta["shortName"]?.jsonPrimitive?.contentOrNull
+                    ?: meta["longName"]?.jsonPrimitive?.contentOrNull
             )
         } finally {
             connection.disconnect()

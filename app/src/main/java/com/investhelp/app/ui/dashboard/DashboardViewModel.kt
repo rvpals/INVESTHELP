@@ -2,14 +2,19 @@ package com.investhelp.app.ui.dashboard
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.investhelp.app.data.remote.StockPriceService
 import com.investhelp.app.data.repository.AccountRepository
 import com.investhelp.app.data.repository.InvestmentItemRepository
 import com.investhelp.app.model.AccountWithValue
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 data class TickerPosition(
@@ -27,8 +32,43 @@ data class DashboardUiState(
 @HiltViewModel
 class DashboardViewModel @Inject constructor(
     accountRepository: AccountRepository,
-    itemRepository: InvestmentItemRepository
+    private val itemRepository: InvestmentItemRepository,
+    private val stockPriceService: StockPriceService
 ) : ViewModel() {
+
+    private val _isRefreshing = MutableStateFlow(false)
+    val isRefreshing: StateFlow<Boolean> = _isRefreshing.asStateFlow()
+
+    fun refreshAllPrices() {
+        viewModelScope.launch {
+            _isRefreshing.value = true
+            try {
+                val allItems = itemRepository.getAllItems().first()
+                val byTicker = allItems.groupBy { it.ticker }
+                for ((ticker, rows) in byTicker) {
+                    try {
+                        val quote = stockPriceService.fetchQuote(ticker)
+                        val resolvedName = quote.shortName ?: rows.first().name
+                        for (row in rows) {
+                            val newValue = quote.price * row.quantity
+                            val dayChange = (quote.price - quote.previousClose) * row.quantity
+                            itemRepository.upsertItem(
+                                row.copy(
+                                    name = resolvedName,
+                                    currentPrice = quote.price,
+                                    value = newValue,
+                                    dayGainLoss = dayChange,
+                                    totalGainLoss = newValue - row.cost
+                                )
+                            )
+                        }
+                    } catch (_: Exception) { }
+                }
+            } finally {
+                _isRefreshing.value = false
+            }
+        }
+    }
 
     val uiState: StateFlow<DashboardUiState> = combine(
         accountRepository.getAllAccountsWithValues(),
