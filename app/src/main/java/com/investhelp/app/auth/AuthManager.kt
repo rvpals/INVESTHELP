@@ -69,6 +69,10 @@ class AuthManager @Inject constructor(
         }
     }
 
+    fun lockScreen() {
+        _authState.value = AuthState.Locked
+    }
+
     fun lock() {
         databaseProvider.close()
         _authState.value = AuthState.Locked

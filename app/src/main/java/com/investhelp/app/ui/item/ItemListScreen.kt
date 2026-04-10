@@ -115,8 +115,8 @@ fun ItemListScreen(
         else -> items
     }
 
-    // Aggregate values by ticker for pie chart
-    val tickerValues = items
+    // Aggregate values by ticker for pie chart (filtered by selected tab)
+    val tickerValues = filteredItems
         .groupBy { it.ticker }
         .mapValues { (_, list) -> list.sumOf { it.value } }
         .filter { it.value > 0 }

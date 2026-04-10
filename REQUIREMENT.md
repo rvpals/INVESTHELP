@@ -119,6 +119,8 @@ Android app to track personal investments.
 - Result table with column headers, horizontal scrolling, monospace font
 - Export results to CSV via share intent (FileProvider)
 - Error display for invalid SQL
+- **Table browser** — lists all database tables (excludes internal sqlite/room/android tables); click to expand column details (name, type, PK/NN indicators); animated expand/collapse
+- **Row detail dialog** — click any result row to view all field values untruncated in a scrollable dialog
 
 ### Backup & Restore
 - Export all data to JSON file (v2 format with full merged entity fields)

@@ -101,6 +101,11 @@ class MainActivity : AppCompatActivity() {
 
     private val authViewModel: AuthViewModel by viewModels()
 
+    override fun onStop() {
+        super.onStop()
+        authViewModel.lockScreen()
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
         super.onCreate(savedInstanceState)

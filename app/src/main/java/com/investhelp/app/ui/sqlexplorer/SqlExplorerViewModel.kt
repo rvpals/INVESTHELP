@@ -26,6 +26,14 @@ data class QueryResult(
     val message: String? = null
 )
 
+data class ColumnInfo(
+    val name: String,
+    val type: String,
+    val notNull: Boolean,
+    val defaultValue: String?,
+    val pk: Boolean
+)
+
 @HiltViewModel
 class SqlExplorerViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
@@ -40,6 +48,71 @@ class SqlExplorerViewModel @Inject constructor(
 
     private val _isRunning = MutableStateFlow(false)
     val isRunning: StateFlow<Boolean> = _isRunning.asStateFlow()
+
+    private val _tables = MutableStateFlow<List<String>>(emptyList())
+    val tables: StateFlow<List<String>> = _tables.asStateFlow()
+
+    private val _expandedTable = MutableStateFlow<String?>(null)
+    val expandedTable: StateFlow<String?> = _expandedTable.asStateFlow()
+
+    private val _tableColumns = MutableStateFlow<List<ColumnInfo>>(emptyList())
+    val tableColumns: StateFlow<List<ColumnInfo>> = _tableColumns.asStateFlow()
+
+    init {
+        loadTables()
+    }
+
+    private fun loadTables() {
+        viewModelScope.launch {
+            try {
+                withContext(Dispatchers.IO) {
+                    val db = dbProvider.database.openHelper.readableDatabase
+                    val cursor = db.query(
+                        "SELECT name FROM sqlite_master WHERE type='table' " +
+                            "AND name NOT LIKE 'sqlite_%' AND name NOT LIKE 'room_%' " +
+                            "AND name NOT LIKE 'android_%' ORDER BY name"
+                    )
+                    val list = mutableListOf<String>()
+                    while (cursor.moveToNext()) {
+                        list.add(cursor.getString(0))
+                    }
+                    cursor.close()
+                    _tables.value = list
+                }
+            } catch (_: Exception) { }
+        }
+    }
+
+    fun toggleTable(tableName: String) {
+        if (_expandedTable.value == tableName) {
+            _expandedTable.value = null
+            _tableColumns.value = emptyList()
+        } else {
+            _expandedTable.value = tableName
+            viewModelScope.launch {
+                try {
+                    withContext(Dispatchers.IO) {
+                        val db = dbProvider.database.openHelper.readableDatabase
+                        val cursor = db.query("PRAGMA table_info('$tableName')")
+                        val cols = mutableListOf<ColumnInfo>()
+                        while (cursor.moveToNext()) {
+                            cols.add(
+                                ColumnInfo(
+                                    name = cursor.getString(1),
+                                    type = cursor.getString(2) ?: "",
+                                    notNull = cursor.getInt(3) == 1,
+                                    defaultValue = if (cursor.isNull(4)) null else cursor.getString(4),
+                                    pk = cursor.getInt(5) > 0
+                                )
+                            )
+                        }
+                        cursor.close()
+                        _tableColumns.value = cols
+                    }
+                } catch (_: Exception) { }
+            }
+        }
+    }
 
     fun executeQuery(sql: String) {
         val trimmed = sql.trim()

@@ -1,7 +1,10 @@
 package com.investhelp.app.ui.sqlexplorer
 
 import android.content.Intent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -10,13 +13,17 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -27,9 +34,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -46,9 +55,13 @@ fun SqlExplorerScreen(viewModel: SqlExplorerViewModel) {
     val result by viewModel.result.collectAsStateWithLifecycle()
     val error by viewModel.error.collectAsStateWithLifecycle()
     val isRunning by viewModel.isRunning.collectAsStateWithLifecycle()
+    val tables by viewModel.tables.collectAsStateWithLifecycle()
+    val expandedTable by viewModel.expandedTable.collectAsStateWithLifecycle()
+    val tableColumns by viewModel.tableColumns.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
     var sql by rememberSaveable { mutableStateOf("") }
+    var selectedRowIndex by remember { mutableStateOf<Int?>(null) }
 
     Column(
         modifier = Modifier
@@ -102,6 +115,11 @@ fun SqlExplorerScreen(viewModel: SqlExplorerViewModel) {
             }
         }
 
+        if (tables.isNotEmpty()) {
+            Spacer(modifier = Modifier.height(8.dp))
+            TableBrowser(tables, expandedTable, tableColumns, viewModel::toggleTable)
+        }
+
         if (error != null) {
             Spacer(modifier = Modifier.height(8.dp))
             Text(
@@ -123,14 +141,25 @@ fun SqlExplorerScreen(viewModel: SqlExplorerViewModel) {
 
             if (qr.columns.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(8.dp))
-                ResultTable(qr)
+                ResultTable(qr) { index -> selectedRowIndex = index }
             }
+        }
+
+        if (selectedRowIndex != null && result != null &&
+            selectedRowIndex!! < result!!.rows.size
+        ) {
+            RecordDetailDialog(
+                columns = result!!.columns,
+                row = result!!.rows[selectedRowIndex!!],
+                rowNumber = selectedRowIndex!! + 1,
+                onDismiss = { selectedRowIndex = null }
+            )
         }
     }
 }
 
 @Composable
-private fun ResultTable(result: QueryResult) {
+private fun ResultTable(result: QueryResult, onRowClick: (Int) -> Unit) {
     val horizontalScroll = rememberScrollState()
 
     Card(
@@ -165,8 +194,8 @@ private fun ResultTable(result: QueryResult) {
             }
 
             // Data rows
-            itemsIndexed(result.rows, key = { index, _ -> index }) { _, row ->
-                Row {
+            itemsIndexed(result.rows, key = { index, _ -> index }) { index, row ->
+                Row(modifier = Modifier.clickable { onRowClick(index) }) {
                     row.forEach { cell ->
                         Text(
                             text = cell,
@@ -178,6 +207,141 @@ private fun ResultTable(result: QueryResult) {
                     }
                 }
                 HorizontalDivider()
+            }
+        }
+    }
+}
+
+@Composable
+private fun RecordDetailDialog(
+    columns: List<String>,
+    row: List<String>,
+    rowNumber: Int,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text("Row $rowNumber", style = MaterialTheme.typography.titleMedium)
+        },
+        text = {
+            Column(
+                modifier = Modifier.verticalScroll(rememberScrollState())
+            ) {
+                columns.zip(row).forEach { (col, value) ->
+                    Text(
+                        text = col,
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontWeight = FontWeight.Bold
+                        ),
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Text(
+                        text = value,
+                        style = MaterialTheme.typography.bodySmall.copy(
+                            fontFamily = FontFamily.Monospace
+                        ),
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Close")
+            }
+        }
+    )
+}
+
+@Composable
+private fun TableBrowser(
+    tables: List<String>,
+    expandedTable: String?,
+    tableColumns: List<ColumnInfo>,
+    onTableClick: (String) -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+        )
+    ) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            Text(
+                text = "Tables",
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.Bold
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            tables.forEach { tableName ->
+                Column {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onTableClick(tableName) }
+                            .padding(vertical = 6.dp, horizontal = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = if (expandedTable == tableName)
+                                Icons.Default.KeyboardArrowDown
+                            else Icons.Default.KeyboardArrowRight,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = tableName,
+                            style = MaterialTheme.typography.bodyMedium.copy(
+                                fontFamily = FontFamily.Monospace
+                            ),
+                            fontWeight = if (expandedTable == tableName)
+                                FontWeight.Bold else FontWeight.Normal
+                        )
+                    }
+                    AnimatedVisibility(visible = expandedTable == tableName) {
+                        Column(modifier = Modifier.padding(start = 24.dp, bottom = 4.dp)) {
+                            tableColumns.forEach { col ->
+                                Row(
+                                    modifier = Modifier.padding(vertical = 2.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = col.name,
+                                        style = MaterialTheme.typography.bodySmall.copy(
+                                            fontFamily = FontFamily.Monospace,
+                                            fontWeight = FontWeight.SemiBold
+                                        ),
+                                        modifier = Modifier.width(140.dp)
+                                    )
+                                    Text(
+                                        text = col.type.ifEmpty { "\u2014" },
+                                        style = MaterialTheme.typography.bodySmall.copy(
+                                            fontFamily = FontFamily.Monospace
+                                        ),
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.width(80.dp)
+                                    )
+                                    if (col.pk) {
+                                        Text(
+                                            text = "PK",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.primary
+                                        )
+                                    }
+                                    if (col.notNull && !col.pk) {
+                                        Text(
+                                            text = "NN",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.tertiary
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
     }

@@ -65,6 +65,8 @@
 - [x] FileProvider registered in AndroidManifest for cache directory
 - [x] Transaction list: gain/loss per transaction (currentPrice - pricePerShare) * shares
 - [x] Settings Data Management: CSV import for positions with column mapping dialog
+- [x] SQL Explorer: table browser with expandable column details per table
+- [x] SQL Explorer: row detail dialog showing full field values on row click
 
 ## Pending
 - [ ] Increment versionCode/versionName for next release

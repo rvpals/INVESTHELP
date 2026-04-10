@@ -17,7 +17,9 @@ class AuthViewModel @Inject constructor(
     val authState: StateFlow<AuthState> = authManager.authState
 
     init {
-        authManager.checkAuthState()
+        if (authManager.authState.value is AuthState.Loading) {
+            authManager.checkAuthState()
+        }
     }
 
     fun setupPassword(password: String): Boolean {
@@ -30,5 +32,9 @@ class AuthViewModel @Inject constructor(
 
     fun unlockWithBiometric(): Boolean {
         return authManager.unlockWithBiometric()
+    }
+
+    fun lockScreen() {
+        authManager.lockScreen()
     }
 }

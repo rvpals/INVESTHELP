@@ -132,6 +132,14 @@
 - [ ] Export CSV button enabled only when results have columns
 - [ ] Export CSV opens share sheet with CSV file
 - [ ] CSV file contains correct headers and data
+- [ ] Tables section lists all database tables (excludes sqlite_*, room_*, android_* internal tables)
+- [ ] Clicking table name expands to show columns with name, type, PK/NN badges
+- [ ] Clicking expanded table name collapses it
+- [ ] Clicking different table switches expansion
+- [ ] Clicking a result row opens record detail dialog
+- [ ] Record detail dialog shows all column names with full untruncated values
+- [ ] Record detail dialog scrollable for many fields
+- [ ] Record detail dialog Close button dismisses it
 
 ## Transaction List Gain/Loss
 - [ ] Each transaction card shows G/L line: (currentPrice - pricePerShare) * numberOfShares

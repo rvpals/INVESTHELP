@@ -67,6 +67,8 @@ Android investment tracking app built with Kotlin, Jetpack Compose, and Material
 - SQL Explorer: accessible from hamburger menu, runs raw SQL via Room's SupportSQLiteDatabase
 - SQL Explorer: detects SELECT/PRAGMA/EXPLAIN queries vs DML/DDL statements
 - SQL Explorer: CSV export via FileProvider + share intent
+- SQL Explorer: table browser lists all database tables with expandable column details (name, type, PK/NN indicators)
+- SQL Explorer: clicking a result row opens record detail dialog showing all field values untruncated
 - Backup format v2: includes full merged entity fields; v1 backward compat on restore
 - Transaction list: each card shows G/L = (currentPrice - pricePerShare) * numberOfShares; green for positive, red for negative
 - Settings Data Management: "Import Data" section with CSV position import; column mapping dialog with 3-row preview, auto-mapping, account selector, progress bar; upserts into investment_items
