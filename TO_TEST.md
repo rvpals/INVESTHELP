@@ -133,6 +133,33 @@
 - [ ] Export CSV opens share sheet with CSV file
 - [ ] CSV file contains correct headers and data
 
+## Transaction List Gain/Loss
+- [ ] Each transaction card shows G/L line: (currentPrice - pricePerShare) * numberOfShares
+- [ ] Positive G/L displayed in primary color with + prefix
+- [ ] Negative G/L displayed in red (error color)
+- [ ] G/L not shown when ticker has no current price (item not in database)
+- [ ] G/L updates reactively when prices are refreshed
+- [ ] Both Buy and Sell transactions show G/L correctly
+
+## CSV Position Import
+- [ ] "Import Position CSV" button visible in Data Management tab under "Import Data" section
+- [ ] File picker opens and accepts CSV files
+- [ ] After selecting CSV: mapping dialog appears with column headers
+- [ ] 3 rows of preview data shown under each column header
+- [ ] Each column has a dropdown to map to: Skip, ticker, name, type, currentPrice, quantity, cost, dayGainLoss, totalGainLoss, value
+- [ ] Auto-maps columns whose headers match field names (case-insensitive)
+- [ ] Same app field cannot be mapped to two different CSV columns (reassigns)
+- [ ] Account selector dropdown in mapping dialog
+- [ ] Import button disabled until ticker is mapped and account is selected
+- [ ] Cancel button dismisses the dialog
+- [ ] Progress dialog shows row count and linear progress bar during import
+- [ ] Imported positions appear in Items screen with correct data
+- [ ] Existing items are updated (upserted) — unmapped fields keep existing values
+- [ ] Rows with blank ticker are skipped
+- [ ] CSV with quoted fields (commas inside quotes) parsed correctly
+- [ ] Success snackbar shows count of imported positions
+- [ ] Error snackbar shown if CSV is empty or unreadable
+
 ## App Icon & Splash
 - [ ] App icon appears correctly on home screen / app drawer
 - [ ] Adaptive icon renders properly on API 26+ (round, squircle, etc.)

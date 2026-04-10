@@ -68,6 +68,8 @@ Android investment tracking app built with Kotlin, Jetpack Compose, and Material
 - SQL Explorer: detects SELECT/PRAGMA/EXPLAIN queries vs DML/DDL statements
 - SQL Explorer: CSV export via FileProvider + share intent
 - Backup format v2: includes full merged entity fields; v1 backward compat on restore
+- Transaction list: each card shows G/L = (currentPrice - pricePerShare) * numberOfShares; green for positive, red for negative
+- Settings Data Management: "Import Data" section with CSV position import; column mapping dialog with 3-row preview, auto-mapping, account selector, progress bar; upserts into investment_items
 
 ## Build
 Open in Android Studio and sync Gradle. Requires JDK 17+.

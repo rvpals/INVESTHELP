@@ -29,11 +29,24 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
+import java.io.BufferedReader
+import java.io.InputStreamReader
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import javax.inject.Inject
+
+data class CsvImportState(
+    val csvHeaders: List<String> = emptyList(),
+    val previewRows: List<List<String>> = emptyList(),
+    val columnMappings: Map<Int, String> = emptyMap(), // csvColumnIndex -> app field name
+    val selectedAccountId: Long = -1L,
+    val isImporting: Boolean = false,
+    val importProgress: Float = 0f,
+    val importTotal: Int = 0,
+    val importCurrent: Int = 0
+)
 
 data class SettingsUiState(
     val backupFolderUri: Uri? = null,
@@ -42,7 +55,9 @@ data class SettingsUiState(
     val isExporting: Boolean = false,
     val isRestoring: Boolean = false,
     val autoUpdateShares: Boolean = false,
-    val warnBeforeDelete: Boolean = true
+    val warnBeforeDelete: Boolean = true,
+    val csvImport: CsvImportState? = null,
+    val accounts: List<InvestmentAccountEntity> = emptyList()
 )
 
 @HiltViewModel
@@ -58,6 +73,18 @@ class SettingsViewModel @Inject constructor(
         const val PREFS_NAME = "invest_help_settings"
         const val KEY_AUTO_UPDATE_SHARES = "auto_update_shares"
         const val KEY_WARN_BEFORE_DELETE = "warn_before_delete"
+        val IMPORTABLE_FIELDS = listOf(
+            "Skip",
+            "ticker",
+            "name",
+            "type",
+            "currentPrice",
+            "quantity",
+            "cost",
+            "dayGainLoss",
+            "totalGainLoss",
+            "value"
+        )
     }
 
     private val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -71,6 +98,13 @@ class SettingsViewModel @Inject constructor(
     val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
 
     private val json = Json { prettyPrint = true }
+
+    init {
+        viewModelScope.launch {
+            val accounts = accountDao.getAllAccountsSnapshot()
+            _uiState.value = _uiState.value.copy(accounts = accounts)
+        }
+    }
 
     fun setAutoUpdateShares(enabled: Boolean) {
         prefs.edit().putBoolean(KEY_AUTO_UPDATE_SHARES, enabled).apply()
@@ -269,5 +303,212 @@ class SettingsViewModel @Inject constructor(
                 )
             }
         }
+    }
+
+    // --- CSV Import ---
+
+    fun parseCsvFile(fileUri: Uri) {
+        viewModelScope.launch {
+            try {
+                val (headers, rows) = withContext(Dispatchers.IO) {
+                    context.contentResolver.openInputStream(fileUri)?.use { input ->
+                        val reader = BufferedReader(InputStreamReader(input))
+                        val headerLine = reader.readLine()
+                            ?: throw Exception("CSV file is empty.")
+                        val parsedHeaders = parseCsvLine(headerLine)
+                        val previewRows = mutableListOf<List<String>>()
+                        repeat(3) {
+                            val line = reader.readLine() ?: return@repeat
+                            previewRows.add(parseCsvLine(line))
+                        }
+                        parsedHeaders to previewRows
+                    } ?: throw Exception("Cannot read CSV file.")
+                }
+
+                // Auto-map columns whose headers match field names (case-insensitive)
+                val autoMappings = mutableMapOf<Int, String>()
+                headers.forEachIndexed { index, header ->
+                    val normalized = header.trim().lowercase()
+                    val match = IMPORTABLE_FIELDS.firstOrNull { it.lowercase() == normalized }
+                    if (match != null) autoMappings[index] = match
+                }
+
+                val firstAccount = _uiState.value.accounts.firstOrNull()
+                _uiState.value = _uiState.value.copy(
+                    csvImport = CsvImportState(
+                        csvHeaders = headers,
+                        previewRows = rows,
+                        columnMappings = autoMappings,
+                        selectedAccountId = firstAccount?.id ?: -1L
+                    )
+                )
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(
+                    message = "CSV parse failed: ${e.message}"
+                )
+            }
+        }
+    }
+
+    fun updateCsvMapping(columnIndex: Int, fieldName: String) {
+        val current = _uiState.value.csvImport ?: return
+        val newMappings = current.columnMappings.toMutableMap()
+        if (fieldName == "Skip") {
+            newMappings.remove(columnIndex)
+        } else {
+            // Remove any other column that was mapped to the same field
+            val existingKey = newMappings.entries.find { it.value == fieldName }?.key
+            if (existingKey != null) newMappings.remove(existingKey)
+            newMappings[columnIndex] = fieldName
+        }
+        _uiState.value = _uiState.value.copy(
+            csvImport = current.copy(columnMappings = newMappings)
+        )
+    }
+
+    fun setCsvImportAccount(accountId: Long) {
+        val current = _uiState.value.csvImport ?: return
+        _uiState.value = _uiState.value.copy(
+            csvImport = current.copy(selectedAccountId = accountId)
+        )
+    }
+
+    fun dismissCsvImport() {
+        _uiState.value = _uiState.value.copy(csvImport = null)
+    }
+
+    fun executeCsvImport(fileUri: Uri) {
+        val importState = _uiState.value.csvImport ?: return
+        val mappings = importState.columnMappings
+        if (!mappings.containsValue("ticker")) {
+            _uiState.value = _uiState.value.copy(
+                message = "You must map a column to 'ticker'."
+            )
+            return
+        }
+        val accountId = importState.selectedAccountId
+        if (accountId == -1L) {
+            _uiState.value = _uiState.value.copy(
+                message = "Please select an account."
+            )
+            return
+        }
+
+        _uiState.value = _uiState.value.copy(
+            csvImport = importState.copy(isImporting = true, importProgress = 0f)
+        )
+
+        viewModelScope.launch {
+            try {
+                val allRows = withContext(Dispatchers.IO) {
+                    context.contentResolver.openInputStream(fileUri)?.use { input ->
+                        val reader = BufferedReader(InputStreamReader(input))
+                        reader.readLine() // skip header
+                        val rows = mutableListOf<List<String>>()
+                        var line = reader.readLine()
+                        while (line != null) {
+                            rows.add(parseCsvLine(line))
+                            line = reader.readLine()
+                        }
+                        rows
+                    } ?: throw Exception("Cannot read CSV file.")
+                }
+
+                val total = allRows.size
+                _uiState.value = _uiState.value.copy(
+                    csvImport = _uiState.value.csvImport?.copy(importTotal = total)
+                )
+
+                var imported = 0
+                for (row in allRows) {
+                    val fieldValues = mutableMapOf<String, String>()
+                    for ((colIndex, fieldName) in mappings) {
+                        if (colIndex < row.size) {
+                            fieldValues[fieldName] = row[colIndex].trim()
+                        }
+                    }
+
+                    val ticker = fieldValues["ticker"]
+                    if (ticker.isNullOrBlank()) {
+                        imported++
+                        continue
+                    }
+
+                    val existing = itemDao.getItem(ticker, accountId)
+                    val item = InvestmentItemEntity(
+                        ticker = ticker,
+                        accountId = accountId,
+                        name = fieldValues["name"]?.ifBlank { null }
+                            ?: existing?.name ?: ticker,
+                        type = fieldValues["type"]?.let { typeName ->
+                            runCatching { InvestmentType.valueOf(typeName) }.getOrNull()
+                        } ?: existing?.type ?: InvestmentType.Stock,
+                        currentPrice = fieldValues["currentPrice"]?.toDoubleOrNull()
+                            ?: existing?.currentPrice ?: 0.0,
+                        quantity = fieldValues["quantity"]?.toDoubleOrNull()
+                            ?: existing?.quantity ?: 0.0,
+                        cost = fieldValues["cost"]?.toDoubleOrNull()
+                            ?: existing?.cost ?: 0.0,
+                        dayGainLoss = fieldValues["dayGainLoss"]?.toDoubleOrNull()
+                            ?: existing?.dayGainLoss ?: 0.0,
+                        totalGainLoss = fieldValues["totalGainLoss"]?.toDoubleOrNull()
+                            ?: existing?.totalGainLoss ?: 0.0,
+                        value = fieldValues["value"]?.toDoubleOrNull()
+                            ?: existing?.value ?: 0.0
+                    )
+                    itemDao.upsertItem(item)
+
+                    imported++
+                    _uiState.value = _uiState.value.copy(
+                        csvImport = _uiState.value.csvImport?.copy(
+                            importCurrent = imported,
+                            importProgress = imported.toFloat() / total
+                        )
+                    )
+                }
+
+                _uiState.value = _uiState.value.copy(
+                    csvImport = null,
+                    message = "Imported $imported positions."
+                )
+                // Refresh accounts in case values changed
+                val accounts = accountDao.getAllAccountsSnapshot()
+                _uiState.value = _uiState.value.copy(accounts = accounts)
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(
+                    csvImport = _uiState.value.csvImport?.copy(isImporting = false),
+                    message = "Import failed: ${e.message}"
+                )
+            }
+        }
+    }
+
+    private fun parseCsvLine(line: String): List<String> {
+        val result = mutableListOf<String>()
+        val current = StringBuilder()
+        var inQuotes = false
+        var i = 0
+        while (i < line.length) {
+            val c = line[i]
+            when {
+                c == '"' && !inQuotes -> inQuotes = true
+                c == '"' && inQuotes -> {
+                    if (i + 1 < line.length && line[i + 1] == '"') {
+                        current.append('"')
+                        i++
+                    } else {
+                        inQuotes = false
+                    }
+                }
+                c == ',' && !inQuotes -> {
+                    result.add(current.toString())
+                    current.clear()
+                }
+                else -> current.append(c)
+            }
+            i++
+        }
+        result.add(current.toString())
+        return result
     }
 }

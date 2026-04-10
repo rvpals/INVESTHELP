@@ -63,6 +63,8 @@
 - [x] SQL Explorer: result table with horizontal scrolling
 - [x] SQL Explorer: CSV export via FileProvider share intent
 - [x] FileProvider registered in AndroidManifest for cache directory
+- [x] Transaction list: gain/loss per transaction (currentPrice - pricePerShare) * shares
+- [x] Settings Data Management: CSV import for positions with column mapping dialog
 
 ## Pending
 - [ ] Increment versionCode/versionName for next release

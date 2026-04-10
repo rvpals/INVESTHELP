@@ -52,6 +52,7 @@ fun TransactionListScreen(
 ) {
     val transactions by viewModel.allTransactions.collectAsStateWithLifecycle()
     val accounts by viewModel.allAccounts.collectAsStateWithLifecycle()
+    val currentPrices by viewModel.currentPrices.collectAsStateWithLifecycle()
     val currencyFormat = NumberFormat.getCurrencyInstance(Locale.US)
     val dateFormatter = DateTimeFormatter.ofPattern("MMM dd, yyyy")
     val timeFormatter = DateTimeFormatter.ofPattern("HH:mm")
@@ -210,6 +211,18 @@ fun TransactionListScreen(
                                             text = "Total: ${currencyFormat.format(transaction.totalAmount)}",
                                             style = MaterialTheme.typography.bodySmall,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                    currentPrices[transaction.ticker]?.let { price ->
+                                        val gainLoss = (price - transaction.pricePerShare) * transaction.numberOfShares
+                                        val sign = if (gainLoss >= 0) "+" else ""
+                                        Text(
+                                            text = "G/L: $sign${currencyFormat.format(gainLoss)}",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = if (gainLoss >= 0)
+                                                MaterialTheme.colorScheme.primary
+                                            else
+                                                MaterialTheme.colorScheme.error
                                         )
                                     }
                                     if (transaction.note.isNotBlank()) {

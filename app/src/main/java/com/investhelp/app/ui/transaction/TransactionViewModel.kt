@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.time.LocalDate
@@ -39,6 +40,14 @@ class TransactionViewModel @Inject constructor(
     val allAccounts: StateFlow<List<InvestmentAccountEntity>> =
         accountRepository.getAllAccounts()
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val currentPrices: StateFlow<Map<String, Double>> =
+        itemDao.getAllItems()
+            .map { items ->
+                items.groupBy { it.ticker }
+                    .mapValues { (_, group) -> group.first().currentPrice }
+            }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
 
     private val _selectedTransaction = MutableStateFlow<InvestmentTransactionEntity?>(null)
     val selectedTransaction: StateFlow<InvestmentTransactionEntity?> = _selectedTransaction.asStateFlow()

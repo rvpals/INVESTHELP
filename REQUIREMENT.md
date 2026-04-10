@@ -89,11 +89,17 @@ Android app to track personal investments.
 - **"Simulate" button** — opens simulation with ticker, shares, and custom day range from transaction date to today; auto-runs on navigation
 - Auto-selects first account for new transactions; form state preserved via rememberSaveable
 
+### Transaction List
+- Each transaction card shows gain/loss: (current price - transaction price) * shares
+- Positive G/L shown in primary color with + prefix; negative in red
+
 ### Settings
 - **Preferences tab:**
   - Auto-update position shares toggle
   - Warn before delete toggle (default: on) — when off, skips confirmation dialogs for all delete actions
-- **Data Management tab:** backup/restore
+- **Data Management tab:**
+  - **Import Data** — Import position CSV: opens file picker, shows column mapping dialog with 3 preview rows, account selector, auto-maps matching headers, progress bar during import; upserts into investment_items table
+  - Backup folder selection, export, restore
 
 ### Simulation
 - Accessible from bottom navigation bar, item detail, or transaction form simulate button
