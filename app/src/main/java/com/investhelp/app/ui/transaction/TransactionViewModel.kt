@@ -108,7 +108,9 @@ class TransactionViewModel @Inject constructor(
                         cost = 0.0,
                         dayGainLoss = 0.0,
                         totalGainLoss = 0.0,
-                        value = 0.0
+                        value = 0.0,
+                        dayHigh = 0.0,
+                        dayLow = 0.0
                     )
                 )
             }
@@ -137,7 +139,9 @@ class TransactionViewModel @Inject constructor(
                             cost = pricePerShare * numberOfShares,
                             dayGainLoss = 0.0,
                             totalGainLoss = 0.0,
-                            value = pricePerShare * numberOfShares
+                            value = pricePerShare * numberOfShares,
+                            dayHigh = 0.0,
+                            dayLow = 0.0
                         )
                     )
                 }

@@ -150,7 +150,9 @@ class ItemViewModel @Inject constructor(
                 cost = cost,
                 dayGainLoss = existing?.dayGainLoss ?: 0.0,
                 totalGainLoss = existing?.totalGainLoss ?: 0.0,
-                value = existing?.value ?: (quantity * currentPrice)
+                value = existing?.value ?: (quantity * currentPrice),
+                dayHigh = existing?.dayHigh ?: 0.0,
+                dayLow = existing?.dayLow ?: 0.0
             )
             itemRepository.upsertItem(item)
             // Sync metadata across all accounts for same ticker
@@ -185,7 +187,9 @@ class ItemViewModel @Inject constructor(
                     cost = cost,
                     dayGainLoss = dayGainLoss,
                     totalGainLoss = totalGainLoss,
-                    value = value
+                    value = value,
+                    dayHigh = metadata?.dayHigh ?: 0.0,
+                    dayLow = metadata?.dayLow ?: 0.0
                 )
             )
             // Sync type across all accounts for same ticker
@@ -210,13 +214,21 @@ class ItemViewModel @Inject constructor(
         viewModelScope.launch {
             _refreshingTickers.value = _refreshingTickers.value + ticker
             try {
-                val price = stockPriceService.fetchPrice(ticker)
-                itemRepository.updatePriceByTicker(ticker, price)
+                val quote = stockPriceService.fetchQuote(ticker)
+                itemRepository.updatePriceByTicker(ticker, quote.price)
                 // Also update value for each row
                 val rows = itemRepository.getItemsByTicker(ticker).first()
                 for (row in rows) {
-                    val newValue = row.quantity * price
-                    itemRepository.upsertItem(row.copy(currentPrice = price, value = newValue, totalGainLoss = newValue - row.cost))
+                    val newValue = row.quantity * quote.price
+                    val dayChange = (quote.price - quote.previousClose) * row.quantity
+                    itemRepository.upsertItem(row.copy(
+                        currentPrice = quote.price,
+                        value = newValue,
+                        totalGainLoss = newValue - row.cost,
+                        dayGainLoss = dayChange,
+                        dayHigh = quote.dayHigh,
+                        dayLow = quote.dayLow
+                    ))
                 }
             } catch (e: Exception) {
                 _priceMessage.value = "Failed to fetch $ticker: ${e.message}"
@@ -249,7 +261,9 @@ class ItemViewModel @Inject constructor(
                                 currentPrice = quote.price,
                                 value = newValue,
                                 dayGainLoss = dayChange,
-                                totalGainLoss = newValue - row.cost
+                                totalGainLoss = newValue - row.cost,
+                                dayHigh = quote.dayHigh,
+                                dayLow = quote.dayLow
                             )
                         )
                     }
@@ -293,7 +307,9 @@ class ItemViewModel @Inject constructor(
                                 currentPrice = quote.price,
                                 value = newValue,
                                 dayGainLoss = dayChange,
-                                totalGainLoss = newValue - row.cost
+                                totalGainLoss = newValue - row.cost,
+                                dayHigh = quote.dayHigh,
+                                dayLow = quote.dayLow
                             )
                         )
                     }

@@ -100,16 +100,6 @@ dependencies {
     implementation(libs.room.ktx)
     ksp(libs.room.compiler)
 
-    // SQLCipher
-    implementation(libs.sqlcipher)
-    implementation(libs.androidx.sqlite)
-
-    // Biometric
-    implementation(libs.biometric)
-
-    // Security
-    implementation(libs.security.crypto)
-
     // DocumentFile (for folder picker)
     implementation(libs.androidx.documentfile)
 

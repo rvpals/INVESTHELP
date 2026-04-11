@@ -3,7 +3,6 @@ package com.investhelp.app
 import android.os.Bundle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.compose.foundation.layout.Arrangement
@@ -44,7 +43,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -62,8 +60,6 @@ import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import com.investhelp.app.auth.AuthState
-import com.investhelp.app.ui.auth.AuthViewModel
 import com.investhelp.app.ui.dashboard.DashboardViewModel
 import com.investhelp.app.ui.navigation.AccountListRoute
 import com.investhelp.app.ui.navigation.BankTransferListRoute
@@ -71,11 +67,9 @@ import com.investhelp.app.ui.navigation.DashboardRoute
 import com.investhelp.app.ui.navigation.InvestHelpNavHost
 import com.investhelp.app.ui.navigation.ItemListRoute
 import com.investhelp.app.ui.navigation.SettingsRoute
-import com.investhelp.app.ui.navigation.SetupRoute
 import com.investhelp.app.ui.navigation.SqlExplorerRoute
 import com.investhelp.app.ui.navigation.SimulationRoute
 import com.investhelp.app.ui.navigation.TransactionListRoute
-import com.investhelp.app.ui.navigation.UnlockRoute
 import com.investhelp.app.ui.theme.InvestHelpTheme
 import dagger.hilt.android.AndroidEntryPoint
 import java.text.NumberFormat
@@ -99,55 +93,25 @@ val bottomNavItems = listOf(
 @AndroidEntryPoint
 class MainActivity : AppCompatActivity() {
 
-    private val authViewModel: AuthViewModel by viewModels()
-
-    override fun onStop() {
-        super.onStop()
-        authViewModel.lockScreen()
-    }
-
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
             InvestHelpTheme {
-                val authState by authViewModel.authState.collectAsStateWithLifecycle()
                 val navController = rememberNavController()
-
-                val isUnlocked = authState is AuthState.Unlocked
-
-                LaunchedEffect(authState) {
-                    when (authState) {
-                        is AuthState.NeedsSetup -> navController.navigate(SetupRoute) {
-                            popUpTo(0) { inclusive = true }
-                        }
-                        is AuthState.Unlocked -> navController.navigate(DashboardRoute) {
-                            popUpTo(0) { inclusive = true }
-                        }
-                        is AuthState.Locked -> navController.navigate(UnlockRoute) {
-                            popUpTo(0) { inclusive = true }
-                        }
-                        else -> {}
-                    }
-                }
 
                 Scaffold(
                     topBar = {
-                        if (isUnlocked) {
-                            GlobalTopBar(navController)
-                        }
+                        GlobalTopBar(navController)
                     },
                     bottomBar = {
-                        if (isUnlocked) {
-                            BottomNavigationBar(navController)
-                        }
+                        BottomNavigationBar(navController)
                     }
                 ) { padding ->
                     InvestHelpNavHost(
                         navController = navController,
-                        startDestination = UnlockRoute,
-                        activity = this@MainActivity,
+                        startDestination = DashboardRoute,
                         modifier = Modifier.padding(padding)
                     )
                 }

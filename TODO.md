@@ -68,6 +68,17 @@
 - [x] SQL Explorer: table browser with expandable column details per table
 - [x] SQL Explorer: row detail dialog showing full field values on row click
 
+- [x] Item detail card redesign: row 1 (big font) Total Shares/Value/Cost/G/L; row 2 (medium font) Daily G/L, G/L/Share, Min, Max
+- [x] Renamed "Price:" to "Current Price:" in item detail card
+- [x] Added dayHigh/dayLow fields to StockQuote, InvestmentItemEntity, and BackupItem
+- [x] Parse regularMarketDayHigh/regularMarketDayLow from Yahoo Finance v8 chart API
+- [x] Database migration v9 -> v10 (add dayHigh, dayLow columns)
+- [x] Removed SQLCipher encryption — database is now plain Room
+- [x] Removed biometric authentication and password-based auth flow
+- [x] Deleted auth package (PasswordManager, BiometricHelper, AuthManager), auth UI (SetupScreen, UnlockScreen, AuthViewModel), AuthModule
+- [x] App now opens directly to Dashboard — no setup/unlock screens
+- [x] Removed sqlcipher, biometric, security-crypto dependencies
+
 ## Pending
 - [ ] Increment versionCode/versionName for next release
 - [ ] Fix deprecation warning: Icons.Filled.OpenInNew -> Icons.AutoMirrored.Filled.OpenInNew (ItemDetailScreen.kt)

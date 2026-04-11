@@ -28,5 +28,7 @@ data class InvestmentItemEntity(
     val cost: Double,
     val dayGainLoss: Double,
     val totalGainLoss: Double,
-    val value: Double
+    val value: Double,
+    val dayHigh: Double = 0.0,
+    val dayLow: Double = 0.0
 )

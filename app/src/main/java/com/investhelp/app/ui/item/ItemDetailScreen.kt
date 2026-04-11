@@ -149,48 +149,82 @@ fun ItemDetailScreen(
                                     label = { Text(inv.type.name) }
                                 )
                                 Text(
-                                    text = "Price: ${currencyFormat.format(inv.currentPrice)}",
+                                    text = "Current Price: ${currencyFormat.format(inv.currentPrice)}",
                                     style = MaterialTheme.typography.titleMedium
                                 )
                             }
                             Spacer(modifier = Modifier.height(8.dp))
-                            Text(
-                                text = "Total Shares: ${"%.4f".format(totalQuantity)}",
-                                style = MaterialTheme.typography.titleMedium
-                            )
-                            Text(
-                                text = "Total Value: ${currencyFormat.format(totalValue)}",
-                                style = MaterialTheme.typography.titleLarge,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                            val dailyChangePerShare = if (totalQuantity > 0) totalDayGainLoss / totalQuantity else 0.0
-                            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                                Column {
-                                    Text("Cost", style = MaterialTheme.typography.labelSmall)
-                                    Text(currencyFormat.format(totalCost), style = MaterialTheme.typography.bodyMedium)
-                                }
-                                Column {
-                                    Text("Daily/Share", style = MaterialTheme.typography.labelSmall)
+                            // Row 1: Total Shares, Total Value, Total Cost, Total G/L (big font)
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text("Total Shares", style = MaterialTheme.typography.labelSmall)
                                     Text(
-                                        currencyFormat.format(dailyChangePerShare),
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = if (dailyChangePerShare >= 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
+                                        "%.4f".format(totalQuantity),
+                                        style = MaterialTheme.typography.titleMedium
                                     )
                                 }
-                                Column {
-                                    Text("Day G/L", style = MaterialTheme.typography.labelSmall)
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text("Total Value", style = MaterialTheme.typography.labelSmall)
+                                    Text(
+                                        currencyFormat.format(totalValue),
+                                        style = MaterialTheme.typography.titleMedium,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                }
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text("Total Cost", style = MaterialTheme.typography.labelSmall)
+                                    Text(
+                                        currencyFormat.format(totalCost),
+                                        style = MaterialTheme.typography.titleMedium
+                                    )
+                                }
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text("Total G/L", style = MaterialTheme.typography.labelSmall)
+                                    Text(
+                                        currencyFormat.format(totalGainLoss),
+                                        style = MaterialTheme.typography.titleMedium,
+                                        color = if (totalGainLoss >= 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
+                                    )
+                                }
+                            }
+                            Spacer(modifier = Modifier.height(8.dp))
+                            // Row 2: Daily G/L, Daily G/L per Share, Daily Min, Daily Max (medium font)
+                            val dailyChangePerShare = if (totalQuantity > 0) totalDayGainLoss / totalQuantity else 0.0
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text("Daily G/L", style = MaterialTheme.typography.labelSmall)
                                     Text(
                                         currencyFormat.format(totalDayGainLoss),
                                         style = MaterialTheme.typography.bodyMedium,
                                         color = if (totalDayGainLoss >= 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
                                     )
                                 }
-                                Column {
-                                    Text("Total G/L", style = MaterialTheme.typography.labelSmall)
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text("Daily G/L/Share", style = MaterialTheme.typography.labelSmall)
                                     Text(
-                                        currencyFormat.format(totalGainLoss),
+                                        currencyFormat.format(dailyChangePerShare),
                                         style = MaterialTheme.typography.bodyMedium,
-                                        color = if (totalGainLoss >= 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
+                                        color = if (dailyChangePerShare >= 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
+                                    )
+                                }
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text("Daily Min", style = MaterialTheme.typography.labelSmall)
+                                    Text(
+                                        currencyFormat.format(inv.dayLow),
+                                        style = MaterialTheme.typography.bodyMedium
+                                    )
+                                }
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text("Daily Max", style = MaterialTheme.typography.labelSmall)
+                                    Text(
+                                        currencyFormat.format(inv.dayHigh),
+                                        style = MaterialTheme.typography.bodyMedium
                                     )
                                 }
                             }

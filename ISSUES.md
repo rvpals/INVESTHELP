@@ -9,6 +9,7 @@
 - Migration 4->5 drops existing positions table (fresh install or re-entry needed after upgrade)
 - Migration 5->6 recreates transactions table; existing transactions map investmentItemId to ticker via items table
 - Migration 8->9 merges positions into investment_items table; items without positions are dropped during migration
+- Migration 9->10 adds dayHigh/dayLow columns to investment_items
 - Yahoo Finance API (v8/v10) is undocumented and may change without notice; no API key required
 - Yahoo Finance historical data for large ranges (5Y+) uses weekly interval to reduce data volume
-- Uninstalling app clears all data (encrypted DB); signature mismatch requires uninstall before reinstall
+- Encryption removed: existing users with an SQLCipher-encrypted database must uninstall and reinstall, then restore from a JSON backup

@@ -31,6 +31,8 @@ data class BackupItem(
     val dayGainLoss: Double = 0.0,
     val totalGainLoss: Double = 0.0,
     val value: Double = 0.0,
+    val dayHigh: Double = 0.0,
+    val dayLow: Double = 0.0,
     // v1 compat fields (ignored in v2 export)
     val id: Long = 0,
     val numShares: Double = 0.0

@@ -3,10 +3,9 @@
 ## Overview
 Android app to track personal investments.
 
-## Storage & Security
-- SQLite for local storage
-- Database encryption with password (SQLCipher)
-- Biometric authentication support
+## Storage
+- Room (SQLite) for local storage
+- No encryption — database opens directly on app launch
 
 ## Data Objects
 
@@ -27,6 +26,8 @@ Android app to track personal investments.
 - Current value (from live price refresh)
 - Day gain/loss
 - Total gain/loss
+- Day high price (from Yahoo Finance regularMarketDayHigh)
+- Day low price (from Yahoo Finance regularMarketDayLow)
 - Auto-created when a transaction references a new ticker (defaults to Stock type)
 
 ### Investment Transaction
@@ -49,7 +50,7 @@ Android app to track personal investments.
 ## Features
 
 ### Navigation
-- **Global top bar** — persistent across all screens when unlocked:
+- **Global top bar** — persistent across all screens:
   - Portfolio value 3D button (tap to navigate to Dashboard, auto-refreshes)
   - Hamburger menu (Accounts, Settings, SQL Explorer, About)
 - **Bottom nav** — Dashboard, Items, Transfer, Transaction, Simulation (colorful icons with shadow)
@@ -73,9 +74,10 @@ Android app to track personal investments.
 - Account values auto-update from item values
 
 ### Item Detail
-- Shows aggregate info across all accounts: total quantity, value, cost, gain/loss
+- Header card: type chip + "Current Price: $X.XX"
+- Card row 1 (big font): Total Shares, Total Value, Total Cost, Total G/L
+- Card row 2 (medium font): Daily G/L, Daily G/L/Share, Daily Min Price, Daily Max Price
 - Per-account breakdown section
-- Daily change per share displayed in header card
 - Transactions list for the ticker
 - **Analysis Info** — fetches Yahoo Finance quoteSummary (sector, industry, P/E, EPS, 52-week range, profit margins, business summary) displayed in a bottom sheet
 - **Yahoo Finance link** — opens ticker page in browser
@@ -114,7 +116,7 @@ Android app to track personal investments.
 
 ### SQL Explorer
 - Accessible from hamburger menu in top bar
-- Execute raw SQL queries against the encrypted database
+- Execute raw SQL queries against the database
 - Auto-detects query type: SELECT/PRAGMA/EXPLAIN show results table; other statements show success message
 - Result table with column headers, horizontal scrolling, monospace font
 - Export results to CSV via share intent (FileProvider)

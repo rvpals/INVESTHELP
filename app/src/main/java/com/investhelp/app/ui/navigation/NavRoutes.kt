@@ -2,8 +2,6 @@ package com.investhelp.app.ui.navigation
 
 import kotlinx.serialization.Serializable
 
-@Serializable object SetupRoute
-@Serializable object UnlockRoute
 @Serializable object DashboardRoute
 @Serializable object AccountListRoute
 @Serializable data class AccountDetailRoute(val accountId: Long)

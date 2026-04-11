@@ -17,8 +17,12 @@
 - [ ] Delete an account — items under that account cascade delete
 
 ## Item Detail Screen
-- [ ] Shows aggregate info: total quantity, total value, total cost, daily/share, day G/L, total G/L across all accounts
-- [ ] Daily/Share column shows per-share daily price change with correct color (green/red)
+- [ ] Card header: type chip + "Current Price: $X.XX" (renamed from "Price:")
+- [ ] Card row 1 (big font, titleMedium): Total Shares, Total Value, Total Cost, Total G/L — all same size
+- [ ] Card row 2 (medium font, bodyMedium): Daily G/L, Daily G/L/Share, Daily Min, Daily Max — all same size
+- [ ] Total G/L color: green (primary) for positive, red (error) for negative
+- [ ] Daily G/L and Daily G/L/Share color: green for positive, red for negative
+- [ ] Daily Min/Max show dayLow/dayHigh from Yahoo Finance (0.00 before first refresh)
 - [ ] Per-account breakdown section shows individual account rows
 - [ ] Analysis Info and Yahoo Finance buttons on same row
 - [ ] Analysis Info button fetches Yahoo Finance data and shows bottom sheet
@@ -64,10 +68,10 @@
 - [ ] Auto-update: saving transaction updates the item's quantity and value
 
 ## Global Top Bar
-- [ ] Portfolio value button visible on all screens when unlocked
+- [ ] Portfolio value button visible on all screens
 - [ ] Tapping portfolio button navigates to Dashboard
 - [ ] Portfolio value auto-refreshes when item values change
-- [ ] Hamburger menu opens dropdown with Accounts, Settings, About
+- [ ] Hamburger menu opens dropdown with Accounts, Settings, SQL Explorer, About
 - [ ] Each menu item navigates to correct screen
 - [ ] About dialog shows app name, version, description
 
@@ -112,12 +116,17 @@
 - [ ] Restore v1 backup assigns items to first account, maps numShares to quantity
 - [ ] Restored data matches original (accounts, items, transactions, bank transfers)
 
-## Database Migration v8 -> v9
-- [ ] Fresh install works correctly
-- [ ] Upgrade from v8 to v9 merges positions into investment_items
-- [ ] Position data (quantity, cost, value, G/L) preserved after migration
-- [ ] Item metadata (name, type, price) preserved after migration
-- [ ] Items without positions are dropped (cannot assign accountId)
+## Database Migration v9 -> v10
+- [ ] Fresh install works correctly (version 10)
+- [ ] Upgrade from v9 to v10 adds dayHigh, dayLow columns with default 0.0
+- [ ] Existing items retain all data after migration
+- [ ] dayHigh/dayLow populate correctly after price refresh
+
+## No Auth / Direct Launch
+- [ ] App opens directly to Dashboard (no setup or unlock screen)
+- [ ] Top bar and bottom nav visible immediately on launch
+- [ ] All screens accessible without authentication
+- [ ] Backup restore works on fresh install (Settings > Restore)
 
 ## SQL Explorer
 - [ ] SQL Explorer accessible from hamburger menu
@@ -172,4 +181,4 @@
 - [ ] App icon appears correctly on home screen / app drawer
 - [ ] Adaptive icon renders properly on API 26+ (round, squircle, etc.)
 - [ ] Splash screen shows icon on app cold start
-- [ ] Splash screen transitions smoothly to auth screen
+- [ ] Splash screen transitions smoothly to Dashboard

@@ -8,21 +8,19 @@ Android investment tracking app built with Kotlin, Jetpack Compose, and Material
 - **Min SDK:** 29, Target SDK: 35
 - **Architecture:** MVVM + Repository pattern
 - **DI:** Hilt (KSP)
-- **Database:** Room + SQLCipher (encrypted), version 9
-- **Auth:** Biometric + EncryptedSharedPreferences
+- **Database:** Room, version 10
 - **Navigation:** Compose Navigation (type-safe routes)
 - **Splash:** AndroidX SplashScreen API (core-splashscreen 1.0.1)
 - **Charts:** Custom Canvas-drawn (pie chart, line chart) — no external chart library
 - **Images:** Coil 2.7.0 for async image loading (company logos)
 
 ## Package Structure
-- `auth/` - Authentication (PasswordManager, BiometricHelper, AuthManager)
 - `data/local/` - Room database, entities, DAOs, DatabaseProvider
 - `data/remote/` - StockPriceService (Yahoo Finance API integration)
 - `data/repository/` - Repository interfaces and implementations
-- `di/` - Hilt modules (DatabaseModule, RepositoryModule, AuthModule)
+- `di/` - Hilt modules (DatabaseModule, RepositoryModule)
 - `model/` - Domain models and enums
-- `ui/` - Compose screens organized by feature (auth, dashboard, account, item, transaction, transfer, simulation, sqlexplorer)
+- `ui/` - Compose screens organized by feature (dashboard, account, item, transaction, transfer, simulation, sqlexplorer)
 
 ## Key Design Decisions
 - Merged InvestmentItem + Position into single `investment_items` table with composite PK (ticker + accountId)
@@ -32,7 +30,7 @@ Android investment tracking app built with Kotlin, Jetpack Compose, and Material
 - Transaction table references ticker directly (not FK) — simpler model
 - Transaction time is optional (nullable), totalAmount for verification, note field
 - Navigation routes use ticker strings (not Long IDs) for item detail, form, and statistics
-- DatabaseProvider pattern: DB opens lazily after authentication
+- DatabaseProvider pattern: DB opens lazily on first access
 - CASCADE deletes: removing account removes associated items, transactions, and bank transfers
 - Bank transfers table tracks fund transfers to investment accounts (date, amount, account, note)
 - Items screen combines pie chart + STOCK/ETF tabs with Refresh All toolbar action
@@ -59,7 +57,9 @@ Android investment tracking app built with Kotlin, Jetpack Compose, and Material
 - Bank Transfers screen: total amount summary grouped by account at top
 - **Image loading:** Coil 2.7.0 for company logos
 - Item add/edit dialog: type selector dropdown (Stock, ETF, Bond, MutualFund, Crypto, Other); auto-fills type when selecting existing ticker
-- Item detail: "Daily/Share" column shows per-share daily price change
+- Item detail card row 1 (big font): Total Shares, Total Value, Total Cost, Total G/L
+- Item detail card row 2 (medium font): Daily G/L, Daily G/L/Share, Daily Min Price, Daily Max Price
+- Item detail: dayHigh/dayLow fetched from Yahoo Finance `regularMarketDayHigh`/`regularMarketDayLow`
 - Dashboard positions pie chart: collapsible card, legend limited to top 20 with "More" button to show all
 - Settings: "Warn before delete" toggle (default: on) — when off, skips confirmation dialogs for delete actions
 - Transaction form: "Simulate" button calculates days since transaction date and opens simulation with custom range

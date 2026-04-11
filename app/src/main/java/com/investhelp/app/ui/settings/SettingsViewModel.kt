@@ -160,7 +160,9 @@ class SettingsViewModel @Inject constructor(
                             cost = it.cost,
                             dayGainLoss = it.dayGainLoss,
                             totalGainLoss = it.totalGainLoss,
-                            value = it.value
+                            value = it.value,
+                            dayHigh = it.dayHigh,
+                            dayLow = it.dayLow
                         )
                     },
                     transactions = transactions.map {
@@ -247,7 +249,9 @@ class SettingsViewModel @Inject constructor(
                                 cost = i.cost,
                                 dayGainLoss = i.dayGainLoss,
                                 totalGainLoss = i.totalGainLoss,
-                                value = i.value
+                                value = i.value,
+                                dayHigh = i.dayHigh,
+                                dayLow = i.dayLow
                             )
                         )
                     } else {
@@ -454,7 +458,9 @@ class SettingsViewModel @Inject constructor(
                         totalGainLoss = fieldValues["totalGainLoss"]?.toDoubleOrNull()
                             ?: existing?.totalGainLoss ?: 0.0,
                         value = fieldValues["value"]?.toDoubleOrNull()
-                            ?: existing?.value ?: 0.0
+                            ?: existing?.value ?: 0.0,
+                        dayHigh = existing?.dayHigh ?: 0.0,
+                        dayLow = existing?.dayLow ?: 0.0
                     )
                     itemDao.upsertItem(item)
 

@@ -2,22 +2,15 @@ package com.investhelp.app.ui.navigation
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.fragment.app.FragmentActivity
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.toRoute
-import com.investhelp.app.auth.BiometricHelper
-import androidx.compose.runtime.rememberCoroutineScope
 import com.investhelp.app.ui.account.AccountDetailScreen
-import kotlinx.coroutines.launch
 import com.investhelp.app.ui.account.AccountFormScreen
 import com.investhelp.app.ui.account.AccountListScreen
 import com.investhelp.app.ui.account.AccountViewModel
-import com.investhelp.app.ui.auth.AuthViewModel
-import com.investhelp.app.ui.auth.SetupScreen
-import com.investhelp.app.ui.auth.UnlockScreen
 import com.investhelp.app.ui.dashboard.DashboardScreen
 import com.investhelp.app.ui.dashboard.DashboardViewModel
 import com.investhelp.app.ui.item.ItemDetailScreen
@@ -44,7 +37,6 @@ import com.investhelp.app.ui.transfer.BankTransferViewModel
 fun InvestHelpNavHost(
     navController: NavHostController,
     startDestination: Any,
-    activity: FragmentActivity,
     modifier: Modifier = Modifier
 ) {
     NavHost(
@@ -52,23 +44,6 @@ fun InvestHelpNavHost(
         startDestination = startDestination,
         modifier = modifier
     ) {
-        composable<SetupRoute> {
-            val viewModel: AuthViewModel = hiltViewModel()
-            SetupScreen(
-                onSetup = { password -> viewModel.setupPassword(password) }
-            )
-        }
-
-        composable<UnlockRoute> {
-            val viewModel: AuthViewModel = hiltViewModel()
-            UnlockScreen(
-                activity = activity,
-                biometricHelper = viewModel.biometricHelper,
-                onUnlockWithPassword = { password -> viewModel.unlockWithPassword(password) },
-                onUnlockWithBiometric = { viewModel.unlockWithBiometric() }
-            )
-        }
-
         composable<DashboardRoute> {
             val viewModel: DashboardViewModel = hiltViewModel()
             DashboardScreen(
