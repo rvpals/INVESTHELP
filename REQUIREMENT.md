@@ -53,10 +53,11 @@ Android app to track personal investments.
 - **Global top bar** — persistent across all screens:
   - Portfolio value 3D button (tap to navigate to Dashboard, auto-refreshes)
   - Hamburger menu (Accounts, Settings, SQL Explorer, About)
+  - About dialog includes "Show Log" button for viewing application log
 - **Bottom nav** — Dashboard, Items, Transfer, Transaction, Simulation (colorful icons with shadow)
 
 ### Dashboard
-- **Market index cards** — horizontal scrollable row of small cards at the top; default: NASDAQ (^IXIC), S&P 500 (^GSPC), Dow (^DJI), Gold (GC=F); also available: Russell 2K, Silver, Oil, Bitcoin; each card shows label, price, daily change with percentage; customizable in Settings > Preferences; auto-refreshes on app start and with Refresh All
+- **Market index cards** — horizontal scrollable row of small cards at the top; default: NASDAQ (^IXIC), S&P 500 (^GSPC), Dow (^DJI), Gold (GC=F); also available: Russell 2K, Silver, Oil, Bitcoin; each card shows label, price, daily change with percentage; clicking a card opens Yahoo Finance page for the index; customizable in Settings > Preferences; auto-refreshes on app start and with Refresh All
 - Accounts list with current values
 - **Pie chart** — collapsible positions card; shows all items by ticker value with shares labels inside slices; legend limited to top 20 with "More" button to show all
 - FAB to add accounts
@@ -130,6 +131,13 @@ Android app to track personal investments.
 - Export all data to JSON file (v2 format with full merged entity fields)
 - Restore from JSON backup file (supports both v1 and v2 formats)
 - v1 backward compatibility: assigns items to first account, maps numShares to quantity
+
+### Application Log
+- In-memory log (AppLog singleton) captures price fetch results, refresh summaries, and per-ticker errors
+- Up to 200 entries; oldest entries removed when limit exceeded
+- Viewable from About dialog via "Show Log" button
+- Log viewer shows entries newest-first with timestamps (MM-dd HH:mm:ss format)
+- Clear button to wipe all log entries
 
 ### App Branding
 - Custom app icon (invest_help_icon.png)

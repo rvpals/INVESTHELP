@@ -83,6 +83,11 @@
 - [x] Market index settings: customizable in Settings > Preferences with toggles for 8 indices
 - [x] Market indices auto-refresh on app start and when refreshing all prices
 
+- [x] Settings Preferences tab: made scrollable so all market indices toggles are visible
+- [x] Dashboard market index cards: clickable to open Yahoo Finance page for the index
+- [x] Application log: AppLog singleton captures price fetch results, refresh summaries, and errors (up to 200 entries)
+- [x] About dialog: "Show Log" button opens scrollable log viewer (newest first) with clear button
+
 ## Pending
 - [ ] Increment versionCode/versionName for next release
 - [ ] Fix deprecation warning: Icons.Filled.OpenInNew -> Icons.AutoMirrored.Filled.OpenInNew (ItemDetailScreen.kt)

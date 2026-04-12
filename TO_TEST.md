@@ -89,9 +89,11 @@
 - [ ] Positive change displayed in green, negative in red
 - [ ] Cards show "---" placeholder while loading
 - [ ] Cards horizontally scrollable when more than 4 are enabled
+- [ ] Clicking a market index card opens Yahoo Finance page for that index in browser
 - [ ] Indices refresh automatically on app start
 - [ ] Indices refresh when tapping portfolio value button (Refresh All)
 - [ ] Settings > Preferences: "Dashboard Market Indices" section visible
+- [ ] All 8 market index toggles visible and accessible (scrollable preferences)
 - [ ] Each of 8 indices has a toggle (NASDAQ, S&P 500, Dow, Gold, Russell 2K, Silver, Oil, Bitcoin)
 - [ ] Toggling an index on/off persists after app restart
 - [ ] Disabling all indices hides the cards row on dashboard
@@ -191,6 +193,19 @@
 - [ ] CSV with quoted fields (commas inside quotes) parsed correctly
 - [ ] Success snackbar shows count of imported positions
 - [ ] Error snackbar shown if CSV is empty or unreadable
+
+## Application Log (About > Show Log)
+- [ ] About dialog shows "Show Log" button
+- [ ] Clicking "Show Log" opens log viewer dialog
+- [ ] Log viewer shows "No log entries yet." when log is empty
+- [ ] After refreshing prices, log entries appear with timestamps (newest first)
+- [ ] Log shows per-ticker failure details (ticker name + error message)
+- [ ] Log shows summary messages (e.g. "Updated 5 tickers, 1 failed")
+- [ ] Market index fetch results appear in log
+- [ ] Portfolio refresh results appear in log
+- [ ] Clear button (trash icon) in log viewer title clears all entries
+- [ ] Log viewer is scrollable for many entries
+- [ ] Log entries capped at 200 (oldest removed when exceeded)
 
 ## App Icon & Splash
 - [ ] App icon appears correctly on home screen / app drawer

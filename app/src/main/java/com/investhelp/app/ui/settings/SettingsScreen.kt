@@ -97,6 +97,7 @@ private fun PreferencesTab(viewModel: SettingsViewModel, uiState: SettingsUiStat
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .verticalScroll(rememberScrollState())
             .padding(24.dp)
     ) {
         Text("Transactions", style = MaterialTheme.typography.titleMedium)

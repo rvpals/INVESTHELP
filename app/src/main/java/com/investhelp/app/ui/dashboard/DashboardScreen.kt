@@ -47,8 +47,11 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import android.content.Intent
+import android.net.Uri
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.investhelp.app.model.AccountWithValue
 import java.text.DecimalFormat
@@ -162,12 +165,20 @@ private fun MarketIndexCards(indices: List<MarketIndexQuote>) {
 
 @Composable
 private fun MarketIndexCard(index: MarketIndexQuote) {
+    val context = LocalContext.current
     val isPositive = index.change >= 0
     val changeColor = if (index.price == 0.0) MaterialTheme.colorScheme.onSurfaceVariant
         else if (isPositive) Color(0xFF2E7D32) else Color(0xFFC62828)
     val priceFormat = if (index.price >= 1000) DecimalFormat("#,##0.00") else DecimalFormat("#,##0.00")
 
     Card(
+        onClick = {
+            val intent = Intent(
+                Intent.ACTION_VIEW,
+                Uri.parse("https://finance.yahoo.com/quote/${index.symbol}")
+            )
+            context.startActivity(intent)
+        },
         modifier = Modifier
             .width(140.dp)
             .height(IntrinsicSize.Min),

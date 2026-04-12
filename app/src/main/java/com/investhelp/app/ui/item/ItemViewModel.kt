@@ -2,6 +2,7 @@ package com.investhelp.app.ui.item
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.investhelp.app.AppLog
 import com.investhelp.app.data.local.dao.InvestmentAccountDao
 import com.investhelp.app.data.local.entity.InvestmentAccountEntity
 import com.investhelp.app.data.local.entity.InvestmentItemEntity
@@ -232,6 +233,7 @@ class ItemViewModel @Inject constructor(
                 }
             } catch (e: Exception) {
                 _priceMessage.value = "Failed to fetch $ticker: ${e.message}"
+                AppLog.log("Fetch $ticker failed: ${e.message}")
             } finally {
                 _refreshingTickers.value = _refreshingTickers.value - ticker
             }
@@ -268,13 +270,16 @@ class ItemViewModel @Inject constructor(
                         )
                     }
                     successCount++
-                } catch (_: Exception) {
+                } catch (e: Exception) {
                     failCount++
+                    AppLog.log("Refresh $ticker failed: ${e.message}")
                 }
             }
 
-            _message.value = "Refreshed $successCount tickers" +
+            val msg = "Refreshed $successCount tickers" +
                     if (failCount > 0) ", $failCount failed" else ""
+            _message.value = msg
+            AppLog.log(msg)
             _isRefreshing.value = false
         }
     }
@@ -314,14 +319,17 @@ class ItemViewModel @Inject constructor(
                         )
                     }
                     successCount++
-                } catch (_: Exception) {
+                } catch (e: Exception) {
                     failCount++
+                    AppLog.log("Update $ticker failed: ${e.message}")
                 } finally {
                     _refreshingTickers.value = _refreshingTickers.value - ticker
                 }
             }
-            _priceMessage.value = "Updated $successCount tickers" +
+            val msg = "Updated $successCount tickers" +
                     if (failCount > 0) ", $failCount failed" else ""
+            _priceMessage.value = msg
+            AppLog.log(msg)
             _isRefreshingAll.value = false
         }
     }

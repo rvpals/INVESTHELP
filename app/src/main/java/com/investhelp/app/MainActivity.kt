@@ -11,9 +11,12 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountBalance
 import androidx.compose.material.icons.filled.AccountBalanceWallet
@@ -60,6 +63,7 @@ import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.compose.material.icons.filled.Delete
 import com.investhelp.app.ui.dashboard.DashboardViewModel
 import com.investhelp.app.ui.navigation.AccountListRoute
 import com.investhelp.app.ui.navigation.BankTransferListRoute
@@ -129,6 +133,7 @@ fun GlobalTopBar(navController: NavHostController) {
     val currencyFormat = NumberFormat.getCurrencyInstance(Locale.US)
     var menuExpanded by remember { mutableStateOf(false) }
     var showAbout by remember { mutableStateOf(false) }
+    var showLog by remember { mutableStateOf(false) }
 
     if (showAbout) {
         AlertDialog(
@@ -147,6 +152,59 @@ fun GlobalTopBar(navController: NavHostController) {
             confirmButton = {
                 TextButton(onClick = { showAbout = false }) {
                     Text("OK")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showAbout = false; showLog = true }) {
+                    Text("Show Log")
+                }
+            }
+        )
+    }
+
+    if (showLog) {
+        val logEntries = remember { AppLog.entries }
+        AlertDialog(
+            onDismissRequest = { showLog = false },
+            title = {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("Application Log")
+                    IconButton(onClick = { AppLog.clear(); showLog = false }) {
+                        Icon(Icons.Default.Delete, contentDescription = "Clear log")
+                    }
+                }
+            },
+            text = {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 400.dp)
+                        .verticalScroll(rememberScrollState())
+                ) {
+                    if (logEntries.isEmpty()) {
+                        Text(
+                            "No log entries yet.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    } else {
+                        logEntries.asReversed().forEach { entry ->
+                            Text(
+                                text = entry.formatted(),
+                                style = MaterialTheme.typography.bodySmall,
+                                modifier = Modifier.padding(vertical = 2.dp)
+                            )
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showLog = false }) {
+                    Text("Close")
                 }
             }
         )

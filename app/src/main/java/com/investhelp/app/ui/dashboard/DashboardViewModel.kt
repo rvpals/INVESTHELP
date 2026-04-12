@@ -8,6 +8,7 @@ import com.investhelp.app.data.repository.AccountRepository
 import com.investhelp.app.data.repository.InvestmentItemRepository
 import com.investhelp.app.model.AccountWithValue
 import com.investhelp.app.ui.settings.SettingsViewModel
+import com.investhelp.app.AppLog
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -77,6 +78,8 @@ class DashboardViewModel @Inject constructor(
             }
 
             // Fetch each quote
+            var successCount = 0
+            var failCount = 0
             for (config in orderedSymbols) {
                 try {
                     val quote = stockPriceService.fetchQuote(config.symbol)
@@ -91,8 +94,14 @@ class DashboardViewModel @Inject constructor(
                             changePercent = changePct
                         ) else it
                     }
-                } catch (_: Exception) { }
+                    successCount++
+                } catch (e: Exception) {
+                    failCount++
+                    AppLog.log("Market index ${config.symbol} fetch failed: ${e.message}")
+                }
             }
+            AppLog.log("Market indices refreshed: $successCount ok" +
+                    if (failCount > 0) ", $failCount failed" else "")
         }
     }
 
@@ -104,6 +113,8 @@ class DashboardViewModel @Inject constructor(
 
                 val allItems = itemRepository.getAllItems().first()
                 val byTicker = allItems.groupBy { it.ticker }
+                var successCount = 0
+                var failCount = 0
                 for ((ticker, rows) in byTicker) {
                     try {
                         val quote = stockPriceService.fetchQuote(ticker)
@@ -121,8 +132,14 @@ class DashboardViewModel @Inject constructor(
                                 )
                             )
                         }
-                    } catch (_: Exception) { }
+                        successCount++
+                    } catch (e: Exception) {
+                        failCount++
+                        AppLog.log("Price fetch $ticker failed: ${e.message}")
+                    }
                 }
+                AppLog.log("Portfolio refresh: $successCount tickers ok" +
+                        if (failCount > 0) ", $failCount failed" else "")
             } finally {
                 _isRefreshing.value = false
             }

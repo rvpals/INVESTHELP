@@ -1,5 +1,8 @@
 # Invest Help - Known Issues
 
+## Resolved
+- Settings Preferences tab: market index toggles beyond the first 4 were not visible (fixed: made column scrollable)
+
 ## Minor
 - Deprecation warning: `Icons.Filled.OpenInNew` should use `Icons.AutoMirrored.Filled.OpenInNew` (ItemDetailScreen.kt)
 - Deprecation warning: `statusBarColor` deprecated in Java (Theme.kt:51)
