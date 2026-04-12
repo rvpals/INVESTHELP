@@ -152,6 +152,37 @@ private fun PreferencesTab(viewModel: SettingsViewModel, uiState: SettingsUiStat
                 onCheckedChange = { viewModel.setWarnBeforeDelete(it) }
             )
         }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        Text("Dashboard Market Indices", style = MaterialTheme.typography.titleMedium)
+
+        Spacer(modifier = Modifier.height(4.dp))
+
+        Text(
+            "Choose which market indices to show on the dashboard",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        SettingsViewModel.AVAILABLE_MARKET_INDICES.forEach { index ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    "${index.label} (${index.symbol})",
+                    style = MaterialTheme.typography.bodyLarge
+                )
+                Switch(
+                    checked = uiState.enabledMarketIndices.contains(index.symbol),
+                    onCheckedChange = { viewModel.toggleMarketIndex(index.symbol, it) }
+                )
+            }
+        }
     }
 }
 

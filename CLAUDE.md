@@ -44,6 +44,7 @@ Android investment tracking app built with Kotlin, Jetpack Compose, and Material
 - Bottom nav: Dashboard, Items, Transfer, Transaction, Simulation (colorful icons with shadow)
 - Simulation time ranges: 1W, 2W, 1M, 3M, 6M, 1Y, 2Y, 5Y, 10Y, MAX (grouped in Week/Month/Year rows)
 - Simulation chart supports tap-to-select with tooltip (price + date)
+- Dashboard market index cards: horizontal row of small cards (NASDAQ, S&P 500, Dow, Gold + more) showing price and daily change; customizable in Settings > Preferences
 - Dashboard pie chart shows all items by ticker with shares labels inside slices
 - Dashboard pie chart legend uses grid-line table with Ticker, Shares, % columns
 - Transaction form: "Analyze Price" button next to Price field opens price analysis screen
@@ -62,6 +63,7 @@ Android investment tracking app built with Kotlin, Jetpack Compose, and Material
 - Item detail: dayHigh/dayLow fetched from Yahoo Finance `regularMarketDayHigh`/`regularMarketDayLow`
 - Dashboard positions pie chart: collapsible card, legend limited to top 20 with "More" button to show all
 - Settings: "Warn before delete" toggle (default: on) — when off, skips confirmation dialogs for delete actions
+- Settings: "Dashboard Market Indices" section with toggles for 8 indices (NASDAQ, S&P 500, Dow, Gold, Russell 2K, Silver, Oil, Bitcoin); default: first 4 enabled
 - Transaction form: "Simulate" button calculates days since transaction date and opens simulation with custom range
 - Simulation: supports custom day ranges from transaction simulation (auto-runs on navigation)
 - SQL Explorer: accessible from hamburger menu, runs raw SQL via Room's SupportSQLiteDatabase

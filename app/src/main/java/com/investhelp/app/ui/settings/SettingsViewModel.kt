@@ -56,6 +56,7 @@ data class SettingsUiState(
     val isRestoring: Boolean = false,
     val autoUpdateShares: Boolean = false,
     val warnBeforeDelete: Boolean = true,
+    val enabledMarketIndices: Set<String> = SettingsViewModel.DEFAULT_MARKET_INDICES,
     val csvImport: CsvImportState? = null,
     val accounts: List<InvestmentAccountEntity> = emptyList()
 )
@@ -73,6 +74,7 @@ class SettingsViewModel @Inject constructor(
         const val PREFS_NAME = "invest_help_settings"
         const val KEY_AUTO_UPDATE_SHARES = "auto_update_shares"
         const val KEY_WARN_BEFORE_DELETE = "warn_before_delete"
+        const val KEY_MARKET_INDICES = "market_indices"
         val IMPORTABLE_FIELDS = listOf(
             "Skip",
             "ticker",
@@ -85,6 +87,24 @@ class SettingsViewModel @Inject constructor(
             "totalGainLoss",
             "value"
         )
+
+        data class MarketIndexConfig(
+            val symbol: String,
+            val label: String
+        )
+
+        val AVAILABLE_MARKET_INDICES = listOf(
+            MarketIndexConfig("^IXIC", "NASDAQ"),
+            MarketIndexConfig("^GSPC", "S&P 500"),
+            MarketIndexConfig("^DJI", "Dow"),
+            MarketIndexConfig("GC=F", "Gold"),
+            MarketIndexConfig("^RUT", "Russell 2K"),
+            MarketIndexConfig("SI=F", "Silver"),
+            MarketIndexConfig("CL=F", "Oil"),
+            MarketIndexConfig("BTC-USD", "Bitcoin")
+        )
+
+        val DEFAULT_MARKET_INDICES = setOf("^IXIC", "^GSPC", "^DJI", "GC=F")
     }
 
     private val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -92,7 +112,9 @@ class SettingsViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(
         SettingsUiState(
             autoUpdateShares = prefs.getBoolean(KEY_AUTO_UPDATE_SHARES, false),
-            warnBeforeDelete = prefs.getBoolean(KEY_WARN_BEFORE_DELETE, true)
+            warnBeforeDelete = prefs.getBoolean(KEY_WARN_BEFORE_DELETE, true),
+            enabledMarketIndices = prefs.getStringSet(KEY_MARKET_INDICES, null)
+                ?: DEFAULT_MARKET_INDICES
         )
     )
     val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
@@ -114,6 +136,13 @@ class SettingsViewModel @Inject constructor(
     fun setWarnBeforeDelete(enabled: Boolean) {
         prefs.edit().putBoolean(KEY_WARN_BEFORE_DELETE, enabled).apply()
         _uiState.value = _uiState.value.copy(warnBeforeDelete = enabled)
+    }
+
+    fun toggleMarketIndex(symbol: String, enabled: Boolean) {
+        val current = _uiState.value.enabledMarketIndices.toMutableSet()
+        if (enabled) current.add(symbol) else current.remove(symbol)
+        prefs.edit().putStringSet(KEY_MARKET_INDICES, current).apply()
+        _uiState.value = _uiState.value.copy(enabledMarketIndices = current)
     }
 
     fun setBackupFolder(uri: Uri) {

@@ -82,6 +82,21 @@
 - [ ] Navigation works correctly between all screens
 - [ ] Shadow/elevation visible on nav bar
 
+## Dashboard Market Index Cards
+- [ ] Market index cards row appears at top of dashboard when indices are enabled
+- [ ] Default 4 cards: NASDAQ, S&P 500, Dow, Gold
+- [ ] Each card shows index label, current price, and daily change (amount + percentage)
+- [ ] Positive change displayed in green, negative in red
+- [ ] Cards show "---" placeholder while loading
+- [ ] Cards horizontally scrollable when more than 4 are enabled
+- [ ] Indices refresh automatically on app start
+- [ ] Indices refresh when tapping portfolio value button (Refresh All)
+- [ ] Settings > Preferences: "Dashboard Market Indices" section visible
+- [ ] Each of 8 indices has a toggle (NASDAQ, S&P 500, Dow, Gold, Russell 2K, Silver, Oil, Bitcoin)
+- [ ] Toggling an index on/off persists after app restart
+- [ ] Disabling all indices hides the cards row on dashboard
+- [ ] Enabling additional indices adds them to the dashboard row
+
 ## Dashboard Pie Chart
 - [ ] Pie chart appears when items exist
 - [ ] Positions card collapses/expands on header tap

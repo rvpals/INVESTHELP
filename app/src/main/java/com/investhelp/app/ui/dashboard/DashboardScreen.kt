@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
@@ -17,6 +18,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
@@ -24,6 +26,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -92,6 +95,12 @@ fun DashboardScreen(
                 .padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
+            if (uiState.marketIndices.isNotEmpty()) {
+                item(key = "market_indices") {
+                    MarketIndexCards(indices = uiState.marketIndices)
+                }
+            }
+
             if (uiState.positions.isNotEmpty()) {
                 item(key = "pie_chart") {
                     PositionsPieChart(positions = uiState.positions)
@@ -133,6 +142,68 @@ fun DashboardScreen(
                     accountWithValue = accountWithValue,
                     currencyFormat = currencyFormat,
                     onClick = { onNavigateToAccount(accountWithValue.account.id) }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun MarketIndexCards(indices: List<MarketIndexQuote>) {
+    LazyRow(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        items(indices, key = { it.symbol }) { index ->
+            MarketIndexCard(index = index)
+        }
+    }
+}
+
+@Composable
+private fun MarketIndexCard(index: MarketIndexQuote) {
+    val isPositive = index.change >= 0
+    val changeColor = if (index.price == 0.0) MaterialTheme.colorScheme.onSurfaceVariant
+        else if (isPositive) Color(0xFF2E7D32) else Color(0xFFC62828)
+    val priceFormat = if (index.price >= 1000) DecimalFormat("#,##0.00") else DecimalFormat("#,##0.00")
+
+    Card(
+        modifier = Modifier
+            .width(140.dp)
+            .height(IntrinsicSize.Min),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+        )
+    ) {
+        Column(
+            modifier = Modifier.padding(10.dp)
+        ) {
+            Text(
+                text = index.label,
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            if (index.price != 0.0) {
+                Text(
+                    text = priceFormat.format(index.price),
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = "${if (isPositive) "+" else ""}${String.format("%.2f", index.change)} (${if (isPositive) "+" else ""}${String.format("%.2f", index.changePercent)}%)",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = changeColor,
+                    maxLines = 1
+                )
+            } else {
+                Text(
+                    text = "---",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }

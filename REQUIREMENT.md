@@ -56,6 +56,7 @@ Android app to track personal investments.
 - **Bottom nav** — Dashboard, Items, Transfer, Transaction, Simulation (colorful icons with shadow)
 
 ### Dashboard
+- **Market index cards** — horizontal scrollable row of small cards at the top; default: NASDAQ (^IXIC), S&P 500 (^GSPC), Dow (^DJI), Gold (GC=F); also available: Russell 2K, Silver, Oil, Bitcoin; each card shows label, price, daily change with percentage; customizable in Settings > Preferences; auto-refreshes on app start and with Refresh All
 - Accounts list with current values
 - **Pie chart** — collapsible positions card; shows all items by ticker value with shares labels inside slices; legend limited to top 20 with "More" button to show all
 - FAB to add accounts
@@ -99,6 +100,7 @@ Android app to track personal investments.
 - **Preferences tab:**
   - Auto-update position shares toggle
   - Warn before delete toggle (default: on) — when off, skips confirmation dialogs for all delete actions
+  - Dashboard Market Indices toggles — choose which market indices to show on the dashboard (8 available, 4 default)
 - **Data Management tab:**
   - **Import Data** — Import position CSV: opens file picker, shows column mapping dialog with 3 preview rows, account selector, auto-maps matching headers, progress bar during import; upserts into investment_items table
   - Backup folder selection, export, restore

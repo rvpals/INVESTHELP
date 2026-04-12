@@ -79,6 +79,10 @@
 - [x] App now opens directly to Dashboard — no setup/unlock screens
 - [x] Removed sqlcipher, biometric, security-crypto dependencies
 
+- [x] Dashboard market index cards: horizontal scrollable row showing NASDAQ, S&P 500, Dow, Gold (+ more) with price and daily change
+- [x] Market index settings: customizable in Settings > Preferences with toggles for 8 indices
+- [x] Market indices auto-refresh on app start and when refreshing all prices
+
 ## Pending
 - [ ] Increment versionCode/versionName for next release
 - [ ] Fix deprecation warning: Icons.Filled.OpenInNew -> Icons.AutoMirrored.Filled.OpenInNew (ItemDetailScreen.kt)
