@@ -35,6 +35,10 @@
 - [ ] Stats section: N/A shown when no transactions in range
 - [ ] Collapsible "Transactions" section expands/collapses on tap
 - [ ] Transactions section lists all transactions for the ticker
+- [ ] Each transaction card shows days since transaction date (e.g. "Apr 01, 2026  (12d)")
+- [ ] Each transaction card shows G/L: (currentPrice - pricePerShare) * shares
+- [ ] Positive G/L displayed in primary color, negative in error color
+- [ ] G/L updates when prices are refreshed
 
 ## Account Value from Items
 - [ ] Add items to an account, verify account value = sum of item values

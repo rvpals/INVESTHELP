@@ -88,6 +88,8 @@
 - [x] Application log: AppLog singleton captures price fetch results, refresh summaries, and errors (up to 200 entries)
 - [x] About dialog: "Show Log" button opens scrollable log viewer (newest first) with clear button
 
+- [x] Item detail transactions: each card shows days since transaction date (e.g. "123d") and G/L using current price vs transaction price
+
 ## Pending
 - [ ] Increment versionCode/versionName for next release
 - [ ] Fix deprecation warning: Icons.Filled.OpenInNew -> Icons.AutoMirrored.Filled.OpenInNew (ItemDetailScreen.kt)

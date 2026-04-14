@@ -57,6 +57,7 @@ import com.investhelp.app.data.remote.AnalysisInfo
 import com.investhelp.app.ui.components.DateRangeSelector
 import java.text.NumberFormat
 import java.time.LocalDate
+import java.time.temporal.ChronoUnit
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
@@ -471,6 +472,11 @@ fun ItemDetailScreen(
                 }
 
                 items(transactions, key = { it.id }) { transaction ->
+                    val daysSince = ChronoUnit.DAYS.between(transaction.date, LocalDate.now())
+                    val currentPrice = firstRow?.currentPrice ?: 0.0
+                    val gl = (currentPrice - transaction.pricePerShare) * transaction.numberOfShares
+                    val glColor = if (gl >= 0) MaterialTheme.colorScheme.primary
+                        else MaterialTheme.colorScheme.error
                     Card(modifier = Modifier.fillMaxWidth()) {
                         Row(
                             modifier = Modifier
@@ -488,18 +494,20 @@ fun ItemDetailScreen(
                                         MaterialTheme.colorScheme.error
                                 )
                                 Text(
-                                    text = transaction.date.format(dateFormatter),
+                                    text = "${transaction.date.format(dateFormatter)}  (${daysSince}d)",
                                     style = MaterialTheme.typography.bodySmall
                                 )
                             }
                             Column(horizontalAlignment = Alignment.End) {
                                 Text(
-                                    text = "${transaction.numberOfShares} shares",
+                                    text = "${transaction.numberOfShares} shares @ ${currencyFormat.format(transaction.pricePerShare)}",
                                     style = MaterialTheme.typography.bodyMedium
                                 )
                                 Text(
-                                    text = "@ ${currencyFormat.format(transaction.pricePerShare)}",
-                                    style = MaterialTheme.typography.bodySmall
+                                    text = "G/L: ${currencyFormat.format(gl)}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = glColor
                                 )
                             }
                         }

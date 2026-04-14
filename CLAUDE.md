@@ -77,6 +77,7 @@ Android investment tracking app built with Kotlin, Jetpack Compose, and Material
 - Settings Data Management: "Import Data" section with CSV position import; column mapping dialog with 3-row preview, auto-mapping, account selector, progress bar; upserts into investment_items
 - AppLog: in-memory application log (up to 200 entries) capturing price fetch results, refresh summaries, and errors
 - About dialog: "Show Log" button opens scrollable log viewer (newest first) with clear button; logs include timestamps
+- Item detail transactions: each card shows days since transaction date (e.g. "123d") and G/L = (currentPrice - pricePerShare) * shares; green for gain, red for loss
 
 ## Build
 Open in Android Studio and sync Gradle. Requires JDK 17+.
