@@ -47,12 +47,17 @@ Android app to track personal investments.
 - Associated Account
 - Note (optional)
 
+### Account Performance
+- Account (FK to investment_accounts, CASCADE delete)
+- Total Value (user-entered or pulled from app)
+- Date/Time (auto-set on record creation)
+
 ## Features
 
 ### Navigation
 - **Global top bar** — persistent across all screens:
   - Portfolio value 3D button (tap to navigate to Dashboard, auto-refreshes)
-  - Hamburger menu (Accounts, Settings, SQL Explorer, About)
+  - Hamburger menu (Accounts, Performance, Settings, SQL Explorer, About)
   - About dialog includes "Show Log" button for viewing application log
 - **Bottom nav** — Dashboard, Items, Transfer, Transaction, Simulation (colorful icons with shadow)
 
@@ -126,6 +131,17 @@ Android app to track personal investments.
 - Error display for invalid SQL
 - **Table browser** — lists all database tables (excludes internal sqlite/room/android tables); click to expand column details (name, type, PK/NN indicators); animated expand/collapse
 - **Row detail dialog** — click any result row to view all field values untruncated in a scrollable dialog
+
+### Account Performance
+- Accessible from hamburger menu in top bar
+- Tracks account total value over time for trending analysis
+- **Add Record** form: account selector dropdown, total value text field, "Pull from App" button (computes current value from items), "Add Record" button
+- Records auto-timestamped with current date/time on creation
+- **Records list** — all records ordered newest first, showing account name, date/time, total value, delete button
+- **Performance Chart** — multi-account overlay line chart (Canvas-drawn); FilterChip multi-select for accounts; each account gets distinct color from 8-color palette; time-based shared x-axis; tap-to-select tooltip with account name, value, and date; requires 2+ records per account to display series
+- **Zoom** — pinch-to-zoom (1x–5x) with two-finger pan; double-tap resets zoom; clipRect clips zoomed lines to data area; x-axis labels update to reflect visible viewport
+- Delete respects "Warn before delete" setting
+- Deleting an account cascades to delete its performance records
 
 ### Backup & Restore
 - Export all data to JSON file (v2 format with full merged entity fields)

@@ -132,6 +132,10 @@
 - [ ] Error handling for invalid ticker
 
 ## Backup & Restore
+- [ ] Backup folder selection persists after closing and reopening Settings
+- [ ] Backup folder selection persists after app restart
+- [ ] Previously selected folder displays folder name (not "No folder selected") on return
+- [ ] Export/Restore buttons enabled immediately when returning to Settings with saved folder
 - [ ] Export creates JSON file with v2 format (includes all merged entity fields)
 - [ ] Restore v2 backup correctly recreates all items with full data
 - [ ] Restore v1 backup assigns items to first account, maps numShares to quantity
@@ -210,6 +214,46 @@
 - [ ] Clear button (trash icon) in log viewer title clears all entries
 - [ ] Log viewer is scrollable for many entries
 - [ ] Log entries capped at 200 (oldest removed when exceeded)
+
+## Account Performance
+- [ ] "Performance" menu item visible in hamburger menu (between Accounts and Settings)
+- [ ] Tapping "Performance" navigates to Account Performance screen
+- [ ] Account selector dropdown lists all accounts
+- [ ] First account auto-selected on load
+- [ ] Total Value text field accepts decimal input
+- [ ] "Pull from App" button populates total value from current account value (sum of items)
+- [ ] "Pull from App" disabled when no account selected
+- [ ] "Add Record" button disabled until account selected and valid value entered
+- [ ] Adding a record auto-sets current date/time
+- [ ] Record appears in records list after adding
+- [ ] Records list shows account name, date/time, and total value
+- [ ] Delete button on each record removes it
+- [ ] Delete respects "Warn before delete" setting (confirmation dialog when enabled)
+- [ ] Performance Chart: FilterChip row for multi-account selection (horizontally scrollable)
+- [ ] First account auto-selected in chart filter chips on load
+- [ ] Tapping a chip toggles account on/off for chart display
+- [ ] Each chip shows colored dot (matching chart line) when selected
+- [ ] Chart overlays multiple account lines with distinct colors (8-color palette)
+- [ ] Chart legend row shows colored dots with account names
+- [ ] Chart shows line graph when at least one selected account has 2+ records
+- [ ] Chart shows "Need at least 2 records" message when no selected accounts qualify
+- [ ] Chart Y-axis shows dollar amounts (shared scale across all accounts)
+- [ ] Chart X-axis shows dates (shared time axis across all accounts)
+- [ ] Tap on chart point shows tooltip with account name, value, and date/time
+- [ ] Tapping same point again dismisses tooltip
+- [ ] Vertical crosshair line at selected point
+- [ ] Pinch-to-zoom horizontally (1x to 5x)
+- [ ] Two-finger pan when zoomed in
+- [ ] Double-tap resets zoom to 1x
+- [ ] Zoomed chart clips lines to data area (no overflow into y-axis labels)
+- [ ] X-axis date labels update to reflect visible viewport when zoomed
+- [ ] Chart data reloads when toggling account chips
+- [ ] Deleting an account cascades to delete its performance records
+
+## Database Migration v10 -> v11
+- [ ] Fresh install works correctly (version 11)
+- [ ] Upgrade from v10 to v11 creates account_performance table
+- [ ] Existing data (accounts, items, transactions, transfers) retained after migration
 
 ## App Icon & Splash
 - [ ] App icon appears correctly on home screen / app drawer

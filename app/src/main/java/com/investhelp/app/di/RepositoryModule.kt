@@ -1,5 +1,7 @@
 package com.investhelp.app.di
 
+import com.investhelp.app.data.repository.AccountPerformanceRepository
+import com.investhelp.app.data.repository.AccountPerformanceRepositoryImpl
 import com.investhelp.app.data.repository.AccountRepository
 import com.investhelp.app.data.repository.AccountRepositoryImpl
 import com.investhelp.app.data.repository.BankTransferRepository
@@ -28,4 +30,7 @@ abstract class RepositoryModule {
 
     @Binds
     abstract fun bindBankTransferRepository(impl: BankTransferRepositoryImpl): BankTransferRepository
+
+    @Binds
+    abstract fun bindAccountPerformanceRepository(impl: AccountPerformanceRepositoryImpl): AccountPerformanceRepository
 }

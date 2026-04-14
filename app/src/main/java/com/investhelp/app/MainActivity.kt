@@ -70,6 +70,7 @@ import com.investhelp.app.ui.navigation.BankTransferListRoute
 import com.investhelp.app.ui.navigation.DashboardRoute
 import com.investhelp.app.ui.navigation.InvestHelpNavHost
 import com.investhelp.app.ui.navigation.ItemListRoute
+import com.investhelp.app.ui.navigation.AccountPerformanceRoute
 import com.investhelp.app.ui.navigation.SettingsRoute
 import com.investhelp.app.ui.navigation.SqlExplorerRoute
 import com.investhelp.app.ui.navigation.SimulationRoute
@@ -278,6 +279,18 @@ fun GlobalTopBar(navController: NavHostController) {
                         }
                     },
                     leadingIcon = { Icon(Icons.Default.AccountBalance, contentDescription = null) }
+                )
+                DropdownMenuItem(
+                    text = { Text("Performance") },
+                    onClick = {
+                        menuExpanded = false
+                        navController.navigate(AccountPerformanceRoute) {
+                            popUpTo(DashboardRoute) { saveState = true }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    },
+                    leadingIcon = { Icon(Icons.AutoMirrored.Filled.TrendingUp, contentDescription = null) }
                 )
                 DropdownMenuItem(
                     text = { Text("Settings") },

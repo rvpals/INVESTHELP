@@ -21,6 +21,8 @@ import com.investhelp.app.ui.settings.SettingsScreen
 import com.investhelp.app.ui.settings.SettingsViewModel
 import com.investhelp.app.ui.simulation.SimulationScreen
 import com.investhelp.app.ui.simulation.SimulationViewModel
+import com.investhelp.app.ui.performance.AccountPerformanceScreen
+import com.investhelp.app.ui.performance.AccountPerformanceViewModel
 import com.investhelp.app.ui.sqlexplorer.SqlExplorerScreen
 import com.investhelp.app.ui.sqlexplorer.SqlExplorerViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -240,6 +242,11 @@ fun InvestHelpNavHost(
         composable<SqlExplorerRoute> {
             val viewModel: SqlExplorerViewModel = hiltViewModel()
             SqlExplorerScreen(viewModel = viewModel)
+        }
+
+        composable<AccountPerformanceRoute> {
+            val viewModel: AccountPerformanceViewModel = hiltViewModel()
+            AccountPerformanceScreen(viewModel = viewModel)
         }
     }
 }

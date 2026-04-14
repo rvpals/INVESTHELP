@@ -8,7 +8,7 @@ Android investment tracking app built with Kotlin, Jetpack Compose, and Material
 - **Min SDK:** 29, Target SDK: 35
 - **Architecture:** MVVM + Repository pattern
 - **DI:** Hilt (KSP)
-- **Database:** Room, version 10
+- **Database:** Room, version 11
 - **Navigation:** Compose Navigation (type-safe routes)
 - **Splash:** AndroidX SplashScreen API (core-splashscreen 1.0.1)
 - **Charts:** Custom Canvas-drawn (pie chart, line chart) — no external chart library
@@ -20,7 +20,7 @@ Android investment tracking app built with Kotlin, Jetpack Compose, and Material
 - `data/repository/` - Repository interfaces and implementations
 - `di/` - Hilt modules (DatabaseModule, RepositoryModule)
 - `model/` - Domain models and enums
-- `ui/` - Compose screens organized by feature (dashboard, account, item, transaction, transfer, simulation, sqlexplorer)
+- `ui/` - Compose screens organized by feature (dashboard, account, item, transaction, transfer, simulation, sqlexplorer, performance)
 
 ## Key Design Decisions
 - Merged InvestmentItem + Position into single `investment_items` table with composite PK (ticker + accountId)
@@ -39,7 +39,7 @@ Android investment tracking app built with Kotlin, Jetpack Compose, and Material
 - Auto-create InvestmentItem when transaction references a new ticker (defaults to Stock type, changeable via type selector)
 - Dates stored as epoch days for simple SQL range queries
 - Yahoo Finance v8/v10 API for live prices, historical data, and analysis info
-- Global top bar: portfolio value 3D button (refreshes all prices + navigates to Dashboard) + hamburger menu (Accounts, Settings, SQL Explorer, About)
+- Global top bar: portfolio value 3D button (refreshes all prices + navigates to Dashboard) + hamburger menu (Accounts, Performance, Settings, SQL Explorer, About)
 - Top bar shows spinner while refreshing prices
 - Bottom nav: Dashboard, Items, Transfer, Transaction, Simulation (colorful icons with shadow)
 - Simulation time ranges: 1W, 2W, 1M, 3M, 6M, 1Y, 2Y, 5Y, 10Y, MAX (grouped in Week/Month/Year rows)
@@ -72,12 +72,18 @@ Android investment tracking app built with Kotlin, Jetpack Compose, and Material
 - SQL Explorer: CSV export via FileProvider + share intent
 - SQL Explorer: table browser lists all database tables with expandable column details (name, type, PK/NN indicators)
 - SQL Explorer: clicking a result row opens record detail dialog showing all field values untruncated
+- Settings: backup folder URI persisted to SharedPreferences; restored on ViewModel init
 - Backup format v2: includes full merged entity fields; v1 backward compat on restore
 - Transaction list: each card shows G/L = (currentPrice - pricePerShare) * numberOfShares; green for positive, red for negative
 - Settings Data Management: "Import Data" section with CSV position import; column mapping dialog with 3-row preview, auto-mapping, account selector, progress bar; upserts into investment_items
 - AppLog: in-memory application log (up to 200 entries) capturing price fetch results, refresh summaries, and errors
 - About dialog: "Show Log" button opens scrollable log viewer (newest first) with clear button; logs include timestamps
 - Item detail transactions: each card shows days since transaction date (e.g. "123d") and G/L = (currentPrice - pricePerShare) * shares; green for gain, red for loss
+- Account Performance: `account_performance` table (id, accountId, totalValue, dateTime) with CASCADE delete on account
+- Account Performance: accessible from hamburger menu; add record form with account selector, total value + "Pull from App" button, auto-timestamp
+- Account Performance: line chart (Canvas-drawn) with multi-account overlay; FilterChip multi-select; each account gets distinct color; pinch-to-zoom (1x–5x) with two-finger pan; double-tap resets zoom; tap-to-select tooltip shows account name + value + date; clipRect for zoomed data area; viewport-aware x-axis labels
+- Database migration v10 -> v11: creates account_performance table
+- LocalDateTime stored as epoch seconds (UTC) via TypeConverter
 
 ## Build
 Open in Android Studio and sync Gradle. Requires JDK 17+.

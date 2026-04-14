@@ -4,7 +4,9 @@ import androidx.room.TypeConverter
 import com.investhelp.app.model.InvestmentType
 import com.investhelp.app.model.TransactionAction
 import java.time.LocalDate
+import java.time.LocalDateTime
 import java.time.LocalTime
+import java.time.ZoneOffset
 
 class Converters {
 
@@ -31,4 +33,10 @@ class Converters {
 
     @TypeConverter
     fun toTransactionAction(value: String): TransactionAction = TransactionAction.valueOf(value)
+
+    @TypeConverter
+    fun fromLocalDateTime(dateTime: LocalDateTime): Long = dateTime.toEpochSecond(ZoneOffset.UTC)
+
+    @TypeConverter
+    fun toLocalDateTime(epochSecond: Long): LocalDateTime = LocalDateTime.ofEpochSecond(epochSecond, 0, ZoneOffset.UTC)
 }

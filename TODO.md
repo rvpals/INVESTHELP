@@ -90,6 +90,24 @@
 
 - [x] Item detail transactions: each card shows days since transaction date (e.g. "123d") and G/L using current price vs transaction price
 
+- [x] Account Performance screen: new `account_performance` table (id, accountId, totalValue, dateTime) with FK CASCADE
+- [x] Database migration v10 -> v11 (create account_performance table)
+- [x] LocalDateTime TypeConverter (epoch seconds via UTC)
+- [x] Account Performance: add record form with account selector, total value field, "Pull from App" button
+- [x] Account Performance: "Pull from App" computes current account value from items
+- [x] Account Performance: auto-timestamps records on insert
+- [x] Account Performance: records list with account name, datetime, value, delete button
+- [x] Account Performance: line chart showing total value over time per account (Canvas-drawn, tap-to-select tooltip)
+- [x] Account Performance: accessible from hamburger menu (between Accounts and Settings)
+
+- [x] Settings: backup folder URI persisted to SharedPreferences (was lost on app restart)
+- [x] Account Performance chart: multi-account overlay with FilterChip multi-select
+- [x] Account Performance chart: each account gets distinct color from 8-color palette
+- [x] Account Performance chart: pinch-to-zoom (1x–5x) with two-finger pan; double-tap resets zoom
+- [x] Account Performance chart: time-based x-axis shared across all series
+- [x] Account Performance chart: clipRect for zoomed content; viewport-aware x-axis labels
+- [x] Account Performance chart: tooltip shows account name, value, and date
+
 ## Pending
 - [ ] Increment versionCode/versionName for next release
 - [ ] Fix deprecation warning: Icons.Filled.OpenInNew -> Icons.AutoMirrored.Filled.OpenInNew (ItemDetailScreen.kt)

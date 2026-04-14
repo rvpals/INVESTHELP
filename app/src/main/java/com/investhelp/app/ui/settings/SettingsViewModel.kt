@@ -75,6 +75,7 @@ class SettingsViewModel @Inject constructor(
         const val KEY_AUTO_UPDATE_SHARES = "auto_update_shares"
         const val KEY_WARN_BEFORE_DELETE = "warn_before_delete"
         const val KEY_MARKET_INDICES = "market_indices"
+        const val KEY_BACKUP_FOLDER_URI = "backup_folder_uri"
         val IMPORTABLE_FIELDS = listOf(
             "Skip",
             "ticker",
@@ -109,12 +110,18 @@ class SettingsViewModel @Inject constructor(
 
     private val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
+    private val savedBackupUri: Uri? = prefs.getString(KEY_BACKUP_FOLDER_URI, null)?.let { Uri.parse(it) }
+
     private val _uiState = MutableStateFlow(
         SettingsUiState(
             autoUpdateShares = prefs.getBoolean(KEY_AUTO_UPDATE_SHARES, false),
             warnBeforeDelete = prefs.getBoolean(KEY_WARN_BEFORE_DELETE, true),
             enabledMarketIndices = prefs.getStringSet(KEY_MARKET_INDICES, null)
-                ?: DEFAULT_MARKET_INDICES
+                ?: DEFAULT_MARKET_INDICES,
+            backupFolderUri = savedBackupUri,
+            backupFolderName = savedBackupUri?.let {
+                DocumentFile.fromTreeUri(context, it)?.name ?: it.lastPathSegment
+            }
         )
     )
     val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
@@ -146,6 +153,7 @@ class SettingsViewModel @Inject constructor(
     }
 
     fun setBackupFolder(uri: Uri) {
+        prefs.edit().putString(KEY_BACKUP_FOLDER_URI, uri.toString()).apply()
         val docFile = DocumentFile.fromTreeUri(context, uri)
         _uiState.value = _uiState.value.copy(
             backupFolderUri = uri,
