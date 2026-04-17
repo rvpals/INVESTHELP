@@ -22,5 +22,6 @@ data class AccountPerformanceEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val accountId: Long,
     val totalValue: Double,
-    val dateTime: LocalDateTime
+    val dateTime: LocalDateTime,
+    val note: String = ""
 )

@@ -23,7 +23,7 @@ import com.investhelp.app.data.local.entity.InvestmentTransactionEntity
         BankTransferEntity::class,
         AccountPerformanceEntity::class
     ],
-    version = 11,
+    version = 12,
     exportSchema = true
 )
 @TypeConverters(Converters::class)

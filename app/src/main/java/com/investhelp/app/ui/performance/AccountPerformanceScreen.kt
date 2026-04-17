@@ -23,6 +23,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -90,8 +91,11 @@ fun AccountPerformanceScreen(
 
     var selectedAccountId by remember { mutableStateOf<Long?>(null) }
     var totalValueText by remember { mutableStateOf("") }
+    var noteText by remember { mutableStateOf("") }
     var accountDropdownExpanded by remember { mutableStateOf(false) }
     var deleteTarget by remember { mutableStateOf<AccountPerformanceEntity?>(null) }
+    var editTarget by remember { mutableStateOf<AccountPerformanceEntity?>(null) }
+    var editNoteText by remember { mutableStateOf("") }
     var chartSelectedAccountIds by remember { mutableStateOf(setOf<Long>()) }
 
     val context = LocalContext.current
@@ -137,6 +141,33 @@ fun AccountPerformanceScreen(
             },
             dismissButton = {
                 TextButton(onClick = { deleteTarget = null }) { Text("Cancel") }
+            }
+        )
+    }
+
+    // Edit note dialog
+    editTarget?.let { record ->
+        AlertDialog(
+            onDismissRequest = { editTarget = null },
+            title = { Text("Edit Note") },
+            text = {
+                OutlinedTextField(
+                    value = editNoteText,
+                    onValueChange = { editNoteText = it },
+                    label = { Text("Note") },
+                    modifier = Modifier.fillMaxWidth(),
+                    minLines = 2,
+                    maxLines = 4
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    viewModel.updateRecord(record.copy(note = editNoteText.trim()))
+                    editTarget = null
+                }) { Text("Save") }
+            },
+            dismissButton = {
+                TextButton(onClick = { editTarget = null }) { Text("Cancel") }
             }
         )
     }
@@ -226,14 +257,26 @@ fun AccountPerformanceScreen(
                             }
                         }
 
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        // Note field
+                        OutlinedTextField(
+                            value = noteText,
+                            onValueChange = { noteText = it },
+                            label = { Text("Note (optional)") },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+
                         Spacer(modifier = Modifier.height(12.dp))
 
                         Button(
                             onClick = {
                                 val value = totalValueText.toDoubleOrNull()
                                 if (selectedAccountId != null && value != null) {
-                                    viewModel.saveRecord(selectedAccountId!!, value)
+                                    viewModel.saveRecord(selectedAccountId!!, value, noteText)
                                     totalValueText = ""
+                                    noteText = ""
                                 }
                             },
                             modifier = Modifier.fillMaxWidth(),
@@ -377,12 +420,29 @@ fun AccountPerformanceScreen(
                                 text = record.dateTime.format(dateTimeFormatter),
                                 style = MaterialTheme.typography.bodySmall
                             )
+                            if (record.note.isNotBlank()) {
+                                Text(
+                                    text = record.note,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
                         }
                         Text(
                             text = currencyFormat.format(record.totalValue),
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.SemiBold
                         )
+                        IconButton(onClick = {
+                            editNoteText = record.note
+                            editTarget = record
+                        }) {
+                            Icon(
+                                Icons.Default.Edit,
+                                contentDescription = "Edit note",
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        }
                         IconButton(onClick = {
                             if (warnBeforeDelete) {
                                 deleteTarget = record

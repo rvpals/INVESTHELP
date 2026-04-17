@@ -7,6 +7,7 @@ import com.investhelp.app.data.remote.StockPriceService
 import com.investhelp.app.data.repository.AccountRepository
 import com.investhelp.app.data.repository.InvestmentItemRepository
 import com.investhelp.app.model.AccountWithValue
+import com.investhelp.app.model.InvestmentType
 import com.investhelp.app.ui.settings.SettingsViewModel
 import com.investhelp.app.AppLog
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -27,6 +28,13 @@ data class TickerPosition(
     val totalValue: Double
 )
 
+data class DailyGlanceItem(
+    val ticker: String,
+    val name: String,
+    val dayGainLoss: Double,
+    val dayGainLossPercent: Double
+)
+
 data class MarketIndexQuote(
     val symbol: String,
     val label: String,
@@ -35,11 +43,22 @@ data class MarketIndexQuote(
     val changePercent: Double = 0.0
 )
 
+data class OverallDailyByType(
+    val type: InvestmentType,
+    val dayChange: Double,
+    val dayChangePercent: Double
+)
+
 data class DashboardUiState(
     val accounts: List<AccountWithValue> = emptyList(),
     val totalPortfolioValue: Double = 0.0,
+    val totalDayGainLoss: Double = 0.0,
+    val totalCost: Double = 0.0,
     val positions: List<TickerPosition> = emptyList(),
-    val marketIndices: List<MarketIndexQuote> = emptyList()
+    val marketIndices: List<MarketIndexQuote> = emptyList(),
+    val topGainers: List<DailyGlanceItem> = emptyList(),
+    val topLosers: List<DailyGlanceItem> = emptyList(),
+    val overallDailyByType: List<OverallDailyByType> = emptyList()
 )
 
 @HiltViewModel
@@ -54,8 +73,28 @@ class DashboardViewModel @Inject constructor(
         SettingsViewModel.PREFS_NAME, Context.MODE_PRIVATE
     )
 
+    companion object {
+        const val KEY_PIN_MARKET_INDICES = "pin_card_market_indices"
+        const val KEY_PIN_POSITIONS = "pin_card_positions"
+        const val KEY_PIN_DAILY_GLANCE = "pin_card_daily_glance"
+    }
+
     private val _isRefreshing = MutableStateFlow(false)
     val isRefreshing: StateFlow<Boolean> = _isRefreshing.asStateFlow()
+
+    private val _pinStates = MutableStateFlow(
+        mapOf(
+            KEY_PIN_MARKET_INDICES to prefs.getBoolean(KEY_PIN_MARKET_INDICES, false),
+            KEY_PIN_POSITIONS to prefs.getBoolean(KEY_PIN_POSITIONS, false),
+            KEY_PIN_DAILY_GLANCE to prefs.getBoolean(KEY_PIN_DAILY_GLANCE, false)
+        )
+    )
+    val pinStates: StateFlow<Map<String, Boolean>> = _pinStates.asStateFlow()
+
+    fun setPinState(key: String, pinned: Boolean) {
+        prefs.edit().putBoolean(key, pinned).apply()
+        _pinStates.value = _pinStates.value.toMutableMap().apply { put(key, pinned) }
+    }
 
     private val _marketIndices = MutableStateFlow<List<MarketIndexQuote>>(emptyList())
 
@@ -163,11 +202,52 @@ class DashboardViewModel @Inject constructor(
             .filter { it.totalValue > 0 }
             .sortedByDescending { it.totalValue }
 
+        // Daily glance: aggregate by ticker across all accounts
+        val glanceByTicker = items
+            .groupBy { it.ticker }
+            .map { (ticker, list) ->
+                val totalDayGL = list.sumOf { it.dayGainLoss }
+                val totalValue = list.sumOf { it.value }
+                val previousValue = totalValue - totalDayGL
+                val pct = if (previousValue != 0.0) totalDayGL / previousValue * 100.0 else 0.0
+                DailyGlanceItem(
+                    ticker = ticker,
+                    name = list.first().name,
+                    dayGainLoss = totalDayGL,
+                    dayGainLossPercent = pct
+                )
+            }
+        val topGainers = glanceByTicker
+            .filter { it.dayGainLoss > 0 }
+            .sortedByDescending { it.dayGainLoss }
+            .take(5)
+        val topLosers = glanceByTicker
+            .filter { it.dayGainLoss < 0 }
+            .sortedBy { it.dayGainLoss }
+            .take(5)
+
+        val overallByType = items
+            .groupBy { it.type }
+            .filter { it.key == InvestmentType.Stock || it.key == InvestmentType.ETF }
+            .map { (type, list) ->
+                val totalDayGL = list.sumOf { it.dayGainLoss }
+                val totalValue = list.sumOf { it.value }
+                val previousValue = totalValue - totalDayGL
+                val pct = if (previousValue != 0.0) totalDayGL / previousValue * 100.0 else 0.0
+                OverallDailyByType(type = type, dayChange = totalDayGL, dayChangePercent = pct)
+            }
+            .sortedBy { it.type.name }
+
         DashboardUiState(
             accounts = accounts,
             totalPortfolioValue = items.sumOf { it.value },
+            totalDayGainLoss = items.sumOf { it.dayGainLoss },
+            totalCost = items.sumOf { it.cost },
             positions = tickerPositions,
-            marketIndices = indices
+            marketIndices = indices,
+            topGainers = topGainers,
+            topLosers = topLosers,
+            overallDailyByType = overallByType
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), DashboardUiState())
 }

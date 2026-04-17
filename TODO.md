@@ -108,6 +108,28 @@
 - [x] Account Performance chart: clipRect for zoomed content; viewport-aware x-axis labels
 - [x] Account Performance chart: tooltip shows account name, value, and date
 
+- [x] Account Performance: note field added to `account_performance` table (migration v11 -> v12)
+- [x] Account Performance: optional note text field in add-record form
+- [x] Account Performance: edit note dialog (pencil icon) on existing record cards
+- [x] Account Performance: note displayed on record cards when present
+- [x] Dashboard pie chart legend: clicking a ticker row navigates to item detail screen
+
+- [x] Top bar portfolio button: shows daily % and all-time % gain/loss in parentheses, color-coded green/red
+- [x] CollapsibleCard reusable component (`ui/components/CollapsibleCard.kt`) with title, pin button, and AnimatedVisibility
+- [x] Dashboard Market Indices section: wrapped in CollapsibleCard with pin persistence
+- [x] Dashboard Positions pie chart: wrapped in CollapsibleCard with pin persistence
+- [x] Dashboard "Daily Glance" card: top 5 gainers and top 5 losers today with gain/loss $ and %
+- [x] Pin state persisted to SharedPreferences per card (`pin_card_market_indices`, `pin_card_positions`, `pin_card_daily_glance`)
+- [x] Unpinned cards default collapsed; pinned cards default expanded
+
+- [x] Top bar portfolio button: daily change amount shown in parentheses next to total value, color-coded green/red, hidden when zero
+- [x] CollapsibleCard: HorizontalDivider between header row and collapsible content
+
+- [x] Dashboard Daily Glance: "Overall Daily" section showing Stock and ETF total daily change in $ and %
+- [x] Dashboard: removed Accounts section (title, empty state, account cards, FAB)
+- [x] 3D icons (Icon3D composable): bottom nav icons and hamburger menu icons use gradient-filled rounded boxes with shadow
+- [x] SQL Explorer: "Open" button on each table row runs `SELECT * FROM <table>` and shows results in grid
+
 ## Pending
 - [ ] Increment versionCode/versionName for next release
 - [ ] Fix deprecation warning: Icons.Filled.OpenInNew -> Icons.AutoMirrored.Filled.OpenInNew (ItemDetailScreen.kt)

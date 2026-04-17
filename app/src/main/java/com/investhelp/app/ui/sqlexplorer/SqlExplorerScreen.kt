@@ -117,7 +117,16 @@ fun SqlExplorerScreen(viewModel: SqlExplorerViewModel) {
 
         if (tables.isNotEmpty()) {
             Spacer(modifier = Modifier.height(8.dp))
-            TableBrowser(tables, expandedTable, tableColumns, viewModel::toggleTable)
+            TableBrowser(
+                tables = tables,
+                expandedTable = expandedTable,
+                tableColumns = tableColumns,
+                onTableClick = viewModel::toggleTable,
+                onOpenTable = { tableName ->
+                    sql = "SELECT * FROM $tableName"
+                    viewModel.executeQuery(sql)
+                }
+            )
         }
 
         if (error != null) {
@@ -259,7 +268,8 @@ private fun TableBrowser(
     tables: List<String>,
     expandedTable: String?,
     tableColumns: List<ColumnInfo>,
-    onTableClick: (String) -> Unit
+    onTableClick: (String) -> Unit,
+    onOpenTable: (String) -> Unit
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -297,8 +307,16 @@ private fun TableBrowser(
                                 fontFamily = FontFamily.Monospace
                             ),
                             fontWeight = if (expandedTable == tableName)
-                                FontWeight.Bold else FontWeight.Normal
+                                FontWeight.Bold else FontWeight.Normal,
+                            modifier = Modifier.weight(1f)
                         )
+                        TextButton(
+                            onClick = { onOpenTable(tableName) },
+                            modifier = Modifier.height(30.dp),
+                            contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 8.dp, vertical = 0.dp)
+                        ) {
+                            Text("Open", style = MaterialTheme.typography.labelSmall)
+                        }
                     }
                     AnimatedVisibility(visible = expandedTable == tableName) {
                         Column(modifier = Modifier.padding(start = 24.dp, bottom = 4.dp)) {

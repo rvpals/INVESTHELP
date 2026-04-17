@@ -5,6 +5,7 @@ import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Update
 import com.investhelp.app.data.local.entity.AccountPerformanceEntity
 import kotlinx.coroutines.flow.Flow
 
@@ -25,6 +26,9 @@ interface AccountPerformanceDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertRecord(record: AccountPerformanceEntity): Long
+
+    @Update
+    suspend fun updateRecord(record: AccountPerformanceEntity)
 
     @Delete
     suspend fun deleteRecord(record: AccountPerformanceEntity)

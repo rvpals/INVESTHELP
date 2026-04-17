@@ -50,11 +50,8 @@ fun InvestHelpNavHost(
             val viewModel: DashboardViewModel = hiltViewModel()
             DashboardScreen(
                 viewModel = viewModel,
-                onNavigateToAccount = { accountId ->
-                    navController.navigate(AccountDetailRoute(accountId))
-                },
-                onAddAccount = {
-                    navController.navigate(AccountFormRoute())
+                onNavigateToItem = { ticker ->
+                    navController.navigate(ItemDetailRoute(ticker))
                 }
             )
         }

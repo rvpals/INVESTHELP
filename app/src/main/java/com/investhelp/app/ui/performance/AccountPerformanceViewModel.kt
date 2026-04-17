@@ -63,14 +63,21 @@ class AccountPerformanceViewModel @Inject constructor(
         _pulledValue.value = null
     }
 
-    fun saveRecord(accountId: Long, totalValue: Double) {
+    fun saveRecord(accountId: Long, totalValue: Double, note: String = "") {
         viewModelScope.launch {
             val record = AccountPerformanceEntity(
                 accountId = accountId,
                 totalValue = totalValue,
-                dateTime = LocalDateTime.now()
+                dateTime = LocalDateTime.now(),
+                note = note.trim()
             )
             performanceRepository.insertRecord(record)
+        }
+    }
+
+    fun updateRecord(record: AccountPerformanceEntity) {
+        viewModelScope.launch {
+            performanceRepository.updateRecord(record)
         }
     }
 

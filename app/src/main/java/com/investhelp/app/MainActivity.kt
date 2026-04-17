@@ -52,9 +52,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -232,37 +236,103 @@ fun GlobalTopBar(navController: NavHostController) {
                 ),
                 elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
             ) {
-                Row(
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 10.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
                 ) {
-                    Text(
-                        text = "Total Portfolio: ",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer
-                    )
-                    if (isRefreshing) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(18.dp),
-                            strokeWidth = 2.dp,
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Total Portfolio: ",
+                            style = MaterialTheme.typography.titleMedium,
                             color = MaterialTheme.colorScheme.onPrimaryContainer
                         )
-                        Spacer(modifier = Modifier.width(6.dp))
+                        if (isRefreshing) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(18.dp),
+                                strokeWidth = 2.dp,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                        }
+                        Text(
+                            text = currencyFormat.format(uiState.totalPortfolioValue),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                        if (uiState.totalDayGainLoss != 0.0) {
+                            val dayChangeColor = if (uiState.totalDayGainLoss > 0) Color(0xFF2E7D32) else Color(0xFFC62828)
+                            val dayChangeSign = if (uiState.totalDayGainLoss > 0) "+" else ""
+                            Text(
+                                text = " (${dayChangeSign}${currencyFormat.format(uiState.totalDayGainLoss)})",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                                color = dayChangeColor
+                            )
+                        }
                     }
-                    Text(
-                        text = currencyFormat.format(uiState.totalPortfolioValue),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer
-                    )
+                    // Daily % and All-time % row
+                    val previousValue = uiState.totalPortfolioValue - uiState.totalDayGainLoss
+                    val dailyPct = if (previousValue != 0.0)
+                        uiState.totalDayGainLoss / previousValue * 100.0 else 0.0
+                    val allTimePct = if (uiState.totalCost != 0.0)
+                        (uiState.totalPortfolioValue - uiState.totalCost) / uiState.totalCost * 100.0 else 0.0
+                    val dailyColor = when {
+                        dailyPct > 0 -> Color(0xFF2E7D32)
+                        dailyPct < 0 -> Color(0xFFC62828)
+                        else -> MaterialTheme.colorScheme.onPrimaryContainer
+                    }
+                    val allTimeColor = when {
+                        allTimePct > 0 -> Color(0xFF2E7D32)
+                        allTimePct < 0 -> Color(0xFFC62828)
+                        else -> MaterialTheme.colorScheme.onPrimaryContainer
+                    }
+                    val sign = { v: Double -> if (v > 0) "+" else "" }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = "(Day: ",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                        Text(
+                            text = "${sign(dailyPct)}${"%.2f".format(dailyPct)}%",
+                            style = MaterialTheme.typography.bodySmall,
+                            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                            color = dailyColor
+                        )
+                        Text(
+                            text = "  All: ",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                        Text(
+                            text = "${sign(allTimePct)}${"%.2f".format(allTimePct)}%",
+                            style = MaterialTheme.typography.bodySmall,
+                            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                            color = allTimeColor
+                        )
+                        Text(
+                            text = ")",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                    }
                 }
             }
         },
         actions = {
             IconButton(onClick = { menuExpanded = true }) {
-                Icon(Icons.Default.Menu, contentDescription = "Menu")
+                Icon3D(
+                    imageVector = Icons.Default.Menu,
+                    contentDescription = "Menu",
+                    baseColor = MaterialTheme.colorScheme.primary,
+                    iconSize = 20.dp,
+                    boxSize = 32.dp
+                )
             }
             DropdownMenu(
                 expanded = menuExpanded,
@@ -278,7 +348,7 @@ fun GlobalTopBar(navController: NavHostController) {
                             restoreState = true
                         }
                     },
-                    leadingIcon = { Icon(Icons.Default.AccountBalance, contentDescription = null) }
+                    leadingIcon = { Icon3D(Icons.Default.AccountBalance, null, Color(0xFF1565C0), iconSize = 16.dp, boxSize = 28.dp) }
                 )
                 DropdownMenuItem(
                     text = { Text("Performance") },
@@ -290,7 +360,7 @@ fun GlobalTopBar(navController: NavHostController) {
                             restoreState = true
                         }
                     },
-                    leadingIcon = { Icon(Icons.AutoMirrored.Filled.TrendingUp, contentDescription = null) }
+                    leadingIcon = { Icon3D(Icons.AutoMirrored.Filled.TrendingUp, null, Color(0xFF2E7D32), iconSize = 16.dp, boxSize = 28.dp) }
                 )
                 DropdownMenuItem(
                     text = { Text("Settings") },
@@ -302,7 +372,7 @@ fun GlobalTopBar(navController: NavHostController) {
                             restoreState = true
                         }
                     },
-                    leadingIcon = { Icon(Icons.Default.Settings, contentDescription = null) }
+                    leadingIcon = { Icon3D(Icons.Default.Settings, null, Color(0xFF616161), iconSize = 16.dp, boxSize = 28.dp) }
                 )
                 DropdownMenuItem(
                     text = { Text("SQL Explorer") },
@@ -314,17 +384,49 @@ fun GlobalTopBar(navController: NavHostController) {
                             restoreState = true
                         }
                     },
-                    leadingIcon = { Icon(Icons.Default.Storage, contentDescription = null) }
+                    leadingIcon = { Icon3D(Icons.Default.Storage, null, Color(0xFFE65100), iconSize = 16.dp, boxSize = 28.dp) }
                 )
                 HorizontalDivider()
                 DropdownMenuItem(
                     text = { Text("About") },
                     onClick = { menuExpanded = false; showAbout = true },
-                    leadingIcon = { Icon(Icons.Default.Info, contentDescription = null) }
+                    leadingIcon = { Icon3D(Icons.Default.Info, null, Color(0xFF0277BD), iconSize = 16.dp, boxSize = 28.dp) }
                 )
             }
         }
     )
+}
+
+@Composable
+fun Icon3D(
+    imageVector: ImageVector,
+    contentDescription: String?,
+    baseColor: Color,
+    modifier: Modifier = Modifier,
+    iconSize: Dp = 22.dp,
+    boxSize: Dp = 34.dp
+) {
+    val gradient = Brush.linearGradient(
+        colors = listOf(
+            baseColor.copy(alpha = 0.9f),
+            baseColor,
+            baseColor.copy(red = baseColor.red * 0.7f, green = baseColor.green * 0.7f, blue = baseColor.blue * 0.7f)
+        )
+    )
+    androidx.compose.foundation.layout.Box(
+        modifier = modifier
+            .size(boxSize)
+            .shadow(4.dp, RoundedCornerShape(10.dp))
+            .background(gradient, RoundedCornerShape(10.dp)),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            imageVector = imageVector,
+            contentDescription = contentDescription,
+            modifier = Modifier.size(iconSize),
+            tint = Color.White
+        )
+    }
 }
 
 @Composable
@@ -340,10 +442,12 @@ fun BottomNavigationBar(navController: NavHostController) {
             val selected = currentDestination?.hasRoute(item.route::class) == true
             NavigationBarItem(
                 icon = {
-                    Icon(
-                        item.icon,
+                    Icon3D(
+                        imageVector = item.icon,
                         contentDescription = item.label,
-                        tint = if (selected) item.tint else item.tint.copy(alpha = 0.5f)
+                        baseColor = if (selected) item.tint else item.tint.copy(alpha = 0.4f),
+                        iconSize = if (selected) 22.dp else 20.dp,
+                        boxSize = if (selected) 36.dp else 32.dp
                     )
                 },
                 label = {

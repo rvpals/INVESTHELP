@@ -11,6 +11,7 @@ interface AccountPerformanceRepository {
     fun getRecordsByAccount(accountId: Long): Flow<List<AccountPerformanceEntity>>
     fun getRecordsByAccounts(accountIds: List<Long>): Flow<List<AccountPerformanceEntity>>
     suspend fun insertRecord(record: AccountPerformanceEntity): Long
+    suspend fun updateRecord(record: AccountPerformanceEntity)
     suspend fun deleteRecord(record: AccountPerformanceEntity)
 }
 
@@ -22,5 +23,6 @@ class AccountPerformanceRepositoryImpl @Inject constructor(
     override fun getRecordsByAccount(accountId: Long) = dao.getRecordsByAccount(accountId)
     override fun getRecordsByAccounts(accountIds: List<Long>) = dao.getRecordsByAccounts(accountIds)
     override suspend fun insertRecord(record: AccountPerformanceEntity) = dao.insertRecord(record)
+    override suspend fun updateRecord(record: AccountPerformanceEntity) = dao.updateRecord(record)
     override suspend fun deleteRecord(record: AccountPerformanceEntity) = dao.deleteRecord(record)
 }

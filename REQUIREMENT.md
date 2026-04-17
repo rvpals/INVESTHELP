@@ -51,21 +51,23 @@ Android app to track personal investments.
 - Account (FK to investment_accounts, CASCADE delete)
 - Total Value (user-entered or pulled from app)
 - Date/Time (auto-set on record creation)
+- Note (optional text)
 
 ## Features
 
 ### Navigation
 - **Global top bar** — persistent across all screens:
-  - Portfolio value 3D button (tap to navigate to Dashboard, auto-refreshes)
+  - Portfolio value 3D button (tap to navigate to Dashboard, auto-refreshes); shows daily % and all-time % gain/loss below the total value, color-coded green/red
   - Hamburger menu (Accounts, Performance, Settings, SQL Explorer, About)
   - About dialog includes "Show Log" button for viewing application log
-- **Bottom nav** — Dashboard, Items, Transfer, Transaction, Simulation (colorful icons with shadow)
+- **Bottom nav** — Dashboard, Items, Transfer, Transaction, Simulation (3D gradient icons with shadow)
 
 ### Dashboard
-- **Market index cards** — horizontal scrollable row of small cards at the top; default: NASDAQ (^IXIC), S&P 500 (^GSPC), Dow (^DJI), Gold (GC=F); also available: Russell 2K, Silver, Oil, Bitcoin; each card shows label, price, daily change with percentage; clicking a card opens Yahoo Finance page for the index; customizable in Settings > Preferences; auto-refreshes on app start and with Refresh All
-- Accounts list with current values
-- **Pie chart** — collapsible positions card; shows all items by ticker value with shares labels inside slices; legend limited to top 20 with "More" button to show all
-- FAB to add accounts
+- All dashboard sections (Market Indices, Daily Glance, Positions) use **CollapsibleCard** — reusable component with title, pin button (top-right), HorizontalDivider between header and content, and expand/collapse toggle; unpinned cards default collapsed, pinned cards default expanded; pin state persisted to SharedPreferences
+- **Portfolio button** (top bar) — shows total value on first row with daily change amount in parentheses (e.g. "(+$123.45)") color-coded green/red (hidden when zero); daily % and all-time % gain/loss on second row, color-coded green/red
+- **Market index cards** — horizontal scrollable row of small cards; default: NASDAQ (^IXIC), S&P 500 (^GSPC), Dow (^DJI), Gold (GC=F); also available: Russell 2K, Silver, Oil, Bitcoin; each card shows label, price, daily change with percentage; clicking a card opens Yahoo Finance page for the index; customizable in Settings > Preferences; auto-refreshes on app start and with Refresh All
+- **Daily Glance** — "Overall Daily" section at top showing Stock and ETF total daily change in $ and %, separated by HorizontalDivider; then top 5 performing and top 5 losing assets today; each row shows ticker, company name, gain/loss $ and %; clickable to navigate to item detail; aggregated per-ticker across all accounts
+- **Pie chart** — positions card; shows all items by ticker value with shares labels inside slices; legend limited to top 20 with "More" button to show all; clicking a ticker row in the legend navigates to item detail
 
 ### Account Detail with Tabs
 - **Positions tab** — lists all items for the account (ticker, value, quantity, cost, day/total gain/loss)
@@ -129,15 +131,16 @@ Android app to track personal investments.
 - Result table with column headers, horizontal scrolling, monospace font
 - Export results to CSV via share intent (FileProvider)
 - Error display for invalid SQL
-- **Table browser** — lists all database tables (excludes internal sqlite/room/android tables); click to expand column details (name, type, PK/NN indicators); animated expand/collapse
+- **Table browser** — lists all database tables (excludes internal sqlite/room/android tables); click to expand column details (name, type, PK/NN indicators); animated expand/collapse; "Open" button on each table row runs `SELECT * FROM <table>` and shows results
 - **Row detail dialog** — click any result row to view all field values untruncated in a scrollable dialog
 
 ### Account Performance
 - Accessible from hamburger menu in top bar
 - Tracks account total value over time for trending analysis
-- **Add Record** form: account selector dropdown, total value text field, "Pull from App" button (computes current value from items), "Add Record" button
+- **Add Record** form: account selector dropdown, total value text field, optional note field, "Pull from App" button (computes current value from items), "Add Record" button
 - Records auto-timestamped with current date/time on creation
-- **Records list** — all records ordered newest first, showing account name, date/time, total value, delete button
+- **Records list** — all records ordered newest first, showing account name, date/time, note (when present), total value, edit button (pencil icon), delete button
+- **Edit Note** — dialog to edit the note on an existing record; pre-fills with current note
 - **Performance Chart** — multi-account overlay line chart (Canvas-drawn); FilterChip multi-select for accounts; each account gets distinct color from 8-color palette; time-based shared x-axis; tap-to-select tooltip with account name, value, and date; requires 2+ records per account to display series
 - **Zoom** — pinch-to-zoom (1x–5x) with two-finger pan; double-tap resets zoom; clipRect clips zoomed lines to data area; x-axis labels update to reflect visible viewport
 - Delete respects "Warn before delete" setting
