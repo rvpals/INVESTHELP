@@ -4,9 +4,11 @@ import android.content.Context
 import com.investhelp.app.data.local.DatabaseProvider
 import com.investhelp.app.data.local.dao.AccountPerformanceDao
 import com.investhelp.app.data.local.dao.BankTransferDao
+import com.investhelp.app.data.local.dao.CsvImportMappingDao
 import com.investhelp.app.data.local.dao.InvestmentAccountDao
 import com.investhelp.app.data.local.dao.InvestmentItemDao
 import com.investhelp.app.data.local.dao.InvestmentTransactionDao
+import com.investhelp.app.data.local.dao.WatchListDao
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -47,5 +49,15 @@ object DatabaseModule {
     @Provides
     fun provideAccountPerformanceDao(dbProvider: DatabaseProvider): AccountPerformanceDao {
         return dbProvider.database.accountPerformanceDao()
+    }
+
+    @Provides
+    fun provideWatchListDao(dbProvider: DatabaseProvider): WatchListDao {
+        return dbProvider.database.watchListDao()
+    }
+
+    @Provides
+    fun provideCsvImportMappingDao(dbProvider: DatabaseProvider): CsvImportMappingDao {
+        return dbProvider.database.csvImportMappingDao()
     }
 }

@@ -11,20 +11,17 @@ import javax.inject.Singleton
 
 interface InvestmentItemRepository {
     fun getAllItems(): Flow<List<InvestmentItemEntity>>
-    fun getItemsByTicker(ticker: String): Flow<List<InvestmentItemEntity>>
-    fun getItemsByAccount(accountId: Long): Flow<List<InvestmentItemEntity>>
-    suspend fun getFirstByTicker(ticker: String): InvestmentItemEntity?
-    suspend fun getItem(ticker: String, accountId: Long): InvestmentItemEntity?
+    fun observeItemByTicker(ticker: String): Flow<InvestmentItemEntity?>
+    suspend fun getItemByTicker(ticker: String): InvestmentItemEntity?
     suspend fun getAllItemsSnapshot(): List<InvestmentItemEntity>
     suspend fun computeSharesOwned(ticker: String): Double
     suspend fun sumQuantityByTicker(ticker: String): Double
-    suspend fun sumValueByAccount(accountId: Long): Double
+    suspend fun sumAllValues(): Double
     suspend fun getItemStatistics(ticker: String, startDate: LocalDate, endDate: LocalDate): ItemStatistics
     suspend fun upsertItem(item: InvestmentItemEntity)
     suspend fun upsertAll(items: List<InvestmentItemEntity>)
     suspend fun updatePriceByTicker(ticker: String, price: Double)
     suspend fun updateMetadataByTicker(ticker: String, name: String, type: InvestmentType, currentPrice: Double)
-    suspend fun deleteItem(ticker: String, accountId: Long)
     suspend fun deleteByTicker(ticker: String)
     suspend fun deleteAll()
 }
@@ -37,17 +34,11 @@ class InvestmentItemRepositoryImpl @Inject constructor(
     override fun getAllItems(): Flow<List<InvestmentItemEntity>> =
         itemDao.getAllItems()
 
-    override fun getItemsByTicker(ticker: String): Flow<List<InvestmentItemEntity>> =
-        itemDao.getItemsByTicker(ticker)
+    override fun observeItemByTicker(ticker: String): Flow<InvestmentItemEntity?> =
+        itemDao.observeItemByTicker(ticker)
 
-    override fun getItemsByAccount(accountId: Long): Flow<List<InvestmentItemEntity>> =
-        itemDao.getItemsByAccount(accountId)
-
-    override suspend fun getFirstByTicker(ticker: String): InvestmentItemEntity? =
-        itemDao.getFirstByTicker(ticker)
-
-    override suspend fun getItem(ticker: String, accountId: Long): InvestmentItemEntity? =
-        itemDao.getItem(ticker, accountId)
+    override suspend fun getItemByTicker(ticker: String): InvestmentItemEntity? =
+        itemDao.getItemByTicker(ticker)
 
     override suspend fun getAllItemsSnapshot(): List<InvestmentItemEntity> =
         itemDao.getAllItemsSnapshot()
@@ -58,8 +49,8 @@ class InvestmentItemRepositoryImpl @Inject constructor(
     override suspend fun sumQuantityByTicker(ticker: String): Double =
         itemDao.sumQuantityByTicker(ticker)
 
-    override suspend fun sumValueByAccount(accountId: Long): Double =
-        itemDao.sumValueByAccount(accountId)
+    override suspend fun sumAllValues(): Double =
+        itemDao.sumAllValues()
 
     override suspend fun getItemStatistics(
         ticker: String,
@@ -89,9 +80,6 @@ class InvestmentItemRepositoryImpl @Inject constructor(
 
     override suspend fun updateMetadataByTicker(ticker: String, name: String, type: InvestmentType, currentPrice: Double) =
         itemDao.updateMetadataByTicker(ticker, name, type, currentPrice)
-
-    override suspend fun deleteItem(ticker: String, accountId: Long) =
-        itemDao.deleteItem(ticker, accountId)
 
     override suspend fun deleteByTicker(ticker: String) =
         itemDao.deleteByTicker(ticker)

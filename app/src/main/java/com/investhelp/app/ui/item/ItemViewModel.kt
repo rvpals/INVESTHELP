@@ -46,19 +46,19 @@ class ItemViewModel @Inject constructor(
         _priceMessage.value = null
     }
 
-    // --- All items (all rows, every account) ---
+    // --- All items ---
     val allItems: StateFlow<List<InvestmentItemEntity>> =
         itemRepository.getAllItems()
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    // --- Accounts (for add/edit forms) ---
+    // --- Accounts (for forms) ---
     val accounts: StateFlow<List<InvestmentAccountEntity>> =
         accountDao.getAllAccounts()
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    // --- Selected item state (for detail screen, loaded by ticker) ---
-    private val _selectedItemRows = MutableStateFlow<List<InvestmentItemEntity>>(emptyList())
-    val selectedItemRows: StateFlow<List<InvestmentItemEntity>> = _selectedItemRows.asStateFlow()
+    // --- Selected item state (for detail screen) ---
+    private val _selectedItem = MutableStateFlow<InvestmentItemEntity?>(null)
+    val selectedItem: StateFlow<InvestmentItemEntity?> = _selectedItem.asStateFlow()
 
     private val _itemTransactions = MutableStateFlow<List<InvestmentTransactionEntity>>(emptyList())
     val itemTransactions: StateFlow<List<InvestmentTransactionEntity>> = _itemTransactions.asStateFlow()
@@ -111,8 +111,8 @@ class ItemViewModel @Inject constructor(
     // --- Load item by ticker (for detail screen) ---
     fun loadItem(ticker: String) {
         viewModelScope.launch {
-            itemRepository.getItemsByTicker(ticker).collect { rows ->
-                _selectedItemRows.value = rows
+            itemRepository.observeItemByTicker(ticker).collect { item ->
+                _selectedItem.value = item
             }
         }
         viewModelScope.launch {
@@ -132,7 +132,6 @@ class ItemViewModel @Inject constructor(
     // --- Save item (add or edit metadata) ---
     fun saveItem(
         ticker: String,
-        accountId: Long,
         name: String,
         type: InvestmentType,
         currentPrice: Double,
@@ -140,10 +139,9 @@ class ItemViewModel @Inject constructor(
         cost: Double
     ) {
         viewModelScope.launch {
-            val existing = itemRepository.getItem(ticker, accountId)
+            val existing = itemRepository.getItemByTicker(ticker)
             val item = InvestmentItemEntity(
                 ticker = ticker,
-                accountId = accountId,
                 name = name,
                 type = type,
                 currentPrice = currentPrice,
@@ -156,23 +154,14 @@ class ItemViewModel @Inject constructor(
                 dayLow = existing?.dayLow ?: 0.0
             )
             itemRepository.upsertItem(item)
-            // Sync metadata across all accounts for same ticker
-            itemRepository.updateMetadataByTicker(ticker, name, type, currentPrice)
         }
     }
 
     // --- Save position (from add form) ---
-    fun savePosition(ticker: String, quantity: Double, cost: Double, accountId: Long?, type: InvestmentType? = null) {
+    fun savePosition(ticker: String, quantity: Double, cost: Double, type: InvestmentType? = null) {
         viewModelScope.launch {
-            val resolvedAccountId = accountId ?: accountDao.getAllAccounts().first().firstOrNull()?.id
-                ?: run {
-                    _message.value = "No accounts exist. Create an account first."
-                    return@launch
-                }
-
-            val existing = itemRepository.getItem(ticker, resolvedAccountId)
-            val metadata = existing ?: itemRepository.getFirstByTicker(ticker)
-            val resolvedType = type ?: metadata?.type ?: InvestmentType.Stock
+            val existing = itemRepository.getItemByTicker(ticker)
+            val resolvedType = type ?: existing?.type ?: InvestmentType.Stock
             val value = existing?.value ?: 0.0
             val dayGainLoss = existing?.dayGainLoss ?: 0.0
             val totalGainLoss = value - cost
@@ -180,57 +169,46 @@ class ItemViewModel @Inject constructor(
             itemRepository.upsertItem(
                 InvestmentItemEntity(
                     ticker = ticker,
-                    accountId = resolvedAccountId,
-                    name = metadata?.name ?: ticker,
+                    name = existing?.name ?: ticker,
                     type = resolvedType,
-                    currentPrice = metadata?.currentPrice ?: 0.0,
+                    currentPrice = existing?.currentPrice ?: 0.0,
                     quantity = quantity,
                     cost = cost,
                     dayGainLoss = dayGainLoss,
                     totalGainLoss = totalGainLoss,
                     value = value,
-                    dayHigh = metadata?.dayHigh ?: 0.0,
-                    dayLow = metadata?.dayLow ?: 0.0
+                    dayHigh = existing?.dayHigh ?: 0.0,
+                    dayLow = existing?.dayLow ?: 0.0
                 )
             )
-            // Sync type across all accounts for same ticker
-            if (type != null) {
-                val name = metadata?.name ?: ticker
-                val price = metadata?.currentPrice ?: 0.0
-                itemRepository.updateMetadataByTicker(ticker, name, resolvedType, price)
-            }
         }
     }
 
-    // --- Delete single position row ---
-    fun deleteItem(ticker: String, accountId: Long) {
+    // --- Delete item ---
+    fun deleteItem(ticker: String) {
         viewModelScope.launch {
-            itemRepository.deleteItem(ticker, accountId)
+            itemRepository.deleteByTicker(ticker)
         }
     }
 
-    // --- Refresh price for a single ticker (updates all rows for that ticker) ---
+    // --- Refresh price for a single ticker ---
     fun refreshPrice(ticker: String) {
         if (ticker.isBlank()) return
         viewModelScope.launch {
             _refreshingTickers.value = _refreshingTickers.value + ticker
             try {
                 val quote = stockPriceService.fetchQuote(ticker)
-                itemRepository.updatePriceByTicker(ticker, quote.price)
-                // Also update value for each row
-                val rows = itemRepository.getItemsByTicker(ticker).first()
-                for (row in rows) {
-                    val newValue = row.quantity * quote.price
-                    val dayChange = (quote.price - quote.previousClose) * row.quantity
-                    itemRepository.upsertItem(row.copy(
-                        currentPrice = quote.price,
-                        value = newValue,
-                        totalGainLoss = newValue - row.cost,
-                        dayGainLoss = dayChange,
-                        dayHigh = quote.dayHigh,
-                        dayLow = quote.dayLow
-                    ))
-                }
+                val item = itemRepository.getItemByTicker(ticker) ?: return@launch
+                val newValue = item.quantity * quote.price
+                val dayChange = (quote.price - quote.previousClose) * item.quantity
+                itemRepository.upsertItem(item.copy(
+                    currentPrice = quote.price,
+                    value = newValue,
+                    totalGainLoss = newValue - item.cost,
+                    dayGainLoss = dayChange,
+                    dayHigh = quote.dayHigh,
+                    dayLow = quote.dayLow
+                ))
             } catch (e: Exception) {
                 _priceMessage.value = "Failed to fetch $ticker: ${e.message}"
                 AppLog.log("Fetch $ticker failed: ${e.message}")
@@ -248,31 +226,27 @@ class ItemViewModel @Inject constructor(
             var successCount = 0
             var failCount = 0
 
-            // Group by ticker to avoid redundant API calls
-            val byTicker = allPositions.groupBy { it.ticker }
-            for ((ticker, rows) in byTicker) {
+            for (item in allPositions) {
                 try {
-                    val quote = stockPriceService.fetchQuote(ticker)
-                    val resolvedName = quote.shortName ?: rows.first().name
-                    for (row in rows) {
-                        val newValue = quote.price * row.quantity
-                        val dayChange = (quote.price - quote.previousClose) * row.quantity
-                        itemRepository.upsertItem(
-                            row.copy(
-                                name = resolvedName,
-                                currentPrice = quote.price,
-                                value = newValue,
-                                dayGainLoss = dayChange,
-                                totalGainLoss = newValue - row.cost,
-                                dayHigh = quote.dayHigh,
-                                dayLow = quote.dayLow
-                            )
+                    val quote = stockPriceService.fetchQuote(item.ticker)
+                    val resolvedName = quote.shortName ?: item.name
+                    val newValue = quote.price * item.quantity
+                    val dayChange = (quote.price - quote.previousClose) * item.quantity
+                    itemRepository.upsertItem(
+                        item.copy(
+                            name = resolvedName,
+                            currentPrice = quote.price,
+                            value = newValue,
+                            dayGainLoss = dayChange,
+                            totalGainLoss = newValue - item.cost,
+                            dayHigh = quote.dayHigh,
+                            dayLow = quote.dayLow
                         )
-                    }
+                    )
                     successCount++
                 } catch (e: Exception) {
                     failCount++
-                    AppLog.log("Refresh $ticker failed: ${e.message}")
+                    AppLog.log("Refresh ${item.ticker} failed: ${e.message}")
                 }
             }
 
@@ -289,41 +263,37 @@ class ItemViewModel @Inject constructor(
         viewModelScope.launch {
             _isRefreshingAll.value = true
             val allPositions = itemRepository.getAllItems().first()
-            val tickers = allPositions.map { it.ticker }.distinct()
-            if (tickers.isEmpty()) {
+            if (allPositions.isEmpty()) {
                 _priceMessage.value = "No items to refresh."
                 _isRefreshingAll.value = false
                 return@launch
             }
             var successCount = 0
             var failCount = 0
-            for (ticker in tickers) {
-                _refreshingTickers.value = _refreshingTickers.value + ticker
+            for (item in allPositions) {
+                _refreshingTickers.value = _refreshingTickers.value + item.ticker
                 try {
-                    val quote = stockPriceService.fetchQuote(ticker)
-                    val rows = allPositions.filter { it.ticker == ticker }
-                    val resolvedName = quote.shortName ?: rows.first().name
-                    for (row in rows) {
-                        val newValue = quote.price * row.quantity
-                        val dayChange = (quote.price - quote.previousClose) * row.quantity
-                        itemRepository.upsertItem(
-                            row.copy(
-                                name = resolvedName,
-                                currentPrice = quote.price,
-                                value = newValue,
-                                dayGainLoss = dayChange,
-                                totalGainLoss = newValue - row.cost,
-                                dayHigh = quote.dayHigh,
-                                dayLow = quote.dayLow
-                            )
+                    val quote = stockPriceService.fetchQuote(item.ticker)
+                    val resolvedName = quote.shortName ?: item.name
+                    val newValue = quote.price * item.quantity
+                    val dayChange = (quote.price - quote.previousClose) * item.quantity
+                    itemRepository.upsertItem(
+                        item.copy(
+                            name = resolvedName,
+                            currentPrice = quote.price,
+                            value = newValue,
+                            dayGainLoss = dayChange,
+                            totalGainLoss = newValue - item.cost,
+                            dayHigh = quote.dayHigh,
+                            dayLow = quote.dayLow
                         )
-                    }
+                    )
                     successCount++
                 } catch (e: Exception) {
                     failCount++
-                    AppLog.log("Update $ticker failed: ${e.message}")
+                    AppLog.log("Update ${item.ticker} failed: ${e.message}")
                 } finally {
-                    _refreshingTickers.value = _refreshingTickers.value - ticker
+                    _refreshingTickers.value = _refreshingTickers.value - item.ticker
                 }
             }
             val msg = "Updated $successCount tickers" +

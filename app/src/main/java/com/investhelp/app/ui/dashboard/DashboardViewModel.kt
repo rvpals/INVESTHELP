@@ -28,11 +28,23 @@ data class TickerPosition(
     val totalValue: Double
 )
 
+data class PositionDetail(
+    val ticker: String,
+    val name: String,
+    val totalShares: Double,
+    val currentPrice: Double,
+    val totalCost: Double,
+    val totalValue: Double,
+    val changeAmount: Double = 0.0,
+    val changePercent: Double = 0.0
+)
+
 data class DailyGlanceItem(
     val ticker: String,
     val name: String,
     val dayGainLoss: Double,
-    val dayGainLossPercent: Double
+    val dayGainLossPercent: Double,
+    val dayGainLossPerShare: Double = 0.0
 )
 
 data class MarketIndexQuote(
@@ -77,6 +89,7 @@ class DashboardViewModel @Inject constructor(
         const val KEY_PIN_MARKET_INDICES = "pin_card_market_indices"
         const val KEY_PIN_POSITIONS = "pin_card_positions"
         const val KEY_PIN_DAILY_GLANCE = "pin_card_daily_glance"
+        const val KEY_PIN_POSITION_DETAILS = "pin_card_position_details"
     }
 
     private val _isRefreshing = MutableStateFlow(false)
@@ -86,10 +99,34 @@ class DashboardViewModel @Inject constructor(
         mapOf(
             KEY_PIN_MARKET_INDICES to prefs.getBoolean(KEY_PIN_MARKET_INDICES, false),
             KEY_PIN_POSITIONS to prefs.getBoolean(KEY_PIN_POSITIONS, false),
-            KEY_PIN_DAILY_GLANCE to prefs.getBoolean(KEY_PIN_DAILY_GLANCE, false)
+            KEY_PIN_DAILY_GLANCE to prefs.getBoolean(KEY_PIN_DAILY_GLANCE, false),
+            KEY_PIN_POSITION_DETAILS to prefs.getBoolean(KEY_PIN_POSITION_DETAILS, false)
         )
     )
     val pinStates: StateFlow<Map<String, Boolean>> = _pinStates.asStateFlow()
+
+    private val _positionDetails = MutableStateFlow<List<PositionDetail>>(emptyList())
+    val positionDetails: StateFlow<List<PositionDetail>> = _positionDetails.asStateFlow()
+
+    fun fetchPositionDetails() {
+        viewModelScope.launch {
+            val allItems = itemRepository.getAllItems().first()
+            val details = allItems
+                .filter { it.quantity > 0 }
+                .map { item ->
+                    val changeAmt = item.value - item.cost
+                    val changePct = if (item.cost != 0.0) changeAmt / item.cost * 100.0 else 0.0
+                    PositionDetail(
+                        ticker = item.ticker, name = item.name,
+                        totalShares = item.quantity, currentPrice = item.currentPrice,
+                        totalCost = item.cost, totalValue = item.value,
+                        changeAmount = changeAmt, changePercent = changePct
+                    )
+                }
+                .sortedByDescending { it.totalValue }
+            _positionDetails.value = details
+        }
+    }
 
     fun setPinState(key: String, pinned: Boolean) {
         prefs.edit().putBoolean(key, pinned).apply()
@@ -100,6 +137,7 @@ class DashboardViewModel @Inject constructor(
 
     init {
         refreshMarketIndices()
+        fetchPositionDetails()
     }
 
     fun refreshMarketIndices() {
@@ -111,12 +149,10 @@ class DashboardViewModel @Inject constructor(
             val orderedSymbols = SettingsViewModel.AVAILABLE_MARKET_INDICES
                 .filter { it.symbol in enabledSymbols }
 
-            // Initialize with empty prices to show cards immediately
             _marketIndices.value = orderedSymbols.map {
                 MarketIndexQuote(symbol = it.symbol, label = it.label)
             }
 
-            // Fetch each quote
             var successCount = 0
             var failCount = 0
             for (config in orderedSymbols) {
@@ -151,30 +187,27 @@ class DashboardViewModel @Inject constructor(
                 refreshMarketIndices()
 
                 val allItems = itemRepository.getAllItems().first()
-                val byTicker = allItems.groupBy { it.ticker }
                 var successCount = 0
                 var failCount = 0
-                for ((ticker, rows) in byTicker) {
+                for (item in allItems) {
                     try {
-                        val quote = stockPriceService.fetchQuote(ticker)
-                        val resolvedName = quote.shortName ?: rows.first().name
-                        for (row in rows) {
-                            val newValue = quote.price * row.quantity
-                            val dayChange = (quote.price - quote.previousClose) * row.quantity
-                            itemRepository.upsertItem(
-                                row.copy(
-                                    name = resolvedName,
-                                    currentPrice = quote.price,
-                                    value = newValue,
-                                    dayGainLoss = dayChange,
-                                    totalGainLoss = newValue - row.cost
-                                )
+                        val quote = stockPriceService.fetchQuote(item.ticker)
+                        val resolvedName = quote.shortName ?: item.name
+                        val newValue = quote.price * item.quantity
+                        val dayChange = (quote.price - quote.previousClose) * item.quantity
+                        itemRepository.upsertItem(
+                            item.copy(
+                                name = resolvedName,
+                                currentPrice = quote.price,
+                                value = newValue,
+                                dayGainLoss = dayChange,
+                                totalGainLoss = newValue - item.cost
                             )
-                        }
+                        )
                         successCount++
                     } catch (e: Exception) {
                         failCount++
-                        AppLog.log("Price fetch $ticker failed: ${e.message}")
+                        AppLog.log("Price fetch ${item.ticker} failed: ${e.message}")
                     }
                 }
                 AppLog.log("Portfolio refresh: $successCount tickers ok" +
@@ -191,37 +224,33 @@ class DashboardViewModel @Inject constructor(
         _marketIndices
     ) { accounts, items, indices ->
         val tickerPositions = items
-            .groupBy { it.ticker }
-            .map { (ticker, list) ->
+            .filter { it.value > 0 }
+            .map { item ->
                 TickerPosition(
-                    ticker = ticker,
-                    totalQuantity = list.sumOf { it.quantity },
-                    totalValue = list.sumOf { it.value }
+                    ticker = item.ticker,
+                    totalQuantity = item.quantity,
+                    totalValue = item.value
                 )
             }
-            .filter { it.totalValue > 0 }
             .sortedByDescending { it.totalValue }
 
-        // Daily glance: aggregate by ticker across all accounts
-        val glanceByTicker = items
-            .groupBy { it.ticker }
-            .map { (ticker, list) ->
-                val totalDayGL = list.sumOf { it.dayGainLoss }
-                val totalValue = list.sumOf { it.value }
-                val previousValue = totalValue - totalDayGL
-                val pct = if (previousValue != 0.0) totalDayGL / previousValue * 100.0 else 0.0
-                DailyGlanceItem(
-                    ticker = ticker,
-                    name = list.first().name,
-                    dayGainLoss = totalDayGL,
-                    dayGainLossPercent = pct
-                )
-            }
-        val topGainers = glanceByTicker
+        val glanceItems = items.map { item ->
+            val previousValue = item.value - item.dayGainLoss
+            val pct = if (previousValue != 0.0) item.dayGainLoss / previousValue * 100.0 else 0.0
+            val perShare = if (item.quantity != 0.0) item.dayGainLoss / item.quantity else 0.0
+            DailyGlanceItem(
+                ticker = item.ticker,
+                name = item.name,
+                dayGainLoss = item.dayGainLoss,
+                dayGainLossPercent = pct,
+                dayGainLossPerShare = perShare
+            )
+        }
+        val topGainers = glanceItems
             .filter { it.dayGainLoss > 0 }
             .sortedByDescending { it.dayGainLoss }
             .take(5)
-        val topLosers = glanceByTicker
+        val topLosers = glanceItems
             .filter { it.dayGainLoss < 0 }
             .sortedBy { it.dayGainLoss }
             .take(5)

@@ -38,4 +38,7 @@ interface InvestmentTransactionDao {
 
     @Delete
     suspend fun deleteTransaction(transaction: InvestmentTransactionEntity)
+
+    @Delete
+    suspend fun deleteTransactions(transactions: List<InvestmentTransactionEntity>)
 }

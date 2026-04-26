@@ -3,10 +3,8 @@ package com.investhelp.app.ui.account
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.investhelp.app.data.local.entity.InvestmentAccountEntity
-import com.investhelp.app.data.local.entity.InvestmentItemEntity
 import com.investhelp.app.data.local.entity.InvestmentTransactionEntity
 import com.investhelp.app.data.repository.AccountRepository
-import com.investhelp.app.data.repository.InvestmentItemRepository
 import com.investhelp.app.data.repository.TransactionRepository
 import com.investhelp.app.model.AccountWithValue
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -21,8 +19,7 @@ import javax.inject.Inject
 @HiltViewModel
 class AccountViewModel @Inject constructor(
     private val accountRepository: AccountRepository,
-    private val transactionRepository: TransactionRepository,
-    private val itemRepository: InvestmentItemRepository
+    private val transactionRepository: TransactionRepository
 ) : ViewModel() {
 
     val accountsWithValues: StateFlow<List<AccountWithValue>> =
@@ -35,12 +32,6 @@ class AccountViewModel @Inject constructor(
     private val _accountTransactions = MutableStateFlow<List<InvestmentTransactionEntity>>(emptyList())
     val accountTransactions: StateFlow<List<InvestmentTransactionEntity>> = _accountTransactions.asStateFlow()
 
-    private val _accountPositions = MutableStateFlow<List<InvestmentItemEntity>>(emptyList())
-    val accountPositions: StateFlow<List<InvestmentItemEntity>> = _accountPositions.asStateFlow()
-
-    private val _currentValue = MutableStateFlow(0.0)
-    val currentValue: StateFlow<Double> = _currentValue.asStateFlow()
-
     fun loadAccount(accountId: Long) {
         viewModelScope.launch {
             accountRepository.getAccountById(accountId).collect { account ->
@@ -51,14 +42,6 @@ class AccountViewModel @Inject constructor(
             transactionRepository.getTransactionsByAccount(accountId).collect { transactions ->
                 _accountTransactions.value = transactions
             }
-        }
-        viewModelScope.launch {
-            itemRepository.getItemsByAccount(accountId).collect { positions ->
-                _accountPositions.value = positions
-            }
-        }
-        viewModelScope.launch {
-            _currentValue.value = accountRepository.computeCurrentValue(accountId)
         }
     }
 

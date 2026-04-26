@@ -1,17 +1,25 @@
 package com.investhelp.app.ui.transaction
 
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.SelectAll
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
@@ -36,6 +44,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.investhelp.app.data.local.entity.InvestmentTransactionEntity
 import com.investhelp.app.ui.components.ConfirmDeleteDialog
 import com.investhelp.app.ui.settings.SettingsViewModel
 import androidx.compose.ui.platform.LocalContext
@@ -43,7 +52,7 @@ import java.text.NumberFormat
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun TransactionListScreen(
     viewModel: TransactionViewModel,
@@ -65,12 +74,21 @@ fun TransactionListScreen(
     var selectedAccountId by rememberSaveable { mutableLongStateOf(-1L) }
     var accountDropdownExpanded by remember { mutableStateOf(false) }
 
+    // Multi-select state
+    var selectedIds by remember { mutableStateOf(setOf<Long>()) }
+    val inSelectionMode = selectedIds.isNotEmpty()
+    var showBulkDeleteConfirm by remember { mutableStateOf(false) }
+
     val filteredTransactions = if (selectedAccountId == -1L) {
         transactions
     } else {
         transactions.filter { it.accountId == selectedAccountId }
     }
 
+    val allFilteredSelected = filteredTransactions.isNotEmpty() &&
+            filteredTransactions.all { it.id in selectedIds }
+
+    // Single delete confirm
     val deleteTarget = transactionToDelete?.let { id -> transactions.find { it.id == id } }
     if (deleteTarget != null) {
         ConfirmDeleteDialog(
@@ -84,21 +102,74 @@ fun TransactionListScreen(
         )
     }
 
+    // Bulk delete confirm
+    if (showBulkDeleteConfirm) {
+        val count = selectedIds.size
+        ConfirmDeleteDialog(
+            title = "Delete $count Transactions",
+            message = "Are you sure you want to delete $count selected transactions?",
+            onConfirm = {
+                val toDelete = transactions.filter { it.id in selectedIds }
+                viewModel.deleteTransactions(toDelete)
+                selectedIds = emptySet()
+                showBulkDeleteConfirm = false
+            },
+            onDismiss = { showBulkDeleteConfirm = false }
+        )
+    }
+
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("Transactions") },
-                actions = {
-                    TextButton(onClick = onAddTransaction) {
-                        Icon(
-                            Icons.Default.Add,
-                            contentDescription = null,
-                            modifier = Modifier.padding(end = 4.dp)
-                        )
-                        Text("Add Trans")
+            if (inSelectionMode) {
+                TopAppBar(
+                    title = { Text("${selectedIds.size} selected") },
+                    navigationIcon = {
+                        IconButton(onClick = { selectedIds = emptySet() }) {
+                            Icon(Icons.Default.Close, contentDescription = "Cancel selection")
+                        }
+                    },
+                    actions = {
+                        IconButton(onClick = {
+                            selectedIds = if (allFilteredSelected) {
+                                emptySet()
+                            } else {
+                                filteredTransactions.map { it.id }.toSet()
+                            }
+                        }) {
+                            Icon(Icons.Default.SelectAll, contentDescription = "Select all")
+                        }
+                        IconButton(onClick = {
+                            if (warnBeforeDelete) {
+                                showBulkDeleteConfirm = true
+                            } else {
+                                val toDelete = transactions.filter { it.id in selectedIds }
+                                viewModel.deleteTransactions(toDelete)
+                                selectedIds = emptySet()
+                            }
+                        }) {
+                            Icon(
+                                Icons.Default.Delete,
+                                contentDescription = "Delete selected",
+                                tint = MaterialTheme.colorScheme.error
+                            )
+                        }
                     }
-                }
-            )
+                )
+            } else {
+                TopAppBar(
+                    title = { Text("Transactions") },
+                    actions = {
+                        TextButton(onClick = onAddTransaction) {
+                            Icon(
+                                Icons.Default.Add,
+                                contentDescription = null,
+                                modifier = Modifier.padding(end = 4.dp)
+                            )
+                            Text("Add Trans")
+                        }
+                    }
+                )
+            }
         }
     ) { padding ->
         Column(
@@ -167,10 +238,37 @@ fun TransactionListScreen(
                     items(filteredTransactions, key = { it.id }) { transaction ->
                         val accountName = accounts.find { it.id == transaction.accountId }?.name ?: "Unknown"
                         val timeStr = transaction.time?.format(timeFormatter)?.let { " $it" } ?: ""
+                        val isSelected = transaction.id in selectedIds
 
                         Card(
-                            modifier = Modifier.fillMaxWidth(),
-                            onClick = { onEditTransaction(transaction.id) }
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .combinedClickable(
+                                    onClick = {
+                                        if (inSelectionMode) {
+                                            selectedIds = if (isSelected) {
+                                                selectedIds - transaction.id
+                                            } else {
+                                                selectedIds + transaction.id
+                                            }
+                                        } else {
+                                            onEditTransaction(transaction.id)
+                                        }
+                                    },
+                                    onLongClick = {
+                                        selectedIds = if (isSelected) {
+                                            selectedIds - transaction.id
+                                        } else {
+                                            selectedIds + transaction.id
+                                        }
+                                    }
+                                ),
+                            colors = CardDefaults.cardColors(
+                                containerColor = if (isSelected)
+                                    MaterialTheme.colorScheme.secondaryContainer
+                                else
+                                    CardDefaults.cardColors().containerColor
+                            )
                         ) {
                             Row(
                                 modifier = Modifier
@@ -179,6 +277,19 @@ fun TransactionListScreen(
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
+                                if (inSelectionMode) {
+                                    Checkbox(
+                                        checked = isSelected,
+                                        onCheckedChange = {
+                                            selectedIds = if (isSelected) {
+                                                selectedIds - transaction.id
+                                            } else {
+                                                selectedIds + transaction.id
+                                            }
+                                        }
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                }
                                 Column(modifier = Modifier.weight(1f)) {
                                     Row(
                                         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -233,18 +344,20 @@ fun TransactionListScreen(
                                         )
                                     }
                                 }
-                                IconButton(onClick = {
-                                    if (warnBeforeDelete) {
-                                        transactionToDelete = transaction.id
-                                    } else {
-                                        viewModel.deleteTransaction(transaction)
+                                if (!inSelectionMode) {
+                                    IconButton(onClick = {
+                                        if (warnBeforeDelete) {
+                                            transactionToDelete = transaction.id
+                                        } else {
+                                            viewModel.deleteTransaction(transaction)
+                                        }
+                                    }) {
+                                        Icon(
+                                            Icons.Default.Close,
+                                            contentDescription = "Delete",
+                                            tint = MaterialTheme.colorScheme.error
+                                        )
                                     }
-                                }) {
-                                    Icon(
-                                        Icons.Default.Close,
-                                        contentDescription = "Delete",
-                                        tint = MaterialTheme.colorScheme.error
-                                    )
                                 }
                             }
                         }

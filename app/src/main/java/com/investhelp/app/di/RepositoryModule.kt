@@ -10,6 +10,8 @@ import com.investhelp.app.data.repository.InvestmentItemRepository
 import com.investhelp.app.data.repository.InvestmentItemRepositoryImpl
 import com.investhelp.app.data.repository.TransactionRepository
 import com.investhelp.app.data.repository.TransactionRepositoryImpl
+import com.investhelp.app.data.repository.WatchListRepository
+import com.investhelp.app.data.repository.WatchListRepositoryImpl
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
@@ -33,4 +35,7 @@ abstract class RepositoryModule {
 
     @Binds
     abstract fun bindAccountPerformanceRepository(impl: AccountPerformanceRepositoryImpl): AccountPerformanceRepository
+
+    @Binds
+    abstract fun bindWatchListRepository(impl: WatchListRepositoryImpl): WatchListRepository
 }

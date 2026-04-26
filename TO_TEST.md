@@ -1,20 +1,40 @@
 # Invest Help - Test Checklist
 
-## Items (Merged Item + Position)
+## Items (Ticker-Only Primary Key)
 - [x] Items screen shows pie chart with allocation by ticker value
 - [x] Pie chart section collapses/expands on tap
 - [x] STOCK/ETF tabs filter items by type
-- [x] Item card shows company logo (or letter fallback), ticker, full name, account, quantity, cost, value, day/total G/L
 - [x] Company name updates from Yahoo Finance after Refresh All
-- [x] Clicking item card navigates to Item detail screen
 - [x] Add new item via FAB — type selector dropdown works (Stock, ETF, Bond, MutualFund, Crypto, Other)
 - [x] Add item: selecting existing ticker from autocomplete auto-fills the type
 - [x] Edit existing item — type dropdown shows current type and allows changing
-- [x] Type change syncs across all accounts for the same ticker
 - [x] Delete item from detail screen
 - [x] Refresh All updates live prices and recalculates values for all items
-- [x] Same ticker on two different accounts shows as separate rows
-- [x] Delete an account — items under that account cascade delete
+- [ ] Only one item record per ticker (no duplicates across accounts)
+- [ ] Migration v14->v15: existing duplicate tickers merged correctly (quantities/costs summed)
+
+## Items Screen Layout
+- [ ] Sort-by dropdown visible above items list with options: Ticker, Total Value (default), Current Price
+- [ ] Changing sort option re-orders the items list correctly
+- [ ] Sort selection persists across tab switches (rememberSaveable)
+- [ ] Items displayed in a card with alternating row backgrounds (every other row has subtle highlight)
+- [ ] Each row shows: TickerIcon3D on left, ticker info in middle, shares/G/L on right, edit button
+- [ ] Ticker name in bold titleSmall font; company name below in smaller italic (when different from ticker)
+- [ ] Company name truncated with ellipsis if too long (maxLines = 1)
+- [ ] Shares count and Total G/L displayed in bold titleSmall font on right side
+- [ ] Total G/L color-coded: green for positive, red for negative
+- [ ] Secondary row below shows Price, Value, and Day G/L in smaller muted text
+- [ ] Day G/L color-coded: green for positive, red for negative
+- [ ] No account name shown on item rows (items are not tied to accounts)
+- [ ] Clicking a row navigates to Item detail screen
+- [ ] Edit button (pencil icon) on each row opens edit dialog
+- [ ] No Delete button visible in the table rows
+- [ ] Delete button visible in the Edit dialog (only when editing existing item, not when adding new)
+- [ ] Delete from Edit dialog respects "Warn before delete" setting
+- [ ] TickerIcon3D: gradient-filled rounded box with shadow; color varies per ticker
+- [ ] TickerIcon3D: company logo overlays when loaded from CDN; white letter fallback when not
+- [ ] Spinner shown in place of edit button when ticker is refreshing
+- [ ] Light dividers between rows (not after last row)
 
 ## Item Detail Screen
 - [x] Card header: type chip + "Current Price: $X.XX" (renamed from "Price:")
@@ -23,7 +43,7 @@
 - [x] Total G/L color: green (primary) for positive, red (error) for negative
 - [x] Daily G/L and Daily G/L/Share color: green for positive, red for negative
 - [x] Daily Min/Max show dayLow/dayHigh from Yahoo Finance (0.00 before first refresh)
-- [x] Per-account breakdown section shows individual account rows
+- [ ] No per-account breakdown section (items are not tied to accounts)
 - [x] Analysis Info and Yahoo Finance buttons on same row
 - [x] Analysis Info button fetches Yahoo Finance data and shows bottom sheet
 - [x] Yahoo Finance link opens browser to correct ticker page
@@ -40,16 +60,14 @@
 - [x] Positive G/L displayed in primary color, negative in error color
 - [x] G/L updates when prices are refreshed
 
-## Account Value from Items
-- [x] Add items to an account, verify account value = sum of item values
-- [x] Refresh items (live prices) — account values on dashboard should update
-- [x] Account with no items should show $0.00 value
+## Portfolio Value
+- [ ] Portfolio value = sum of all item values (not per-account)
+- [x] Refresh items (live prices) — portfolio value in top bar should update
 
-## Account Detail Tabs
-- [x] Positions tab shows all items for the account
+## Account Detail
+- [ ] Account detail shows summary card and transactions only (no positions tab)
 - [x] Transactions tab shows all transactions for the account
 - [x] Transactions ordered by date DESC, time DESC
-- [x] Tapping a position row navigates to Item detail
 - [x] Tapping a transaction navigates to edit form
 
 ## Transaction Form
@@ -214,9 +232,10 @@
 - [x] Backup folder selection persists after app restart
 - [x] Previously selected folder displays folder name (not "No folder selected") on return
 - [x] Export/Restore buttons enabled immediately when returning to Settings with saved folder
-- [x] Export creates JSON file with v2 format (includes all merged entity fields)
-- [x] Restore v2 backup correctly recreates all items with full data
+- [ ] Export creates JSON file with v3 format (items without accountId)
+- [ ] Restore v3 backup correctly recreates all items (ticker-only PK)
 - [x] Restore v1 backup assigns items to first account, maps numShares to quantity
+- [ ] Restore v2 backup: ignores accountId, items created with ticker-only PK
 - [x] Restored data matches original (accounts, items, transactions, bank transfers)
 
 ## Database Migration v9 -> v10
@@ -268,7 +287,20 @@
 - [x] G/L updates reactively when prices are refreshed
 - [x] Both Buy and Sell transactions show G/L correctly
 
-## CSV Position Import
+## Transaction List Multi-Select
+- [ ] Long-press a transaction card enters selection mode
+- [ ] In selection mode: checkboxes appear on each card, selected cards highlighted with secondaryContainer
+- [ ] Tap a card in selection mode toggles its selection
+- [ ] Top bar changes to contextual bar showing "N selected" with close, select all, and delete actions
+- [ ] Close button (X) exits selection mode and clears selection
+- [ ] Select All toggles all visible (account-filtered) transactions
+- [ ] Delete button deletes all selected transactions
+- [ ] Bulk delete respects "Warn before delete" setting (shows confirmation dialog)
+- [ ] Account filter works correctly with selection (only selects visible transactions)
+- [ ] Single delete button (X icon) hidden during selection mode
+- [ ] Exiting selection mode restores normal top bar with "Transactions" title and Add button
+
+## CSV Import System (3 Import Types)
 - [x] "Import Position CSV" button visible in Data Management tab under "Import Data" section
 - [x] File picker opens and accepts CSV files
 - [x] After selecting CSV: mapping dialog appears with column headers
@@ -286,6 +318,30 @@
 - [x] CSV with quoted fields (commas inside quotes) parsed correctly
 - [x] Success snackbar shows count of imported positions
 - [x] Error snackbar shown if CSV is empty or unreadable
+
+## CSV Import - Enhanced Parsing & Auto-Mapping
+- [ ] Numeric values with commas (e.g. "92,150.62") import correctly for all numeric fields (price, quantity, cost, value, G/L)
+- [ ] Auto-mapping recognizes common brokerage aliases: Price→currentPrice, Description→name, Symbol→ticker, Unrealized G/L Amt.→totalGainLoss, Shares→quantity, Today's Value Change→dayGainLoss
+- [ ] Auto-mapping prevents duplicate field assignments (first matching column wins)
+- [ ] FOOTNOTES sections at bottom of brokerage CSVs are skipped (rows with fewer columns than header)
+- [ ] Blank lines in CSV are skipped
+- [ ] Position import shows confirmation dialog: "Position details will be refreshed with imported CSV file. Are you sure?"
+- [ ] Confirmation dialog "Import" button proceeds with import
+- [ ] Confirmation dialog "Cancel" button aborts import
+- [ ] Transaction and Performance imports do NOT show the confirmation dialog (proceed directly)
+
+## CSV Import - Reusable Mapping System
+- [ ] Data Management shows 3 import types: Transaction Records, Position Details, Performance Records
+- [ ] Each import type has "Define Mapping" and "Start Import" buttons
+- [ ] Shared account selector above import types
+- [ ] "Define Mapping" opens column mapping dialog for that import type
+- [ ] Transaction mapping fields: date, time, action, accountName, ticker, numberOfShares, pricePerShare, totalAmount, note
+- [ ] Position mapping fields: ticker, name, type, currentPrice, quantity, cost, dayGainLoss, totalGainLoss, value
+- [ ] Performance mapping fields: accountName, totalValue, date, note
+- [ ] Date format selector available for date columns
+- [ ] Saved mappings persist across app restarts (stored in csv_import_mappings table)
+- [ ] "Start Import" uses saved mapping to process CSV file
+- [ ] Previously saved mapping auto-loads when reopening Define Mapping dialog
 
 ## Application Log (About > Show Log)
 - [x] About dialog shows "Show Log" button
@@ -351,10 +407,92 @@
 - [x] Existing data (accounts, items, transactions, transfers) retained after migration
 
 ## Database Migration v11 -> v12
-- [x] Fresh install works correctly (version 12)
+- [x] Fresh install works correctly (version 15)
 - [x] Upgrade from v11 to v12 adds note column to account_performance table
 - [x] Existing performance records retained after migration with empty note
 - [x] New records can be created with a note after migration
+
+## SQL Explorer - Result Grid Lines
+- [ ] Result table has vertical dividers between each column (header and data rows)
+- [ ] Result table has horizontal dividers between each row (existing behavior)
+- [ ] Both horizontal and vertical gridlines use outlineVariant color
+- [ ] Header row has thicker (2dp) bottom divider
+- [ ] Grid lines visible when scrolling horizontally
+- [ ] Clicking a row still opens record detail dialog
+
+## Dashboard Daily Glance - By Per Share
+- [ ] "By Per Share" checkbox visible below Overall Daily section
+- [ ] Checkbox unchecked by default, label shows "By Total Value"
+- [ ] When checked, label changes to "By Per Share"
+- [ ] When checked, gainers re-sorted by per-share change (descending)
+- [ ] When checked, losers re-sorted by per-share change (ascending)
+- [ ] When checked, each row displays per-share $ amount instead of total amount
+- [ ] Percentage column unchanged regardless of checkbox state
+- [ ] Clicking the label text also toggles the checkbox
+- [ ] Checkbox state preserved during configuration changes (rememberSaveable)
+
+## Dashboard Position Details
+- [ ] "Position Details" collapsible card visible on Dashboard (after Positions card)
+- [ ] Card has pin button; pin state persisted to SharedPreferences (`pin_card_position_details`)
+- [ ] Unpinned: starts collapsed; pinned: starts expanded
+- [ ] Table shows all tickers with columns: Ticker (icon + name), Shares, Price, Cost, Value, Change $, Change %
+- [ ] Ticker column shows 3D icon with company logo (same style as Items screen)
+- [ ] Change $ = currentValue - totalCost; Change % = changeAmount / totalCost * 100
+- [ ] Positive changes shown in green, negative in red
+- [ ] Table horizontally scrollable for all columns
+- [ ] Vertical dividers between columns, horizontal dividers between rows
+- [ ] Clicking a row navigates to item detail for that ticker
+- [ ] Column headers are sortable (click to sort ascending/descending)
+
+## Watch List
+- [ ] "Watch List" menu item visible in hamburger menu (between Performance and Settings)
+- [ ] Tapping "Watch List" navigates to Watch List screen
+- [ ] "+" button at top creates a new watch list (name dialog)
+- [ ] Created watch list appears as a FilterChip
+- [ ] Tapping a FilterChip selects that watch list and loads its items
+- [ ] First watch list auto-selected on load
+- [ ] Rename button (pencil icon) opens rename dialog with current name pre-filled
+- [ ] Renaming a watch list updates the chip label
+- [ ] Delete button (trash icon) deletes the watch list (respects "Warn before delete" setting)
+- [ ] Deleting a watch list removes it and all its items (CASCADE)
+- [ ] "Add Ticker" button opens add ticker dialog
+- [ ] Ticker field auto-uppercases input
+- [ ] "Fetch" button fetches current price from Yahoo Finance and fills "Price When Added"
+- [ ] Shares and Price fields accept decimal input
+- [ ] "Add" button disabled until ticker, shares, and price are all valid
+- [ ] Added ticker appears in the table with correct data
+- [ ] Table shows: Ticker, Shares, Price (current), Added @ (price when added), Change $, Change %, Date, Delete button
+- [ ] Change $ = (currentPrice * shares) - (priceWhenAdded * shares)
+- [ ] Change % = changeAmount / costBasis * 100
+- [ ] Positive changes shown in green with "+" prefix; negative in red
+- [ ] Date column shows the date the ticker was added (MM/dd/yy format)
+- [ ] Delete button on each row removes the ticker (respects "Warn before delete" setting)
+- [ ] Refresh button fetches latest prices for all tickers in the list
+- [ ] Loading spinner shown while refreshing prices
+- [ ] Table horizontally scrollable
+- [ ] Empty state shown when watch list has no tickers
+- [ ] Empty state shown when no watch lists exist (with "Create Watch List" button)
+- [ ] Multiple watch lists can coexist with different tickers
+
+## Database Migration v12 -> v13
+- [ ] Fresh install works correctly (version 14)
+- [ ] Upgrade from v12 to v13 creates watch_lists and watch_list_items tables
+- [ ] Existing data (accounts, items, transactions, transfers, performance) retained after migration
+- [ ] New watch lists and items can be created after migration
+
+## Database Migration v13 -> v14
+- [ ] Fresh install works correctly (version 15)
+- [ ] Upgrade from v13 to v14 creates csv_import_mappings table
+- [ ] Existing data (accounts, items, transactions, transfers, performance, watch lists) retained after migration
+- [ ] New CSV import mappings can be created and persisted after migration
+
+## Database Migration v14 -> v15
+- [ ] Fresh install works correctly (version 15)
+- [ ] Upgrade from v14 to v15 recreates investment_items table with ticker-only PK
+- [ ] Duplicate tickers (same ticker across different accounts) merged: quantity, cost, value summed; dayHigh/dayLow take MAX
+- [ ] Items with unique tickers retained with all data intact
+- [ ] accountId column no longer exists in investment_items table
+- [ ] All other tables (accounts, transactions, transfers, performance, watch lists, csv_import_mappings) retained after migration
 
 ## App Icon & Splash
 - [x] App icon appears correctly on home screen / app drawer

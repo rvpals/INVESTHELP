@@ -2,6 +2,7 @@ package com.investhelp.app.ui.performance
 
 import android.content.Context
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.rememberTransformableState
 import androidx.compose.foundation.gestures.transformable
@@ -70,7 +71,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.investhelp.app.data.local.entity.AccountPerformanceEntity
 import com.investhelp.app.ui.settings.SettingsViewModel
 import java.text.NumberFormat
+import java.time.LocalDate
 import java.time.LocalDateTime
+import java.time.LocalTime
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -89,13 +92,18 @@ fun AccountPerformanceScreen(
     val currencyFormat = NumberFormat.getCurrencyInstance(Locale.US)
     val dateTimeFormatter = DateTimeFormatter.ofPattern("MMM dd, yyyy HH:mm")
 
+    val dateInputFormatter = DateTimeFormatter.ofPattern("MM/dd/yyyy")
+
     var selectedAccountId by remember { mutableStateOf<Long?>(null) }
     var totalValueText by remember { mutableStateOf("") }
     var noteText by remember { mutableStateOf("") }
+    var dateText by remember { mutableStateOf(LocalDate.now().format(dateInputFormatter)) }
     var accountDropdownExpanded by remember { mutableStateOf(false) }
     var deleteTarget by remember { mutableStateOf<AccountPerformanceEntity?>(null) }
     var editTarget by remember { mutableStateOf<AccountPerformanceEntity?>(null) }
     var editNoteText by remember { mutableStateOf("") }
+    var editDateTarget by remember { mutableStateOf<AccountPerformanceEntity?>(null) }
+    var editDateText by remember { mutableStateOf("") }
     var chartSelectedAccountIds by remember { mutableStateOf(setOf<Long>()) }
 
     val context = LocalContext.current
@@ -168,6 +176,52 @@ fun AccountPerformanceScreen(
             },
             dismissButton = {
                 TextButton(onClick = { editTarget = null }) { Text("Cancel") }
+            }
+        )
+    }
+
+    // Edit date dialog
+    editDateTarget?.let { record ->
+        val parsedDate = try {
+            LocalDate.parse(editDateText, dateInputFormatter)
+        } catch (_: Exception) { null }
+        AlertDialog(
+            onDismissRequest = { editDateTarget = null },
+            title = { Text("Edit Date") },
+            text = {
+                Column {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        OutlinedTextField(
+                            value = editDateText,
+                            onValueChange = { editDateText = it },
+                            label = { Text("Date (MM/dd/yyyy)") },
+                            singleLine = true,
+                            modifier = Modifier.weight(1f),
+                            isError = parsedDate == null
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        OutlinedButton(onClick = {
+                            editDateText = LocalDate.now().format(dateInputFormatter)
+                        }) { Text("Today") }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        parsedDate?.let {
+                            viewModel.updateRecord(record.copy(dateTime = it.atTime(record.dateTime.toLocalTime())))
+                            editDateTarget = null
+                        }
+                    },
+                    enabled = parsedDate != null
+                ) { Text("Save") }
+            },
+            dismissButton = {
+                TextButton(onClick = { editDateTarget = null }) { Text("Cancel") }
             }
         )
     }
@@ -248,13 +302,34 @@ fun AccountPerformanceScreen(
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             OutlinedButton(
-                                onClick = {
-                                    selectedAccountId?.let { viewModel.pullValueFromApp(it) }
-                                },
-                                enabled = selectedAccountId != null
+                                onClick = { viewModel.pullValueFromApp() }
                             ) {
                                 Text("Pull from App")
                             }
+                        }
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        // Date field + Today button
+                        val addParsedDate = try {
+                            LocalDate.parse(dateText, dateInputFormatter)
+                        } catch (_: Exception) { null }
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            OutlinedTextField(
+                                value = dateText,
+                                onValueChange = { dateText = it },
+                                label = { Text("Date") },
+                                singleLine = true,
+                                modifier = Modifier.weight(1f),
+                                isError = addParsedDate == null
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            OutlinedButton(onClick = {
+                                dateText = LocalDate.now().format(dateInputFormatter)
+                            }) { Text("Today") }
                         }
 
                         Spacer(modifier = Modifier.height(8.dp))
@@ -273,14 +348,18 @@ fun AccountPerformanceScreen(
                         Button(
                             onClick = {
                                 val value = totalValueText.toDoubleOrNull()
-                                if (selectedAccountId != null && value != null) {
-                                    viewModel.saveRecord(selectedAccountId!!, value, noteText)
+                                val parsedDt = try {
+                                    LocalDate.parse(dateText, dateInputFormatter)
+                                } catch (_: Exception) { null }
+                                if (selectedAccountId != null && value != null && parsedDt != null) {
+                                    viewModel.saveRecord(selectedAccountId!!, value, noteText, parsedDt.atTime(LocalTime.now()))
                                     totalValueText = ""
                                     noteText = ""
+                                    dateText = LocalDate.now().format(dateInputFormatter)
                                 }
                             },
                             modifier = Modifier.fillMaxWidth(),
-                            enabled = selectedAccountId != null && totalValueText.toDoubleOrNull() != null
+                            enabled = selectedAccountId != null && totalValueText.toDoubleOrNull() != null && addParsedDate != null
                         ) {
                             Icon(Icons.Default.Add, contentDescription = null)
                             Spacer(modifier = Modifier.width(4.dp))
@@ -418,7 +497,12 @@ fun AccountPerformanceScreen(
                             )
                             Text(
                                 text = record.dateTime.format(dateTimeFormatter),
-                                style = MaterialTheme.typography.bodySmall
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.clickable {
+                                    editDateText = record.dateTime.toLocalDate().format(dateInputFormatter)
+                                    editDateTarget = record
+                                }
                             )
                             if (record.note.isNotBlank()) {
                                 Text(

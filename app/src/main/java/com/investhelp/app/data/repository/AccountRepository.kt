@@ -15,7 +15,7 @@ interface AccountRepository {
     suspend fun insertAccount(account: InvestmentAccountEntity): Long
     suspend fun updateAccount(account: InvestmentAccountEntity)
     suspend fun deleteAccount(account: InvestmentAccountEntity)
-    suspend fun computeCurrentValue(accountId: Long): Double
+    suspend fun computeTotalPortfolioValue(): Double
 }
 
 @Singleton
@@ -34,7 +34,7 @@ class AccountRepositoryImpl @Inject constructor(
             accounts.map { account ->
                 AccountWithValue(
                     account = account,
-                    currentValue = accountDao.computeCurrentValue(account.id)
+                    currentValue = account.initialValue
                 )
             }
         }
@@ -48,6 +48,6 @@ class AccountRepositoryImpl @Inject constructor(
     override suspend fun deleteAccount(account: InvestmentAccountEntity) =
         accountDao.deleteAccount(account)
 
-    override suspend fun computeCurrentValue(accountId: Long): Double =
-        accountDao.computeCurrentValue(accountId)
+    override suspend fun computeTotalPortfolioValue(): Double =
+        accountDao.computeTotalPortfolioValue()
 }

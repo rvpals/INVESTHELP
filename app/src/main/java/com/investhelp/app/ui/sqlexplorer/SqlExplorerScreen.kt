@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -29,6 +30,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.VerticalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -47,6 +49,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
@@ -170,6 +173,8 @@ fun SqlExplorerScreen(viewModel: SqlExplorerViewModel) {
 @Composable
 private fun ResultTable(result: QueryResult, onRowClick: (Int) -> Unit) {
     val horizontalScroll = rememberScrollState()
+    val columnWidth = 120.dp
+    val dividerColor = MaterialTheme.colorScheme.outlineVariant
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -183,39 +188,43 @@ private fun ResultTable(result: QueryResult, onRowClick: (Int) -> Unit) {
                 .horizontalScroll(horizontalScroll)
                 .padding(8.dp)
         ) {
-            // Header row
             item(key = "header") {
-                Row {
-                    result.columns.forEach { col ->
+                Row(modifier = Modifier.height(IntrinsicSize.Min)) {
+                    result.columns.forEachIndexed { i, col ->
+                        if (i > 0) VerticalDivider(thickness = 1.dp, color = dividerColor)
                         Text(
                             text = col,
                             style = MaterialTheme.typography.labelSmall.copy(
                                 fontWeight = FontWeight.Bold,
                                 fontFamily = FontFamily.Monospace
                             ),
-                            modifier = Modifier.width(120.dp).padding(4.dp),
+                            modifier = Modifier.width(columnWidth).padding(4.dp),
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
                     }
                 }
-                HorizontalDivider(thickness = 2.dp)
+                HorizontalDivider(thickness = 2.dp, color = dividerColor)
             }
 
-            // Data rows
             itemsIndexed(result.rows, key = { index, _ -> index }) { index, row ->
-                Row(modifier = Modifier.clickable { onRowClick(index) }) {
-                    row.forEach { cell ->
+                Row(
+                    modifier = Modifier
+                        .height(IntrinsicSize.Min)
+                        .clickable { onRowClick(index) }
+                ) {
+                    row.forEachIndexed { i, cell ->
+                        if (i > 0) VerticalDivider(thickness = 1.dp, color = dividerColor)
                         Text(
                             text = cell,
                             style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
-                            modifier = Modifier.width(120.dp).padding(4.dp),
+                            modifier = Modifier.width(columnWidth).padding(4.dp),
                             maxLines = 2,
                             overflow = TextOverflow.Ellipsis
                         )
                     }
                 }
-                HorizontalDivider()
+                HorizontalDivider(color = dividerColor)
             }
         }
     }

@@ -31,7 +31,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.investhelp.app.data.local.entity.InvestmentAccountEntity
 import com.investhelp.app.model.InvestmentType
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -51,17 +50,7 @@ fun ItemFormScreen(
         }
     }
 
-    val itemRows by viewModel.selectedItemRows.collectAsStateWithLifecycle()
-    val accounts by viewModel.accounts.collectAsStateWithLifecycle()
-
-    // Find the specific row being edited (if accountId given) or first row
-    val existingItem = if (isEditing) {
-        if (accountId != null && accountId != -1L) {
-            itemRows.find { it.accountId == accountId }
-        } else {
-            itemRows.firstOrNull()
-        }
-    } else null
+    val existingItem by viewModel.selectedItem.collectAsStateWithLifecycle()
 
     var name by remember { mutableStateOf("") }
     var tickerInput by remember { mutableStateOf("") }
@@ -72,10 +61,10 @@ fun ItemFormScreen(
 
     LaunchedEffect(existingItem) {
         if (isEditing && existingItem != null && !initialized) {
-            name = existingItem.name
-            tickerInput = existingItem.ticker
-            selectedType = existingItem.type
-            currentPrice = existingItem.currentPrice.toString()
+            name = existingItem!!.name
+            tickerInput = existingItem!!.ticker
+            selectedType = existingItem!!.type
+            currentPrice = existingItem!!.currentPrice.toString()
             initialized = true
         }
     }
@@ -168,10 +157,8 @@ fun ItemFormScreen(
                     val price = currentPrice.toDoubleOrNull() ?: 0.0
                     val resolvedTicker = tickerInput.trim().uppercase()
                     if (resolvedTicker.isNotBlank()) {
-                        // Update metadata for all rows of this ticker
                         viewModel.saveItem(
                             ticker = resolvedTicker,
-                            accountId = existingItem?.accountId ?: accounts.firstOrNull()?.id ?: return@Button,
                             name = name,
                             type = selectedType,
                             currentPrice = price,

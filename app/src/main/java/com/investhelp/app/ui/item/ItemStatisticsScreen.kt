@@ -42,11 +42,11 @@ fun ItemStatisticsScreen(
 ) {
     var startDate by remember { mutableStateOf(LocalDate.now().minusYears(1)) }
     var endDate by remember { mutableStateOf(LocalDate.now()) }
-    val itemRows by viewModel.selectedItemRows.collectAsStateWithLifecycle()
+    val selectedItem by viewModel.selectedItem.collectAsStateWithLifecycle()
     val statistics by viewModel.statistics.collectAsStateWithLifecycle()
     val currencyFormat = NumberFormat.getCurrencyInstance(Locale.US)
 
-    val itemName = itemRows.firstOrNull()?.name ?: ticker
+    val itemName = selectedItem?.name ?: ticker
 
     LaunchedEffect(ticker) {
         viewModel.loadItem(ticker)

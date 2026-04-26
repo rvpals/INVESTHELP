@@ -33,12 +33,6 @@ interface InvestmentAccountDao {
     @Delete
     suspend fun deleteAccount(account: InvestmentAccountEntity)
 
-    @Query(
-        """
-        SELECT COALESCE(SUM(p.value), 0.0)
-        FROM investment_items p
-        WHERE p.accountId = :accountId
-        """
-    )
-    suspend fun computeCurrentValue(accountId: Long): Double
+    @Query("SELECT COALESCE(SUM(value), 0.0) FROM investment_items")
+    suspend fun computeTotalPortfolioValue(): Double
 }

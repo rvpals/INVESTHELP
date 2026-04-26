@@ -18,6 +18,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -48,9 +50,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.investhelp.app.model.CsvImportType
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -193,7 +197,15 @@ private fun DataManagementTab(viewModel: SettingsViewModel, uiState: SettingsUiS
     val context = LocalContext.current
     var showRestoreWarning by remember { mutableStateOf(false) }
     var pendingRestoreUri by remember { mutableStateOf<Uri?>(null) }
-    var csvFileUri by remember { mutableStateOf<Uri?>(null) }
+
+    var mappingPickerType by remember { mutableStateOf<CsvImportType?>(null) }
+    var importPickerType by remember { mutableStateOf<CsvImportType?>(null) }
+    var importAccountId by remember { mutableStateOf(-1L) }
+    var importAccountExpanded by remember { mutableStateOf(false) }
+    var showPositionImportWarning by remember { mutableStateOf(false) }
+    var pendingImportUri by remember { mutableStateOf<Uri?>(null) }
+
+    val csvMimeTypes = arrayOf("text/csv", "text/comma-separated-values", "*/*")
 
     val folderPicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocumentTree()
@@ -217,12 +229,36 @@ private fun DataManagementTab(viewModel: SettingsViewModel, uiState: SettingsUiS
         }
     }
 
-    val csvPicker = rememberLauncherForActivityResult(
+    val mappingCsvPicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
     ) { uri ->
-        uri?.let {
-            csvFileUri = it
-            viewModel.parseCsvFile(it)
+        uri?.let { fileUri ->
+            mappingPickerType?.let { type ->
+                viewModel.openMappingDialog(type, fileUri)
+                mappingPickerType = null
+            }
+        }
+    }
+
+    val importCsvPicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        uri?.let { fileUri ->
+            importPickerType?.let { type ->
+                if (type == CsvImportType.Position) {
+                    pendingImportUri = fileUri
+                    showPositionImportWarning = true
+                } else {
+                    viewModel.startCsvImport(type, fileUri, importAccountId)
+                }
+                importPickerType = null
+            }
+        }
+    }
+
+    LaunchedEffect(uiState.accounts) {
+        if (importAccountId == -1L && uiState.accounts.isNotEmpty()) {
+            importAccountId = uiState.accounts.first().id
         }
     }
 
@@ -256,12 +292,42 @@ private fun DataManagementTab(viewModel: SettingsViewModel, uiState: SettingsUiS
         )
     }
 
-    // CSV mapping dialog
+    if (showPositionImportWarning) {
+        AlertDialog(
+            onDismissRequest = {
+                showPositionImportWarning = false
+                pendingImportUri = null
+            },
+            title = { Text("Import Positions") },
+            text = {
+                Text("Position details will be refreshed with imported CSV file. Are you sure?")
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    showPositionImportWarning = false
+                    pendingImportUri?.let { viewModel.startCsvImport(CsvImportType.Position, it, importAccountId) }
+                    pendingImportUri = null
+                }) {
+                    Text("Import", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    showPositionImportWarning = false
+                    pendingImportUri = null
+                }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
+    // Import progress dialog
     uiState.csvImport?.let { csvState ->
         if (csvState.isImporting) {
             AlertDialog(
                 onDismissRequest = {},
-                title = { Text("Importing...") },
+                title = { Text("Importing ${csvState.importType.label}...") },
                 text = {
                     Column {
                         Text("${csvState.importCurrent} / ${csvState.importTotal} rows")
@@ -274,16 +340,18 @@ private fun DataManagementTab(viewModel: SettingsViewModel, uiState: SettingsUiS
                 },
                 confirmButton = {}
             )
-        } else {
-            CsvMappingDialog(
-                csvState = csvState,
-                accounts = uiState.accounts,
-                onMappingChanged = { colIndex, field -> viewModel.updateCsvMapping(colIndex, field) },
-                onAccountChanged = { viewModel.setCsvImportAccount(it) },
-                onDismiss = { viewModel.dismissCsvImport() },
-                onImport = { csvFileUri?.let { viewModel.executeCsvImport(it) } }
-            )
         }
+    }
+
+    // Mapping dialog
+    uiState.csvMappingDialog?.let { dialog ->
+        CsvMappingDialog(
+            dialog = dialog,
+            onFieldChanged = { colIndex, field -> viewModel.updateMappingDialogField(colIndex, field) },
+            onDateFormatChanged = { colIndex, fmt -> viewModel.updateMappingDialogDateFormat(colIndex, fmt) },
+            onSave = { viewModel.saveMappingDialog() },
+            onDismiss = { viewModel.dismissMappingDialog() }
+        )
     }
 
     Column(
@@ -293,30 +361,74 @@ private fun DataManagementTab(viewModel: SettingsViewModel, uiState: SettingsUiS
             .padding(24.dp)
     ) {
         // --- Import Data ---
-        Text("Import Data", style = MaterialTheme.typography.titleMedium)
+        Text("Import Data (CSV)", style = MaterialTheme.typography.titleMedium)
 
         Spacer(modifier = Modifier.height(8.dp))
 
         Text(
-            text = "Import a CSV file to update the positions in the app.",
+            text = "Define column mappings first, then import CSV files.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        OutlinedButton(
-            onClick = { csvPicker.launch(arrayOf("text/csv", "text/comma-separated-values", "*/*")) },
-            modifier = Modifier.fillMaxWidth()
+        // Account selector for imports
+        Text("Target Account", style = MaterialTheme.typography.labelLarge)
+        Spacer(modifier = Modifier.height(4.dp))
+        ExposedDropdownMenuBox(
+            expanded = importAccountExpanded,
+            onExpandedChange = { importAccountExpanded = it }
         ) {
-            Text("Import Position CSV")
+            OutlinedTextField(
+                value = uiState.accounts.find { it.id == importAccountId }?.name ?: "Select account",
+                onValueChange = {},
+                readOnly = true,
+                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = importAccountExpanded) },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .menuAnchor(MenuAnchorType.PrimaryNotEditable),
+                singleLine = true
+            )
+            ExposedDropdownMenu(
+                expanded = importAccountExpanded,
+                onDismissRequest = { importAccountExpanded = false }
+            ) {
+                uiState.accounts.forEach { account ->
+                    DropdownMenuItem(
+                        text = { Text(account.name) },
+                        onClick = {
+                            importAccountId = account.id
+                            importAccountExpanded = false
+                        }
+                    )
+                }
+            }
         }
 
-        Spacer(modifier = Modifier.height(32.dp))
+        Spacer(modifier = Modifier.height(16.dp))
+
+        CsvImportType.entries.forEach { type ->
+            ImportTypeCard(
+                type = type,
+                enabled = importAccountId != -1L,
+                onDefineMapping = {
+                    mappingPickerType = type
+                    mappingCsvPicker.launch(csvMimeTypes)
+                },
+                onStartImport = {
+                    importPickerType = type
+                    importCsvPicker.launch(csvMimeTypes)
+                }
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+        }
+
+        Spacer(modifier = Modifier.height(20.dp))
 
         HorizontalDivider()
 
-        Spacer(modifier = Modifier.height(32.dp))
+        Spacer(modifier = Modifier.height(24.dp))
 
         // --- Backup Folder ---
         Text("Backup Folder", style = MaterialTheme.typography.titleMedium)
@@ -341,7 +453,7 @@ private fun DataManagementTab(viewModel: SettingsViewModel, uiState: SettingsUiS
             Text("Select Backup Folder")
         }
 
-        Spacer(modifier = Modifier.height(32.dp))
+        Spacer(modifier = Modifier.height(24.dp))
 
         Text("Export", style = MaterialTheme.typography.titleMedium)
 
@@ -371,7 +483,7 @@ private fun DataManagementTab(viewModel: SettingsViewModel, uiState: SettingsUiS
             }
         }
 
-        Spacer(modifier = Modifier.height(32.dp))
+        Spacer(modifier = Modifier.height(24.dp))
 
         Text("Restore", style = MaterialTheme.typography.titleMedium)
 
@@ -406,97 +518,171 @@ private fun DataManagementTab(viewModel: SettingsViewModel, uiState: SettingsUiS
     }
 }
 
+@Composable
+private fun ImportTypeCard(
+    type: CsvImportType,
+    enabled: Boolean,
+    onDefineMapping: () -> Unit,
+    onStartImport: () -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+        )
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                text = type.label,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = "Required: ${type.requiredFields.joinToString(", ")}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                OutlinedButton(
+                    onClick = onDefineMapping,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text("Define Mapping")
+                }
+                Button(
+                    onClick = onStartImport,
+                    modifier = Modifier.weight(1f),
+                    enabled = enabled
+                ) {
+                    Text("Start Import")
+                }
+            }
+        }
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun CsvMappingDialog(
-    csvState: CsvImportState,
-    accounts: List<com.investhelp.app.data.local.entity.InvestmentAccountEntity>,
-    onMappingChanged: (Int, String) -> Unit,
-    onAccountChanged: (Long) -> Unit,
-    onDismiss: () -> Unit,
-    onImport: () -> Unit
+    dialog: CsvMappingDialogState,
+    onFieldChanged: (Int, String) -> Unit,
+    onDateFormatChanged: (Int, String) -> Unit,
+    onSave: () -> Unit,
+    onDismiss: () -> Unit
 ) {
-    val fields = SettingsViewModel.IMPORTABLE_FIELDS
-    var accountDropdownExpanded by remember { mutableStateOf(false) }
+    val fields = dialog.importType.mappableFields
+    val dateTimeFields = dialog.importType.dateTimeFields
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Map CSV Columns") },
+        title = { Text("Map Columns — ${dialog.importType.label}") },
         text = {
             Column(
                 modifier = Modifier.verticalScroll(rememberScrollState())
             ) {
-                // Account selector
-                Text("Target Account", style = MaterialTheme.typography.labelLarge)
-                Spacer(modifier = Modifier.height(4.dp))
-                ExposedDropdownMenuBox(
-                    expanded = accountDropdownExpanded,
-                    onExpandedChange = { accountDropdownExpanded = it }
-                ) {
-                    OutlinedTextField(
-                        value = accounts.find { it.id == csvState.selectedAccountId }?.name ?: "Select account",
-                        onValueChange = {},
-                        readOnly = true,
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = accountDropdownExpanded) },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .menuAnchor(MenuAnchorType.PrimaryNotEditable),
-                        singleLine = true
+                if (dialog.hasSavedMapping && dialog.csvHeaders.isEmpty()) {
+                    Text(
+                        "Existing mapping loaded.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.primary
                     )
-                    ExposedDropdownMenu(
-                        expanded = accountDropdownExpanded,
-                        onDismissRequest = { accountDropdownExpanded = false }
-                    ) {
-                        accounts.forEach { account ->
-                            DropdownMenuItem(
-                                text = { Text(account.name) },
-                                onClick = {
-                                    onAccountChanged(account.id)
-                                    accountDropdownExpanded = false
-                                }
-                            )
-                        }
-                    }
+                } else if (!dialog.hasSavedMapping && dialog.csvHeaders.isEmpty()) {
+                    Text(
+                        "No existing mapping.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
-                HorizontalDivider()
-                Spacer(modifier = Modifier.height(12.dp))
-
-                Text("Column Mappings", style = MaterialTheme.typography.labelLarge)
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    "Map each CSV column to an app field. Preview shows first 3 rows.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // Scrollable mapping table
-                Row(modifier = Modifier.horizontalScroll(rememberScrollState())) {
-                    csvState.csvHeaders.forEachIndexed { colIndex, header ->
-                        CsvColumnCard(
-                            header = header,
-                            previewValues = csvState.previewRows.map { row ->
-                                row.getOrElse(colIndex) { "" }
-                            },
-                            selectedField = csvState.columnMappings[colIndex] ?: "Skip",
-                            fields = fields,
-                            onFieldSelected = { onMappingChanged(colIndex, it) }
+                if (dialog.csvHeaders.isNotEmpty()) {
+                    // Header row
+                    Row(modifier = Modifier.fillMaxWidth()) {
+                        Text(
+                            "CSV Column",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.weight(1f)
                         )
-                        if (colIndex < csvState.csvHeaders.lastIndex) {
-                            Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            "Mapped Field",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Text(
+                            "Options",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+
+                    dialog.csvHeaders.forEachIndexed { colIndex, header ->
+                        val selectedField = dialog.columnMappings[colIndex] ?: "Skip"
+                        val isDateField = selectedField in dateTimeFields
+
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            // CSV Column name + preview
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = header,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    fontWeight = FontWeight.SemiBold,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                                dialog.previewRows.firstOrNull()?.getOrNull(colIndex)?.let {
+                                    Text(
+                                        text = it.ifBlank { "-" },
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
+                            }
+
+                            // Mapped field dropdown
+                            CsvFieldDropdown(
+                                selected = selectedField,
+                                fields = fields,
+                                onSelected = { onFieldChanged(colIndex, it) },
+                                modifier = Modifier.weight(1f)
+                            )
+
+                            // Options column (date format for date/time fields)
+                            Column(modifier = Modifier.weight(1f)) {
+                                if (isDateField) {
+                                    OutlinedTextField(
+                                        value = dialog.dateFormats[colIndex] ?: "",
+                                        onValueChange = { onDateFormatChanged(colIndex, it) },
+                                        placeholder = { Text("MM/dd/yyyy", style = MaterialTheme.typography.labelSmall) },
+                                        singleLine = true,
+                                        textStyle = MaterialTheme.typography.labelSmall,
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
+                                }
+                            }
                         }
+                        HorizontalDivider()
                     }
                 }
             }
         },
         confirmButton = {
-            Button(
-                onClick = onImport,
-                enabled = csvState.columnMappings.containsValue("ticker") && csvState.selectedAccountId != -1L
-            ) {
-                Text("Import")
+            Button(onClick = onSave) {
+                Text("Update Mapping")
             }
         },
         dismissButton = {
@@ -509,70 +695,42 @@ private fun CsvMappingDialog(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun CsvColumnCard(
-    header: String,
-    previewValues: List<String>,
-    selectedField: String,
+private fun CsvFieldDropdown(
+    selected: String,
     fields: List<String>,
-    onFieldSelected: (String) -> Unit
+    onSelected: (String) -> Unit,
+    modifier: Modifier = Modifier
 ) {
     var expanded by remember { mutableStateOf(false) }
 
-    Column(
-        modifier = Modifier.width(160.dp)
+    ExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = { expanded = it },
+        modifier = modifier
     ) {
-        // Column header
-        Text(
-            text = header,
-            style = MaterialTheme.typography.titleSmall,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
+        OutlinedTextField(
+            value = selected,
+            onValueChange = {},
+            readOnly = true,
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+            modifier = Modifier
+                .fillMaxWidth()
+                .menuAnchor(MenuAnchorType.PrimaryNotEditable),
+            singleLine = true,
+            textStyle = MaterialTheme.typography.labelSmall
         )
-
-        Spacer(modifier = Modifier.height(4.dp))
-
-        // Preview rows
-        previewValues.forEach { value ->
-            Text(
-                text = value.ifBlank { "-" },
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-        }
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        // Field mapping dropdown
-        ExposedDropdownMenuBox(
+        ExposedDropdownMenu(
             expanded = expanded,
-            onExpandedChange = { expanded = it }
+            onDismissRequest = { expanded = false }
         ) {
-            OutlinedTextField(
-                value = selectedField,
-                onValueChange = {},
-                readOnly = true,
-                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-                modifier = Modifier
-                    .width(160.dp)
-                    .menuAnchor(MenuAnchorType.PrimaryNotEditable),
-                singleLine = true,
-                textStyle = MaterialTheme.typography.bodySmall
-            )
-            ExposedDropdownMenu(
-                expanded = expanded,
-                onDismissRequest = { expanded = false }
-            ) {
-                fields.forEach { field ->
-                    DropdownMenuItem(
-                        text = { Text(field, style = MaterialTheme.typography.bodySmall) },
-                        onClick = {
-                            onFieldSelected(field)
-                            expanded = false
-                        }
-                    )
-                }
+            fields.forEach { field ->
+                DropdownMenuItem(
+                    text = { Text(field, style = MaterialTheme.typography.bodySmall) },
+                    onClick = {
+                        onSelected(field)
+                        expanded = false
+                    }
+                )
             }
         }
     }

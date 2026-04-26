@@ -129,9 +129,55 @@
 - [x] Dashboard: removed Accounts section (title, empty state, account cards, FAB)
 - [x] 3D icons (Icon3D composable): bottom nav icons and hamburger menu icons use gradient-filled rounded boxes with shadow
 - [x] SQL Explorer: "Open" button on each table row runs `SELECT * FROM <table>` and shows results in grid
+- [x] Items screen: redesigned from individual cards to unified table with grid lines (header row + HorizontalDivider between rows)
+- [x] Items screen: TickerIcon3D — gradient-filled rounded-corner box with shadow, color derived from ticker hash, logo overlay via Coil
+
+- [x] SQL Explorer: result grid with both horizontal and vertical gridlines
+- [x] Dashboard Daily Glance: "By Per Share" checkbox to toggle sorting/display between total value and per-share change
+- [x] Dashboard "Position Details" collapsible card with pin: table showing ticker (with icon), shares, current price, total cost, total value, change $ and change %
+- [x] Position Details: change computed as currentValue - totalCost (removed time range dropdown and historical price fetching)
+
+- [x] Watch List screen: accessible from hamburger menu; multiple named watch lists via FilterChip selector
+- [x] Watch List: create, rename, delete watch lists
+- [x] Watch List: add ticker with shares count and price-when-added; "Fetch" button fetches current price from Yahoo Finance
+- [x] Watch List: table shows ticker, shares, current price, added price, change $ (currentValue - costBasis), change %, added date, delete button
+- [x] Watch List: `watch_lists` and `watch_list_items` tables with CASCADE delete (migration v12 -> v13)
+- [x] Database version bumped to 13
+
+- [x] CSV Import: reusable mapping system for Transaction, Position, Performance imports with persistent column mappings
+- [x] CSV Import: mappings persisted in `csv_import_mappings` table with date format options per column
+- [x] Settings Data Management: 3 import types (Transaction Records, Position Details, Performance Records) each with "Define Mapping" and "Start Import" buttons
+- [x] Database migration v13 -> v14 (create csv_import_mappings table)
+- [x] Database version bumped to 14
+
+- [x] InvestmentItem: ticker-only primary key (removed accountId from composite PK)
+- [x] Database migration v14 -> v15: recreates investment_items with ticker-only PK, merges duplicate tickers via GROUP BY with SUM/MAX aggregates
+- [x] Removed accountId from InvestmentItemEntity, DAO, repository, all ViewModels, and all UI screens
+- [x] Account value no longer per-account; portfolio value is sum of all items
+- [x] Backup format v3: items no longer include accountId; v1/v2 backward compat on restore
+- [x] CSV transaction import: does NOT auto-update share counts on items; only creates item stub if ticker doesn't exist
+- [x] Database version bumped to 15
+
+- [x] Transaction list: multi-select mode with long-press to enter selection, checkboxes, select all, contextual top bar with bulk delete
+- [x] Transaction bulk delete: respects "Warn before delete" setting
+- [x] Added deleteTransactions(List) to DAO, Repository, and ViewModel
+
+- [x] CSV Import: numeric values with commas (e.g. "92,150.62") parsed correctly via `parseNumeric()` helper
+- [x] CSV Import: enhanced auto-mapping with common brokerage aliases (Price→currentPrice, Description→name, Symbol→ticker, Unrealized G/L→totalGainLoss, Shares→quantity, etc.)
+- [x] CSV Import: non-data rows (blank lines, FOOTNOTES sections) filtered out during import
+- [x] CSV Import: Position import confirmation dialog ("Position details will be refreshed with imported CSV file. Are you sure?")
+- [x] Items screen redesign: modern card-style row layout replacing cramped table grid
+- [x] Items screen: sort-by dropdown (Ticker, Total Value, Current Price) above items list
+- [x] Items screen: alternating row background colors for readability
+- [x] Items screen: each row shows Ticker (bold, larger) with company name (smaller, italic) on left
+- [x] Items screen: shares count and Total G/L displayed in bold, larger font on right side of each row
+- [x] Items screen: secondary row with Price, Value, and Day G/L in smaller muted text
+- [x] Items screen: only Edit button per row (no Delete button in table)
+- [x] Items screen: Delete button added to Edit dialog (red "Delete" next to "Cancel", only shown when editing existing item)
+- [x] Items screen: Delete from edit dialog respects "Warn before delete" setting
 
 ## Pending
 - [ ] Increment versionCode/versionName for next release
 - [ ] Fix deprecation warning: Icons.Filled.OpenInNew -> Icons.AutoMirrored.Filled.OpenInNew (ItemDetailScreen.kt)
+- [ ] Fix deprecation warning: Icons.Filled.ShowChart/TrendingUp -> AutoMirrored versions (DashboardScreen.kt)
 - [ ] Fix deprecation warning: statusBarColor in Theme.kt
-- [ ] Clean up unused ItemStatisticsScreen.kt and ItemStatisticsRoute

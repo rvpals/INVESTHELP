@@ -44,8 +44,7 @@ class TransactionViewModel @Inject constructor(
     val currentPrices: StateFlow<Map<String, Double>> =
         itemDao.getAllItems()
             .map { items ->
-                items.groupBy { it.ticker }
-                    .mapValues { (_, group) -> group.first().currentPrice }
+                items.associate { it.ticker to it.currentPrice }
             }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
 
@@ -96,11 +95,10 @@ class TransactionViewModel @Inject constructor(
             }
 
             // Auto-create investment item if none exists for this ticker
-            if (itemDao.getFirstByTicker(ticker) == null) {
+            if (itemDao.getItemByTicker(ticker) == null) {
                 itemDao.upsertItem(
                     InvestmentItemEntity(
                         ticker = ticker,
-                        accountId = accountId,
                         name = ticker,
                         type = InvestmentType.Stock,
                         currentPrice = pricePerShare,
@@ -122,28 +120,10 @@ class TransactionViewModel @Inject constructor(
                     TransactionAction.Sell -> -numberOfShares
                 }
 
-                val existing = itemDao.getItem(ticker, accountId)
+                val existing = itemDao.getItemByTicker(ticker)
                 if (existing != null) {
                     val newQuantity = (existing.quantity + delta).coerceAtLeast(0.0)
                     itemDao.upsertItem(existing.copy(quantity = newQuantity))
-                } else if (action == TransactionAction.Buy) {
-                    val metadata = itemDao.getFirstByTicker(ticker)
-                    itemDao.upsertItem(
-                        InvestmentItemEntity(
-                            ticker = ticker,
-                            accountId = accountId,
-                            name = metadata?.name ?: ticker,
-                            type = metadata?.type ?: InvestmentType.Stock,
-                            currentPrice = pricePerShare,
-                            quantity = numberOfShares,
-                            cost = pricePerShare * numberOfShares,
-                            dayGainLoss = 0.0,
-                            totalGainLoss = 0.0,
-                            value = pricePerShare * numberOfShares,
-                            dayHigh = 0.0,
-                            dayLow = 0.0
-                        )
-                    )
                 }
             }
         }
@@ -152,6 +132,12 @@ class TransactionViewModel @Inject constructor(
     fun deleteTransaction(transaction: InvestmentTransactionEntity) {
         viewModelScope.launch {
             transactionRepository.deleteTransaction(transaction)
+        }
+    }
+
+    fun deleteTransactions(transactions: List<InvestmentTransactionEntity>) {
+        viewModelScope.launch {
+            transactionRepository.deleteTransactions(transactions)
         }
     }
 }

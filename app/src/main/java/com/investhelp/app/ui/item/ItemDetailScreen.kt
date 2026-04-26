@@ -74,23 +74,14 @@ fun ItemDetailScreen(
         viewModel.loadItem(ticker)
     }
 
-    val itemRows by viewModel.selectedItemRows.collectAsStateWithLifecycle()
+    val item by viewModel.selectedItem.collectAsStateWithLifecycle()
     val transactions by viewModel.itemTransactions.collectAsStateWithLifecycle()
-    val accounts by viewModel.accounts.collectAsStateWithLifecycle()
     val analysisInfo by viewModel.analysisInfo.collectAsStateWithLifecycle()
     val isLoadingAnalysis by viewModel.isLoadingAnalysis.collectAsStateWithLifecycle()
     val analysisError by viewModel.analysisError.collectAsStateWithLifecycle()
     val statistics by viewModel.statistics.collectAsStateWithLifecycle()
     val currencyFormat = NumberFormat.getCurrencyInstance(Locale.US)
     val dateFormatter = DateTimeFormatter.ofPattern("MMM dd, yyyy")
-
-    val accountMap = accounts.associateBy { it.id }
-    val firstRow = itemRows.firstOrNull()
-    val totalQuantity = itemRows.sumOf { it.quantity }
-    val totalValue = itemRows.sumOf { it.value }
-    val totalCost = itemRows.sumOf { it.cost }
-    val totalGainLoss = itemRows.sumOf { it.totalGainLoss }
-    val totalDayGainLoss = itemRows.sumOf { it.dayGainLoss }
 
     var showAnalysisSheet by remember { mutableStateOf(false) }
     var statsExpanded by remember { mutableStateOf(false) }
@@ -109,7 +100,7 @@ fun ItemDetailScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(firstRow?.name ?: ticker) },
+                title = { Text(item?.name ?: ticker) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -130,9 +121,9 @@ fun ItemDetailScreen(
                 .padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            // Header card with aggregate info
+            // Header card with item info
             item {
-                firstRow?.let { inv ->
+                item?.let { inv ->
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         colors = CardDefaults.cardColors(
@@ -163,14 +154,14 @@ fun ItemDetailScreen(
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text("Total Shares", style = MaterialTheme.typography.labelSmall)
                                     Text(
-                                        "%.4f".format(totalQuantity),
+                                        "%.4f".format(inv.quantity),
                                         style = MaterialTheme.typography.titleMedium
                                     )
                                 }
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text("Total Value", style = MaterialTheme.typography.labelSmall)
                                     Text(
-                                        currencyFormat.format(totalValue),
+                                        currencyFormat.format(inv.value),
                                         style = MaterialTheme.typography.titleMedium,
                                         color = MaterialTheme.colorScheme.primary
                                     )
@@ -178,22 +169,22 @@ fun ItemDetailScreen(
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text("Total Cost", style = MaterialTheme.typography.labelSmall)
                                     Text(
-                                        currencyFormat.format(totalCost),
+                                        currencyFormat.format(inv.cost),
                                         style = MaterialTheme.typography.titleMedium
                                     )
                                 }
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text("Total G/L", style = MaterialTheme.typography.labelSmall)
                                     Text(
-                                        currencyFormat.format(totalGainLoss),
+                                        currencyFormat.format(inv.totalGainLoss),
                                         style = MaterialTheme.typography.titleMedium,
-                                        color = if (totalGainLoss >= 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
+                                        color = if (inv.totalGainLoss >= 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
                                     )
                                 }
                             }
                             Spacer(modifier = Modifier.height(8.dp))
                             // Row 2: Daily G/L, Daily G/L per Share, Daily Min, Daily Max (medium font)
-                            val dailyChangePerShare = if (totalQuantity > 0) totalDayGainLoss / totalQuantity else 0.0
+                            val dailyChangePerShare = if (inv.quantity > 0) inv.dayGainLoss / inv.quantity else 0.0
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -201,9 +192,9 @@ fun ItemDetailScreen(
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text("Daily G/L", style = MaterialTheme.typography.labelSmall)
                                     Text(
-                                        currencyFormat.format(totalDayGainLoss),
+                                        currencyFormat.format(inv.dayGainLoss),
                                         style = MaterialTheme.typography.bodyMedium,
-                                        color = if (totalDayGainLoss >= 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
+                                        color = if (inv.dayGainLoss >= 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
                                     )
                                 }
                                 Column(modifier = Modifier.weight(1f)) {
@@ -234,53 +225,9 @@ fun ItemDetailScreen(
                 }
             }
 
-            // Per-account breakdown
-            if (itemRows.size > 1) {
-                item {
-                    Text("Per Account", style = MaterialTheme.typography.titleMedium)
-                }
-                items(itemRows, key = { "${it.ticker}:${it.accountId}" }) { row ->
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-                        )
-                    ) {
-                        Column(modifier = Modifier.padding(12.dp)) {
-                            Text(
-                                text = accountMap[row.accountId]?.name ?: "Account ${row.accountId}",
-                                style = MaterialTheme.typography.labelLarge
-                            )
-                            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                                Column {
-                                    Text("Qty", style = MaterialTheme.typography.labelSmall)
-                                    Text("%.4f".format(row.quantity), style = MaterialTheme.typography.bodySmall)
-                                }
-                                Column {
-                                    Text("Value", style = MaterialTheme.typography.labelSmall)
-                                    Text(currencyFormat.format(row.value), style = MaterialTheme.typography.bodySmall)
-                                }
-                                Column {
-                                    Text("Cost", style = MaterialTheme.typography.labelSmall)
-                                    Text(currencyFormat.format(row.cost), style = MaterialTheme.typography.bodySmall)
-                                }
-                                Column {
-                                    Text("G/L", style = MaterialTheme.typography.labelSmall)
-                                    Text(
-                                        currencyFormat.format(row.totalGainLoss),
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = if (row.totalGainLoss >= 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
             // Action buttons row: Analysis Info + Yahoo Finance
             item {
-                firstRow?.let { inv ->
+                item?.let { inv ->
                     Spacer(modifier = Modifier.height(4.dp))
 
                     Row(
@@ -338,7 +285,7 @@ fun ItemDetailScreen(
                     }
 
                     Button(
-                        onClick = { onSimulate(ticker, totalQuantity) },
+                        onClick = { onSimulate(ticker, inv.quantity) },
                         modifier = Modifier.fillMaxWidth(),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = MaterialTheme.colorScheme.tertiary
@@ -473,7 +420,7 @@ fun ItemDetailScreen(
 
                 items(transactions, key = { it.id }) { transaction ->
                     val daysSince = ChronoUnit.DAYS.between(transaction.date, LocalDate.now())
-                    val currentPrice = firstRow?.currentPrice ?: 0.0
+                    val currentPrice = item?.currentPrice ?: 0.0
                     val gl = (currentPrice - transaction.pricePerShare) * transaction.numberOfShares
                     val glColor = if (gl >= 0) MaterialTheme.colorScheme.primary
                         else MaterialTheme.colorScheme.error

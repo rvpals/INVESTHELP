@@ -19,23 +19,17 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.investhelp.app.data.local.entity.InvestmentTransactionEntity
-import com.investhelp.app.data.local.entity.InvestmentItemEntity
 import java.text.NumberFormat
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -56,14 +50,9 @@ fun AccountDetailScreen(
 
     val account by viewModel.selectedAccount.collectAsStateWithLifecycle()
     val transactions by viewModel.accountTransactions.collectAsStateWithLifecycle()
-    val positions by viewModel.accountPositions.collectAsStateWithLifecycle()
-    val currentValue by viewModel.currentValue.collectAsStateWithLifecycle()
     val currencyFormat = NumberFormat.getCurrencyInstance(Locale.US)
     val dateFormatter = DateTimeFormatter.ofPattern("MMM dd, yyyy")
     val timeFormatter = DateTimeFormatter.ofPattern("HH:mm")
-
-    var selectedTab by remember { mutableIntStateOf(0) }
-    val tabs = listOf("Positions", "Transactions")
 
     Scaffold(
         topBar = {
@@ -117,14 +106,6 @@ fun AccountDetailScreen(
                                     style = MaterialTheme.typography.titleMedium
                                 )
                             }
-                            Column {
-                                Text("Current Value", style = MaterialTheme.typography.labelLarge)
-                                Text(
-                                    currencyFormat.format(currentValue),
-                                    style = MaterialTheme.typography.titleMedium,
-                                    color = MaterialTheme.colorScheme.primary
-                                )
-                            }
                         }
                     }
                 }
@@ -132,114 +113,15 @@ fun AccountDetailScreen(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Tabs
-            PrimaryTabRow(selectedTabIndex = selectedTab) {
-                tabs.forEachIndexed { index, title ->
-                    Tab(
-                        selected = selectedTab == index,
-                        onClick = { selectedTab = index },
-                        text = { Text(title) }
-                    )
-                }
-            }
+            Text(
+                "Transactions",
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.padding(horizontal = 16.dp)
+            )
 
-            // Tab content
-            when (selectedTab) {
-                0 -> PositionsTab(positions, currencyFormat, onNavigateToItem)
-                1 -> TransactionsTab(transactions, currencyFormat, dateFormatter, timeFormatter, onNavigateToTransaction)
-            }
-        }
-    }
-}
+            Spacer(modifier = Modifier.height(4.dp))
 
-@Composable
-private fun PositionsTab(
-    positions: List<InvestmentItemEntity>,
-    currencyFormat: NumberFormat,
-    onNavigateToItem: (String) -> Unit
-) {
-    if (positions.isEmpty()) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            Text("No positions for this account", style = MaterialTheme.typography.bodyLarge)
-        }
-    } else {
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            items(positions, key = { it.ticker }) { position ->
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    onClick = { onNavigateToItem(position.ticker) }
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(12.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = position.ticker,
-                                style = MaterialTheme.typography.titleMedium
-                            )
-                            Text(
-                                text = currencyFormat.format(position.value),
-                                style = MaterialTheme.typography.titleMedium,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                        }
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Text(
-                                text = "${"%.4f".format(position.quantity)} shares",
-                                style = MaterialTheme.typography.bodyMedium
-                            )
-                            Text(
-                                text = "Cost: ${currencyFormat.format(position.cost)}",
-                                style = MaterialTheme.typography.bodyMedium
-                            )
-                        }
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            val dayColor = if (position.dayGainLoss >= 0)
-                                MaterialTheme.colorScheme.primary
-                            else
-                                MaterialTheme.colorScheme.error
-                            val totalColor = if (position.totalGainLoss >= 0)
-                                MaterialTheme.colorScheme.primary
-                            else
-                                MaterialTheme.colorScheme.error
-                            Text(
-                                text = "Day: ${currencyFormat.format(position.dayGainLoss)}",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = dayColor
-                            )
-                            Text(
-                                text = "Total: ${currencyFormat.format(position.totalGainLoss)}",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = totalColor
-                            )
-                        }
-                    }
-                }
-            }
+            TransactionsTab(transactions, currencyFormat, dateFormatter, timeFormatter, onNavigateToTransaction)
         }
     }
 }

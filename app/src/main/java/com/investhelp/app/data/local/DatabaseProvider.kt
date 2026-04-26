@@ -17,11 +17,88 @@ class DatabaseProvider @Inject constructor(
             InvestHelpDatabase::class.java,
             "invest_help.db"
         )
-            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15)
             .build()
     }
 
     companion object {
+        val MIGRATION_14_15 = object : Migration(14, 15) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // Recreate investment_items with ticker-only PK, no accountId
+                // Merge duplicate tickers by summing quantity/cost/value/gainLoss
+                db.execSQL(
+                    """CREATE TABLE IF NOT EXISTS investment_items_new (
+                        ticker TEXT NOT NULL PRIMARY KEY,
+                        name TEXT NOT NULL,
+                        type TEXT NOT NULL,
+                        currentPrice REAL NOT NULL,
+                        quantity REAL NOT NULL,
+                        cost REAL NOT NULL,
+                        dayGainLoss REAL NOT NULL,
+                        totalGainLoss REAL NOT NULL,
+                        value REAL NOT NULL,
+                        dayHigh REAL NOT NULL DEFAULT 0.0,
+                        dayLow REAL NOT NULL DEFAULT 0.0
+                    )"""
+                )
+                db.execSQL(
+                    """INSERT INTO investment_items_new
+                        (ticker, name, type, currentPrice, quantity, cost,
+                         dayGainLoss, totalGainLoss, value, dayHigh, dayLow)
+                        SELECT ticker,
+                            name,
+                            type,
+                            currentPrice,
+                            SUM(quantity),
+                            SUM(cost),
+                            SUM(dayGainLoss),
+                            SUM(totalGainLoss),
+                            SUM(value),
+                            MAX(dayHigh),
+                            MAX(dayLow)
+                        FROM investment_items
+                        GROUP BY ticker"""
+                )
+                db.execSQL("DROP TABLE investment_items")
+                db.execSQL("ALTER TABLE investment_items_new RENAME TO investment_items")
+            }
+        }
+
+        val MIGRATION_13_14 = object : Migration(13, 14) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """CREATE TABLE IF NOT EXISTS csv_import_mappings (
+                        importType TEXT NOT NULL PRIMARY KEY,
+                        mappingsJson TEXT NOT NULL,
+                        dateFormatJson TEXT NOT NULL DEFAULT ''
+                    )"""
+                )
+            }
+        }
+
+        val MIGRATION_12_13 = object : Migration(12, 13) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """CREATE TABLE IF NOT EXISTS watch_lists (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        name TEXT NOT NULL
+                    )"""
+                )
+                db.execSQL(
+                    """CREATE TABLE IF NOT EXISTS watch_list_items (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        watchListId INTEGER NOT NULL,
+                        ticker TEXT NOT NULL,
+                        shares REAL NOT NULL,
+                        priceWhenAdded REAL NOT NULL,
+                        addedDate INTEGER NOT NULL,
+                        FOREIGN KEY(watchListId) REFERENCES watch_lists(id) ON DELETE CASCADE
+                    )"""
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_watch_list_items_watchListId ON watch_list_items(watchListId)")
+            }
+        }
+
         val MIGRATION_11_12 = object : Migration(11, 12) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE account_performance ADD COLUMN note TEXT NOT NULL DEFAULT ''")

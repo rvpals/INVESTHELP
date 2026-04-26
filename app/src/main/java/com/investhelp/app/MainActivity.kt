@@ -26,9 +26,10 @@ import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.PieChart
 import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -79,6 +80,7 @@ import com.investhelp.app.ui.navigation.SettingsRoute
 import com.investhelp.app.ui.navigation.SqlExplorerRoute
 import com.investhelp.app.ui.navigation.SimulationRoute
 import com.investhelp.app.ui.navigation.TransactionListRoute
+import com.investhelp.app.ui.navigation.WatchListRoute
 import com.investhelp.app.ui.theme.InvestHelpTheme
 import dagger.hilt.android.AndroidEntryPoint
 import java.text.NumberFormat
@@ -239,10 +241,11 @@ fun GlobalTopBar(navController: NavHostController) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp)
                 ) {
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
@@ -250,75 +253,18 @@ fun GlobalTopBar(navController: NavHostController) {
                             style = MaterialTheme.typography.titleMedium,
                             color = MaterialTheme.colorScheme.onPrimaryContainer
                         )
-                        if (isRefreshing) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(18.dp),
-                                strokeWidth = 2.dp,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer
-                            )
-                            Spacer(modifier = Modifier.width(6.dp))
-                        }
                         Text(
                             text = currencyFormat.format(uiState.totalPortfolioValue),
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onPrimaryContainer
                         )
-                        if (uiState.totalDayGainLoss != 0.0) {
-                            val dayChangeColor = if (uiState.totalDayGainLoss > 0) Color(0xFF2E7D32) else Color(0xFFC62828)
-                            val dayChangeSign = if (uiState.totalDayGainLoss > 0) "+" else ""
-                            Text(
-                                text = " (${dayChangeSign}${currencyFormat.format(uiState.totalDayGainLoss)})",
-                                style = MaterialTheme.typography.titleSmall,
-                                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-                                color = dayChangeColor
-                            )
-                        }
                     }
-                    // Daily % and All-time % row
-                    val previousValue = uiState.totalPortfolioValue - uiState.totalDayGainLoss
-                    val dailyPct = if (previousValue != 0.0)
-                        uiState.totalDayGainLoss / previousValue * 100.0 else 0.0
-                    val allTimePct = if (uiState.totalCost != 0.0)
-                        (uiState.totalPortfolioValue - uiState.totalCost) / uiState.totalCost * 100.0 else 0.0
-                    val dailyColor = when {
-                        dailyPct > 0 -> Color(0xFF2E7D32)
-                        dailyPct < 0 -> Color(0xFFC62828)
-                        else -> MaterialTheme.colorScheme.onPrimaryContainer
-                    }
-                    val allTimeColor = when {
-                        allTimePct > 0 -> Color(0xFF2E7D32)
-                        allTimePct < 0 -> Color(0xFFC62828)
-                        else -> MaterialTheme.colorScheme.onPrimaryContainer
-                    }
-                    val sign = { v: Double -> if (v > 0) "+" else "" }
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            text = "(Day: ",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer
-                        )
-                        Text(
-                            text = "${sign(dailyPct)}${"%.2f".format(dailyPct)}%",
-                            style = MaterialTheme.typography.bodySmall,
-                            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-                            color = dailyColor
-                        )
-                        Text(
-                            text = "  All: ",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer
-                        )
-                        Text(
-                            text = "${sign(allTimePct)}${"%.2f".format(allTimePct)}%",
-                            style = MaterialTheme.typography.bodySmall,
-                            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-                            color = allTimeColor
-                        )
-                        Text(
-                            text = ")",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                    if (isRefreshing) {
+                        LinearProgressIndicator(
+                            modifier = Modifier.fillMaxWidth(),
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            trackColor = MaterialTheme.colorScheme.primaryContainer
                         )
                     }
                 }
@@ -361,6 +307,18 @@ fun GlobalTopBar(navController: NavHostController) {
                         }
                     },
                     leadingIcon = { Icon3D(Icons.AutoMirrored.Filled.TrendingUp, null, Color(0xFF2E7D32), iconSize = 16.dp, boxSize = 28.dp) }
+                )
+                DropdownMenuItem(
+                    text = { Text("Watch List") },
+                    onClick = {
+                        menuExpanded = false
+                        navController.navigate(WatchListRoute) {
+                            popUpTo(DashboardRoute) { saveState = true }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    },
+                    leadingIcon = { Icon3D(Icons.Default.Star, null, Color(0xFF7B1FA2), iconSize = 16.dp, boxSize = 28.dp) }
                 )
                 DropdownMenuItem(
                     text = { Text("Settings") },

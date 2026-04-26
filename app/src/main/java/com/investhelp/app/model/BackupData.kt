@@ -4,7 +4,7 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class BackupData(
-    val version: Int = 2,
+    val version: Int = 3,
     val accounts: List<BackupAccount>,
     val items: List<BackupItem>,
     val transactions: List<BackupTransaction>,
@@ -22,7 +22,6 @@ data class BackupAccount(
 @Serializable
 data class BackupItem(
     val ticker: String = "",
-    val accountId: Long = -1,
     val name: String,
     val type: String,
     val currentPrice: Double,
@@ -33,7 +32,8 @@ data class BackupItem(
     val value: Double = 0.0,
     val dayHigh: Double = 0.0,
     val dayLow: Double = 0.0,
-    // v1 compat fields (ignored in v2 export)
+    // compat fields (ignored in v3 export)
+    val accountId: Long = -1,
     val id: Long = 0,
     val numShares: Double = 0.0
 )

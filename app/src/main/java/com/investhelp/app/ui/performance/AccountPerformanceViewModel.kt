@@ -52,9 +52,9 @@ class AccountPerformanceViewModel @Inject constructor(
         }
     }
 
-    fun pullValueFromApp(accountId: Long) {
+    fun pullValueFromApp() {
         viewModelScope.launch {
-            val value = accountRepository.computeCurrentValue(accountId)
+            val value = accountRepository.computeTotalPortfolioValue()
             _pulledValue.value = value
         }
     }
@@ -63,12 +63,12 @@ class AccountPerformanceViewModel @Inject constructor(
         _pulledValue.value = null
     }
 
-    fun saveRecord(accountId: Long, totalValue: Double, note: String = "") {
+    fun saveRecord(accountId: Long, totalValue: Double, note: String = "", dateTime: LocalDateTime = LocalDateTime.now()) {
         viewModelScope.launch {
             val record = AccountPerformanceEntity(
                 accountId = accountId,
                 totalValue = totalValue,
-                dateTime = LocalDateTime.now(),
+                dateTime = dateTime,
                 note = note.trim()
             )
             performanceRepository.insertRecord(record)

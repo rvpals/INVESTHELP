@@ -19,12 +19,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
@@ -65,11 +63,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.investhelp.app.data.local.entity.InvestmentAccountEntity
 import com.investhelp.app.data.local.entity.InvestmentItemEntity
 import com.investhelp.app.model.InvestmentType
 import com.investhelp.app.ui.components.ConfirmDeleteDialog
@@ -77,9 +75,20 @@ import com.investhelp.app.ui.settings.SettingsViewModel
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.foundation.border
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.text.style.TextOverflow
+import java.text.DecimalFormat
 import java.text.NumberFormat
 import java.util.Locale
+
+private enum class SortOption(val label: String) {
+    Ticker("Ticker"),
+    TotalValue("Total Value"),
+    CurrentPrice("Current Price")
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -89,7 +98,6 @@ fun ItemListScreen(
     onAddItem: () -> Unit
 ) {
     val items by viewModel.allItems.collectAsStateWithLifecycle()
-    val accounts by viewModel.accounts.collectAsStateWithLifecycle()
     val refreshingTickers by viewModel.refreshingTickers.collectAsStateWithLifecycle()
     val isRefreshingAll by viewModel.isRefreshingAll.collectAsStateWithLifecycle()
     val isRefreshing by viewModel.isRefreshing.collectAsStateWithLifecycle()
@@ -106,8 +114,8 @@ fun ItemListScreen(
     var editingItem by remember { mutableStateOf<InvestmentItemEntity?>(null) }
     var showForm by remember { mutableStateOf(false) }
     var selectedTab by rememberSaveable { mutableIntStateOf(0) }
+    var sortOption by rememberSaveable { mutableStateOf(SortOption.TotalValue) }
 
-    val accountMap = accounts.associateBy { it.id }
     val tabs = listOf("STOCK", "ETF")
     val filteredItems = when (selectedTab) {
         0 -> items.filter { it.type == InvestmentType.Stock }
@@ -115,12 +123,15 @@ fun ItemListScreen(
         else -> items
     }
 
-    // Aggregate values by ticker for pie chart (filtered by selected tab)
+    val sortedItems = when (sortOption) {
+        SortOption.Ticker -> filteredItems.sortedBy { it.ticker }
+        SortOption.TotalValue -> filteredItems.sortedByDescending { it.value }
+        SortOption.CurrentPrice -> filteredItems.sortedByDescending { it.currentPrice }
+    }
+
     val tickerValues = filteredItems
-        .groupBy { it.ticker }
-        .mapValues { (_, list) -> list.sumOf { it.value } }
         .filter { it.value > 0 }
-        .toList()
+        .map { it.ticker to it.value }
         .sortedByDescending { it.second }
 
     LaunchedEffect(priceMessage) {
@@ -139,9 +150,9 @@ fun ItemListScreen(
     if (deleteTarget != null) {
         ConfirmDeleteDialog(
             title = "Delete Position",
-            message = "Delete \"${deleteTarget!!.ticker}\" from ${accountMap[deleteTarget!!.accountId]?.name ?: "account"}?",
+            message = "Delete \"${deleteTarget!!.ticker}\"?",
             onConfirm = {
-                viewModel.deleteItem(deleteTarget!!.ticker, deleteTarget!!.accountId)
+                viewModel.deleteItem(deleteTarget!!.ticker)
                 deleteTarget = null
             },
             onDismiss = { deleteTarget = null }
@@ -150,18 +161,26 @@ fun ItemListScreen(
 
     if (showForm || editingItem != null) {
         ItemFormDialog(
-            viewModel = viewModel,
             existing = editingItem,
             items = items,
-            accounts = accounts,
+            warnBeforeDelete = warnBeforeDelete,
             onDismiss = {
                 showForm = false
                 editingItem = null
             },
-            onSave = { ticker, quantity, cost, accountId, type ->
-                viewModel.savePosition(ticker, quantity, cost, accountId, type)
+            onSave = { ticker, quantity, cost, type ->
+                viewModel.savePosition(ticker, quantity, cost, type)
                 showForm = false
                 editingItem = null
+            },
+            onDelete = { item ->
+                editingItem = null
+                showForm = false
+                if (warnBeforeDelete) {
+                    deleteTarget = item
+                } else {
+                    viewModel.deleteItem(item.ticker)
+                }
             }
         )
     }
@@ -237,21 +256,20 @@ fun ItemListScreen(
                         }
                     }
 
-                    items(filteredItems, key = { "${it.ticker}:${it.accountId}" }) { item ->
-                        ItemCard(
-                            item = item,
-                            accountName = accountMap[item.accountId]?.name,
-                            isRefreshing = item.ticker in refreshingTickers,
+                    item(key = "sort_bar") {
+                        SortBar(
+                            selected = sortOption,
+                            onSelect = { sortOption = it }
+                        )
+                    }
+
+                    item(key = "items_table") {
+                        ItemsTable(
+                            items = sortedItems,
+                            refreshingTickers = refreshingTickers,
                             currencyFormat = currencyFormat,
-                            onClick = { onNavigateToItem(item.ticker) },
-                            onEdit = { editingItem = item },
-                            onDelete = {
-                                if (warnBeforeDelete) {
-                                    deleteTarget = item
-                                } else {
-                                    viewModel.deleteItem(item.ticker, item.accountId)
-                                }
-                            }
+                            onItemClick = onNavigateToItem,
+                            onEdit = { editingItem = it }
                         )
                     }
                 }
@@ -261,139 +279,230 @@ fun ItemListScreen(
 }
 
 @Composable
-private fun ItemCard(
-    item: InvestmentItemEntity,
-    accountName: String?,
-    isRefreshing: Boolean,
-    currencyFormat: NumberFormat,
-    onClick: () -> Unit,
-    onEdit: () -> Unit,
-    onDelete: () -> Unit
+private fun TickerIcon3D(
+    ticker: String,
+    name: String,
+    modifier: Modifier = Modifier
 ) {
-    val gainColor = if (item.totalGainLoss >= 0)
-        MaterialTheme.colorScheme.primary
-    else
-        MaterialTheme.colorScheme.error
-    val dayColor = if (item.dayGainLoss >= 0)
-        MaterialTheme.colorScheme.primary
-    else
-        MaterialTheme.colorScheme.error
-
     val context = LocalContext.current
+    val hash = ticker.hashCode()
+    val baseColor = chartColors[(hash and 0x7FFFFFFF) % chartColors.size]
+    val gradient = Brush.linearGradient(
+        colors = listOf(
+            baseColor.copy(alpha = 0.85f),
+            baseColor,
+            baseColor.copy(
+                red = baseColor.red * 0.65f,
+                green = baseColor.green * 0.65f,
+                blue = baseColor.blue * 0.65f
+            )
+        )
+    )
+
+    Box(
+        modifier = modifier
+            .size(36.dp)
+            .shadow(3.dp, RoundedCornerShape(10.dp))
+            .background(gradient, RoundedCornerShape(10.dp)),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = (if (name != ticker) name else ticker).first().uppercase(),
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.Bold,
+            color = Color.White
+        )
+        AsyncImage(
+            model = ImageRequest.Builder(context)
+                .data("https://companiesmarketcap.com/img/company-logos/64/${ticker}.webp")
+                .crossfade(true)
+                .build(),
+            contentDescription = "$ticker logo",
+            modifier = Modifier
+                .size(36.dp)
+                .clip(RoundedCornerShape(10.dp))
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SortBar(
+    selected: SortOption,
+    onSelect: (SortOption) -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.End
+    ) {
+        Text(
+            text = "Sort by:",
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        ExposedDropdownMenuBox(
+            expanded = expanded,
+            onExpandedChange = { expanded = it }
+        ) {
+            OutlinedTextField(
+                value = selected.label,
+                onValueChange = {},
+                readOnly = true,
+                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                modifier = Modifier
+                    .width(160.dp)
+                    .menuAnchor(MenuAnchorType.PrimaryNotEditable),
+                textStyle = MaterialTheme.typography.bodySmall,
+                singleLine = true
+            )
+            ExposedDropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { expanded = false }
+            ) {
+                SortOption.entries.forEach { option ->
+                    DropdownMenuItem(
+                        text = { Text(option.label) },
+                        onClick = {
+                            onSelect(option)
+                            expanded = false
+                        }
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ItemsTable(
+    items: List<InvestmentItemEntity>,
+    refreshingTickers: Set<String>,
+    currencyFormat: NumberFormat,
+    onItemClick: (String) -> Unit,
+    onEdit: (InvestmentItemEntity) -> Unit
+) {
+    val sharesFormat = remember { DecimalFormat("#,##0.##") }
+    val altRowColor = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.5f)
 
     Card(
-        onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerLow
         )
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Company logo
-            Box(
-                modifier = Modifier
-                    .size(40.dp)
-                    .clip(CircleShape)
-                    .border(1.dp, MaterialTheme.colorScheme.outlineVariant, CircleShape)
-                    .background(MaterialTheme.colorScheme.surfaceVariant),
-                contentAlignment = Alignment.Center
-            ) {
-                // Fallback letter (shown when image hasn't loaded or fails)
-                Text(
-                    text = (if (item.name != item.ticker) item.name else item.ticker)
-                        .first().uppercase(),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                // Logo image overlays the letter when loaded
-                AsyncImage(
-                    model = ImageRequest.Builder(context)
-                        .data("https://companiesmarketcap.com/img/company-logos/64/${item.ticker}.webp")
-                        .crossfade(true)
-                        .build(),
-                    contentDescription = "${item.ticker} logo",
-                    modifier = Modifier
-                        .size(40.dp)
-                        .clip(CircleShape)
-                )
-            }
-            Spacer(modifier = Modifier.width(12.dp))
-            Column(modifier = Modifier.weight(1f)) {
+        Column {
+            items.forEachIndexed { index, item ->
+                val gainColor = if (item.totalGainLoss >= 0)
+                    Color(0xFF2E7D32) else MaterialTheme.colorScheme.error
+                val dayColor = if (item.dayGainLoss >= 0)
+                    Color(0xFF2E7D32) else MaterialTheme.colorScheme.error
+                val rowBg = if (index % 2 == 1) altRowColor else Color.Transparent
+
                 Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(rowBg)
+                        .clickable { onItemClick(item.ticker) }
+                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(item.ticker, style = MaterialTheme.typography.titleMedium)
-                    if (accountName != null) {
-                        Text(
-                            text = accountName,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                    TickerIcon3D(ticker = item.ticker, name = item.name)
+                    Spacer(modifier = Modifier.width(10.dp))
+
+                    Column(modifier = Modifier.weight(1f)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = item.ticker,
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                if (item.name != item.ticker) {
+                                    Text(
+                                        text = item.name,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        fontWeight = FontWeight.Normal,
+                                        fontStyle = FontStyle.Italic,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
+                            }
+                            Column(horizontalAlignment = Alignment.End) {
+                                Text(
+                                    text = sharesFormat.format(item.quantity) + " shares",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                    text = currencyFormat.format(item.totalGainLoss),
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = gainColor
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(4.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                text = "Price: ${currencyFormat.format(item.currentPrice)}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Text(
+                                text = "Value: ${currencyFormat.format(item.value)}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Text(
+                                text = "Day: ${currencyFormat.format(item.dayGainLoss)}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = dayColor
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.width(4.dp))
+
+                    if (item.ticker in refreshingTickers) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(20.dp),
+                            strokeWidth = 2.dp
                         )
+                    } else {
+                        IconButton(
+                            onClick = { onEdit(item) },
+                            modifier = Modifier.size(32.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.Edit,
+                                contentDescription = "Edit",
+                                modifier = Modifier.size(18.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
                 }
-                if (item.name != item.ticker) {
-                    Text(
-                        text = item.name,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1
+                if (index < items.lastIndex) {
+                    HorizontalDivider(
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
                     )
                 }
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = "Qty: ${"%.4f".format(item.quantity)}  |  Cost: ${currencyFormat.format(item.cost)}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                    Column {
-                        Text("Value", style = MaterialTheme.typography.labelSmall)
-                        Text(
-                            currencyFormat.format(item.value),
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                    }
-                    Column {
-                        Text("Day G/L", style = MaterialTheme.typography.labelSmall)
-                        Text(
-                            currencyFormat.format(item.dayGainLoss),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = dayColor
-                        )
-                    }
-                    Column {
-                        Text("Total G/L", style = MaterialTheme.typography.labelSmall)
-                        Text(
-                            currencyFormat.format(item.totalGainLoss),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = gainColor
-                        )
-                    }
-                }
-            }
-            if (isRefreshing) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(20.dp),
-                    strokeWidth = 2.dp
-                )
-            }
-            IconButton(onClick = onEdit) {
-                Icon(Icons.Default.Edit, contentDescription = "Edit")
-            }
-            IconButton(onClick = onDelete) {
-                Icon(
-                    Icons.Default.Delete,
-                    contentDescription = "Delete",
-                    tint = MaterialTheme.colorScheme.error
-                )
             }
         }
     }
@@ -511,23 +620,20 @@ private fun ChartSection(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ItemFormDialog(
-    viewModel: ItemViewModel,
     existing: InvestmentItemEntity?,
     items: List<InvestmentItemEntity>,
-    accounts: List<InvestmentAccountEntity>,
+    warnBeforeDelete: Boolean = true,
     onDismiss: () -> Unit,
-    onSave: (ticker: String, quantity: Double, cost: Double, accountId: Long?, type: InvestmentType) -> Unit
+    onSave: (ticker: String, quantity: Double, cost: Double, type: InvestmentType) -> Unit,
+    onDelete: (InvestmentItemEntity) -> Unit = {}
 ) {
-    val distinctTickers = items.map { it.ticker }.distinct()
-    val existingKeys = items.map { "${it.ticker.uppercase()}:${it.accountId}" }.toSet()
+    val distinctTickers = items.map { it.ticker }.toSet()
 
     var tickerInput by remember { mutableStateOf(existing?.ticker ?: "") }
     var quantity by remember { mutableStateOf(existing?.quantity?.toString() ?: "") }
     var cost by remember { mutableStateOf(existing?.cost?.toString() ?: "") }
-    var selectedAccountId by remember { mutableStateOf(existing?.accountId) }
     var selectedType by remember { mutableStateOf(existing?.type ?: InvestmentType.Stock) }
     var tickerExpanded by remember { mutableStateOf(false) }
-    var accountExpanded by remember { mutableStateOf(false) }
     var typeExpanded by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
 
@@ -535,9 +641,6 @@ private fun ItemFormDialog(
     val filteredSuggestions = distinctTickers.filter {
         it.contains(tickerInput, ignoreCase = true)
     }
-    val selectedAccountName = selectedAccountId?.let { id ->
-        accounts.find { it.id == id }?.name ?: "Select account"
-    } ?: if (accounts.isNotEmpty()) "Default (${accounts.first().name})" else "No accounts"
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -574,42 +677,9 @@ private fun ItemFormDialog(
                                     tickerInput = ticker
                                     tickerExpanded = false
                                     error = null
-                                    // Auto-fill type from existing item
                                     items.firstOrNull { it.ticker == ticker }?.type?.let {
                                         selectedType = it
                                     }
-                                }
-                            )
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                ExposedDropdownMenuBox(
-                    expanded = accountExpanded,
-                    onExpandedChange = { accountExpanded = it }
-                ) {
-                    OutlinedTextField(
-                        value = selectedAccountName,
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text("Account") },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = accountExpanded) },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .menuAnchor(MenuAnchorType.PrimaryNotEditable)
-                    )
-                    ExposedDropdownMenu(
-                        expanded = accountExpanded,
-                        onDismissRequest = { accountExpanded = false }
-                    ) {
-                        accounts.forEach { account ->
-                            DropdownMenuItem(
-                                text = { Text(account.name) },
-                                onClick = {
-                                    selectedAccountId = account.id
-                                    accountExpanded = false
                                 }
                             )
                         }
@@ -686,23 +756,27 @@ private fun ItemFormDialog(
                 val ticker = tickerInput.trim().uppercase()
                 val qty = quantity.toDoubleOrNull()
                 val c = cost.toDoubleOrNull()
-                val resolvedAccountId = selectedAccountId ?: accounts.firstOrNull()?.id
-                val key = "${ticker}:${resolvedAccountId}"
                 when {
                     ticker.isBlank() -> error = "Enter a ticker"
-                    accounts.isEmpty() -> error = "Create an account first"
-                    !isEditing && key in existingKeys -> error = "$ticker already exists in this account"
+                    !isEditing && ticker in distinctTickers -> error = "$ticker already exists"
                     qty == null || qty <= 0 -> error = "Enter a valid quantity"
                     c == null || c < 0 -> error = "Enter a valid cost"
-                    else -> onSave(ticker, qty, c, selectedAccountId, selectedType)
+                    else -> onSave(ticker, qty, c, selectedType)
                 }
             }) {
                 Text("Save")
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel")
+            Row {
+                if (isEditing && existing != null) {
+                    TextButton(onClick = { onDelete(existing) }) {
+                        Text("Delete", color = MaterialTheme.colorScheme.error)
+                    }
+                }
+                TextButton(onClick = onDismiss) {
+                    Text("Cancel")
+                }
             }
         }
     )
