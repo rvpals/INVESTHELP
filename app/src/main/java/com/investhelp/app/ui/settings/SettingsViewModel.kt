@@ -750,7 +750,7 @@ class SettingsViewModel @Inject constructor(
             AccountPerformanceEntity(
                 accountId = accountId,
                 totalValue = totalValue,
-                dateTime = date.atTime(LocalTime.now()),
+                date = date,
                 note = note
             )
         )

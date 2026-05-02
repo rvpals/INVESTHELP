@@ -9,6 +9,8 @@ import androidx.compose.foundation.gestures.transformable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -29,10 +31,14 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -44,6 +50,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import com.investhelp.app.ui.components.CollapsibleCard
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -72,14 +79,11 @@ import com.investhelp.app.data.local.entity.AccountPerformanceEntity
 import com.investhelp.app.ui.settings.SettingsViewModel
 import java.text.NumberFormat
 import java.time.LocalDate
-import java.time.LocalDateTime
-import java.time.LocalTime
-import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import kotlin.math.abs
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun AccountPerformanceScreen(
     viewModel: AccountPerformanceViewModel
@@ -88,9 +92,11 @@ fun AccountPerformanceScreen(
     val accounts by viewModel.allAccounts.collectAsStateWithLifecycle()
     val chartData by viewModel.chartData.collectAsStateWithLifecycle()
     val pulledValue by viewModel.pulledValue.collectAsStateWithLifecycle()
+    val pinStates by viewModel.pinStates.collectAsStateWithLifecycle()
+    val saveError by viewModel.saveError.collectAsStateWithLifecycle()
 
     val currencyFormat = NumberFormat.getCurrencyInstance(Locale.US)
-    val dateTimeFormatter = DateTimeFormatter.ofPattern("MMM dd, yyyy HH:mm")
+    val dateFormatter = DateTimeFormatter.ofPattern("MMM dd, yyyy")
 
     val dateInputFormatter = DateTimeFormatter.ofPattern("MM/dd/yyyy")
 
@@ -105,6 +111,15 @@ fun AccountPerformanceScreen(
     var editDateTarget by remember { mutableStateOf<AccountPerformanceEntity?>(null) }
     var editDateText by remember { mutableStateOf("") }
     var chartSelectedAccountIds by remember { mutableStateOf(setOf<Long>()) }
+    var smoothCurve by remember { mutableStateOf(false) }
+
+    // Records filter & sort state (persisted via ViewModel)
+    val recordFilterAccountIds by viewModel.recordFilterAccountIds.collectAsStateWithLifecycle()
+    var recordFilterExpanded by remember { mutableStateOf(false) }
+    val recordSortField by viewModel.recordSortField.collectAsStateWithLifecycle()
+    var recordSortExpanded by remember { mutableStateOf(false) }
+    val recordSortAsc by viewModel.recordSortAsc.collectAsStateWithLifecycle()
+    var recordSortDirExpanded by remember { mutableStateOf(false) }
 
     val context = LocalContext.current
     val warnBeforeDelete = remember {
@@ -119,6 +134,9 @@ fun AccountPerformanceScreen(
         }
         if (chartSelectedAccountIds.isEmpty() && accounts.isNotEmpty()) {
             chartSelectedAccountIds = setOf(accounts.first().id)
+        }
+        if (recordFilterAccountIds == null && accounts.isNotEmpty()) {
+            viewModel.setRecordFilterAccountIds(accounts.map { it.id }.toSet())
         }
     }
 
@@ -213,7 +231,7 @@ fun AccountPerformanceScreen(
                 TextButton(
                     onClick = {
                         parsedDate?.let {
-                            viewModel.updateRecord(record.copy(dateTime = it.atTime(record.dateTime.toLocalTime())))
+                            viewModel.updateRecord(record.copy(date = it))
                             editDateTarget = null
                         }
                     },
@@ -222,6 +240,18 @@ fun AccountPerformanceScreen(
             },
             dismissButton = {
                 TextButton(onClick = { editDateTarget = null }) { Text("Cancel") }
+            }
+        )
+    }
+
+    // Duplicate record error dialog
+    saveError?.let { errorMsg ->
+        AlertDialog(
+            onDismissRequest = { viewModel.clearSaveError() },
+            title = { Text("Cannot Add Record") },
+            text = { Text(errorMsg) },
+            confirmButton = {
+                TextButton(onClick = { viewModel.clearSaveError() }) { Text("OK") }
             }
         )
     }
@@ -238,22 +268,14 @@ fun AccountPerformanceScreen(
                 .padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            // Add Record section
+            // Add Performance Record section
             item {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-                    )
+                CollapsibleCard(
+                    title = "Add Performance Record",
+                    pinned = pinStates[AccountPerformanceViewModel.KEY_PIN_ADD_RECORD] == true,
+                    onPinToggle = { viewModel.setPinState(AccountPerformanceViewModel.KEY_PIN_ADD_RECORD, it) }
                 ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Text(
-                            "Add Record",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Spacer(modifier = Modifier.height(12.dp))
-
+                    Column {
                         // Account selector
                         ExposedDropdownMenuBox(
                             expanded = accountDropdownExpanded,
@@ -352,7 +374,7 @@ fun AccountPerformanceScreen(
                                     LocalDate.parse(dateText, dateInputFormatter)
                                 } catch (_: Exception) { null }
                                 if (selectedAccountId != null && value != null && parsedDt != null) {
-                                    viewModel.saveRecord(selectedAccountId!!, value, noteText, parsedDt.atTime(LocalTime.now()))
+                                    viewModel.saveRecord(selectedAccountId!!, value, noteText, parsedDt)
                                     totalValueText = ""
                                     noteText = ""
                                     dateText = LocalDate.now().format(dateInputFormatter)
@@ -369,176 +391,342 @@ fun AccountPerformanceScreen(
                 }
             }
 
-            // Performance Chart section
+            // Performance Charts section
             item {
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    "Performance Chart",
-                    style = MaterialTheme.typography.titleLarge
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-
-                // Multi-account selector
-                Row(
-                    modifier = Modifier.horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                CollapsibleCard(
+                    title = "Performance Charts",
+                    pinned = pinStates[AccountPerformanceViewModel.KEY_PIN_CHART] == true,
+                    onPinToggle = { viewModel.setPinState(AccountPerformanceViewModel.KEY_PIN_CHART, it) }
                 ) {
-                    accounts.forEachIndexed { index, account ->
-                        val color = CHART_COLORS[index % CHART_COLORS.size]
-                        val selected = account.id in chartSelectedAccountIds
-                        FilterChip(
-                            selected = selected,
-                            onClick = {
-                                chartSelectedAccountIds = if (selected) {
-                                    chartSelectedAccountIds - account.id
-                                } else {
-                                    chartSelectedAccountIds + account.id
-                                }
-                            },
-                            label = { Text(account.name) },
-                            leadingIcon = if (selected) {
-                                {
-                                    Canvas(modifier = Modifier.size(8.dp)) {
-                                        drawCircle(color = color)
-                                    }
-                                }
-                            } else null
-                        )
-                    }
-                }
-            }
-
-            item {
-                val seriesList = remember(chartData, accounts) {
-                    chartData.entries
-                        .filter { (_, records) -> records.size >= 2 }
-                        .map { (accountId, records) ->
-                            val accountIndex = accounts.indexOfFirst { it.id == accountId }
-                            val color = CHART_COLORS[
-                                (if (accountIndex >= 0) accountIndex else 0) % CHART_COLORS.size
-                            ]
-                            ChartSeries(
-                                accountId = accountId,
-                                accountName = accounts.find { it.id == accountId }?.name ?: "Unknown",
-                                color = color,
-                                records = records
-                            )
-                        }
-                }
-
-                if (seriesList.isNotEmpty()) {
-                    PerformanceLineChart(
-                        seriesList = seriesList,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(300.dp)
-                    )
-                } else if (chartSelectedAccountIds.isNotEmpty()) {
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(120.dp),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-                        )
-                    ) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(16.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.Center
+                    Column {
+                        // Multi-account selector
+                        FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
-                            Text(
-                                "Need at least 2 records per account to show chart",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-                }
-            }
-
-            // Records list
-            item {
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    "Records (${allRecords.size})",
-                    style = MaterialTheme.typography.titleLarge
-                )
-            }
-
-            if (allRecords.isEmpty()) {
-                item {
-                    Text(
-                        "No performance records yet",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(16.dp)
-                    )
-                }
-            }
-
-            items(allRecords, key = { it.id }) { record ->
-                val accountName = accounts.find { it.id == record.accountId }?.name ?: "Unknown"
-                Card(modifier = Modifier.fillMaxWidth()) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(12.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = accountName,
-                                style = MaterialTheme.typography.labelLarge,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                            Text(
-                                text = record.dateTime.format(dateTimeFormatter),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.clickable {
-                                    editDateText = record.dateTime.toLocalDate().format(dateInputFormatter)
-                                    editDateTarget = record
-                                }
-                            )
-                            if (record.note.isNotBlank()) {
-                                Text(
-                                    text = record.note,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                            accounts.forEachIndexed { index, account ->
+                                val color = CHART_COLORS[index % CHART_COLORS.size]
+                                val selected = account.id in chartSelectedAccountIds
+                                FilterChip(
+                                    selected = selected,
+                                    onClick = {
+                                        chartSelectedAccountIds = if (selected) {
+                                            chartSelectedAccountIds - account.id
+                                        } else {
+                                            chartSelectedAccountIds + account.id
+                                        }
+                                    },
+                                    label = { Text(account.name) },
+                                    leadingIcon = if (selected) {
+                                        {
+                                            Canvas(modifier = Modifier.size(8.dp)) {
+                                                drawCircle(color = color)
+                                            }
+                                        }
+                                    } else null
                                 )
                             }
                         }
-                        Text(
-                            text = currencyFormat.format(record.totalValue),
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                        IconButton(onClick = {
-                            editNoteText = record.note
-                            editTarget = record
-                        }) {
-                            Icon(
-                                Icons.Default.Edit,
-                                contentDescription = "Edit note",
-                                tint = MaterialTheme.colorScheme.primary
+
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(top = 4.dp)
+                        ) {
+                            Checkbox(
+                                checked = smoothCurve,
+                                onCheckedChange = { smoothCurve = it }
+                            )
+                            Text("Smooth Curve", style = MaterialTheme.typography.bodySmall)
+                        }
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        val seriesList = remember(chartData, accounts) {
+                            chartData.entries
+                                .filter { (_, records) -> records.size >= 2 }
+                                .map { (accountId, records) ->
+                                    val accountIndex = accounts.indexOfFirst { it.id == accountId }
+                                    val color = CHART_COLORS[
+                                        (if (accountIndex >= 0) accountIndex else 0) % CHART_COLORS.size
+                                    ]
+                                    ChartSeries(
+                                        accountId = accountId,
+                                        accountName = accounts.find { it.id == accountId }?.name ?: "Unknown",
+                                        color = color,
+                                        records = records
+                                    )
+                                }
+                        }
+
+                        if (seriesList.isNotEmpty()) {
+                            PerformanceLineChart(
+                                seriesList = seriesList,
+                                smoothCurve = smoothCurve,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(300.dp)
+                            )
+                        } else if (chartSelectedAccountIds.isNotEmpty()) {
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(120.dp),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                                )
+                            ) {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .padding(16.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.Center
+                                ) {
+                                    Text(
+                                        "Need at least 2 records per account to show chart",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Records section
+            item {
+                val filterIds = recordFilterAccountIds ?: accounts.map { it.id }.toSet()
+                val sortFields = listOf("Account", "Date", "Total Value", "Note")
+
+                val filteredAndSorted = remember(allRecords, filterIds, recordSortField, recordSortAsc, accounts) {
+                    val filtered = allRecords.filter { it.accountId in filterIds }
+                    val comparator: Comparator<AccountPerformanceEntity> = when (recordSortField) {
+                        "Account" -> compareBy { accounts.find { a -> a.id == it.accountId }?.name ?: "" }
+                        "Total Value" -> compareBy { it.totalValue }
+                        "Note" -> compareBy { it.note }
+                        else -> compareBy { it.date }
+                    }
+                    if (recordSortAsc) filtered.sortedWith(comparator) else filtered.sortedWith(comparator.reversed())
+                }
+
+                CollapsibleCard(
+                    title = "Records (${filteredAndSorted.size})",
+                    pinned = pinStates[AccountPerformanceViewModel.KEY_PIN_RECORDS] == true,
+                    onPinToggle = { viewModel.setPinState(AccountPerformanceViewModel.KEY_PIN_RECORDS, it) }
+                ) {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        // Filter & Sort controls
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            // Account filter dropdown
+                            Column(modifier = Modifier.weight(1f)) {
+                                val selectedCount = filterIds.size
+                                val totalCount = accounts.size
+                                val filterLabel = when (selectedCount) {
+                                    0 -> "None"
+                                    totalCount -> "All Accounts"
+                                    1 -> accounts.find { it.id in filterIds }?.name ?: "1 Account"
+                                    else -> "$selectedCount Accounts"
+                                }
+                                OutlinedButton(
+                                    onClick = { recordFilterExpanded = true },
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Text(filterLabel, style = MaterialTheme.typography.labelSmall, maxLines = 1)
+                                }
+                                DropdownMenu(
+                                    expanded = recordFilterExpanded,
+                                    onDismissRequest = { recordFilterExpanded = false }
+                                ) {
+                                    // Select All / None
+                                    DropdownMenuItem(
+                                        text = {
+                                            Text(
+                                                "Select All",
+                                                style = MaterialTheme.typography.labelMedium,
+                                                color = MaterialTheme.colorScheme.primary
+                                            )
+                                        },
+                                        onClick = { viewModel.setRecordFilterAccountIds(accounts.map { it.id }.toSet()) }
+                                    )
+                                    DropdownMenuItem(
+                                        text = {
+                                            Text(
+                                                "Select None",
+                                                style = MaterialTheme.typography.labelMedium,
+                                                color = MaterialTheme.colorScheme.primary
+                                            )
+                                        },
+                                        onClick = { viewModel.setRecordFilterAccountIds(emptySet()) }
+                                    )
+                                    HorizontalDivider()
+                                    accounts.forEach { account ->
+                                        DropdownMenuItem(
+                                            text = {
+                                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                                    Checkbox(
+                                                        checked = account.id in filterIds,
+                                                        onCheckedChange = {
+                                                            viewModel.setRecordFilterAccountIds(
+                                                                if (account.id in filterIds) filterIds - account.id
+                                                                else filterIds + account.id
+                                                            )
+                                                        }
+                                                    )
+                                                    Text(account.name, style = MaterialTheme.typography.bodySmall)
+                                                }
+                                            },
+                                            onClick = {
+                                                viewModel.setRecordFilterAccountIds(
+                                                    if (account.id in filterIds) filterIds - account.id
+                                                    else filterIds + account.id
+                                                )
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+
+                            // Order By dropdown
+                            Column {
+                                OutlinedButton(onClick = { recordSortExpanded = true }) {
+                                    Text(recordSortField, style = MaterialTheme.typography.labelSmall, maxLines = 1)
+                                }
+                                DropdownMenu(
+                                    expanded = recordSortExpanded,
+                                    onDismissRequest = { recordSortExpanded = false }
+                                ) {
+                                    sortFields.forEach { field ->
+                                        DropdownMenuItem(
+                                            text = {
+                                                Text(
+                                                    field,
+                                                    fontWeight = if (field == recordSortField) FontWeight.Bold else FontWeight.Normal,
+                                                    style = MaterialTheme.typography.bodySmall
+                                                )
+                                            },
+                                            onClick = {
+                                                viewModel.setRecordSortField(field)
+                                                recordSortExpanded = false
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+
+                            // Asc/Desc dropdown
+                            Column {
+                                OutlinedButton(onClick = { recordSortDirExpanded = true }) {
+                                    Text(
+                                        if (recordSortAsc) "Asc" else "Desc",
+                                        style = MaterialTheme.typography.labelSmall
+                                    )
+                                }
+                                DropdownMenu(
+                                    expanded = recordSortDirExpanded,
+                                    onDismissRequest = { recordSortDirExpanded = false }
+                                ) {
+                                    DropdownMenuItem(
+                                        text = {
+                                            Text(
+                                                "Asc",
+                                                fontWeight = if (recordSortAsc) FontWeight.Bold else FontWeight.Normal,
+                                                style = MaterialTheme.typography.bodySmall
+                                            )
+                                        },
+                                        onClick = { viewModel.setRecordSortAsc(true); recordSortDirExpanded = false }
+                                    )
+                                    DropdownMenuItem(
+                                        text = {
+                                            Text(
+                                                "Desc",
+                                                fontWeight = if (!recordSortAsc) FontWeight.Bold else FontWeight.Normal,
+                                                style = MaterialTheme.typography.bodySmall
+                                            )
+                                        },
+                                        onClick = { viewModel.setRecordSortAsc(false); recordSortDirExpanded = false }
+                                    )
+                                }
+                            }
+                        }
+
+                        // Records list
+                        if (filteredAndSorted.isEmpty()) {
+                            Text(
+                                if (allRecords.isEmpty()) "No performance records yet" else "No records match filter",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(16.dp)
                             )
                         }
-                        IconButton(onClick = {
-                            if (warnBeforeDelete) {
-                                deleteTarget = record
-                            } else {
-                                viewModel.deleteRecord(record)
+
+                        filteredAndSorted.forEach { record ->
+                            val accountName = accounts.find { it.id == record.accountId }?.name ?: "Unknown"
+                            Card(modifier = Modifier.fillMaxWidth()) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(12.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = accountName,
+                                            style = MaterialTheme.typography.labelLarge,
+                                            color = MaterialTheme.colorScheme.primary
+                                        )
+                                        Text(
+                                            text = record.date.format(dateFormatter),
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier.clickable {
+                                                editDateText = record.date.format(dateInputFormatter)
+                                                editDateTarget = record
+                                            }
+                                        )
+                                        if (record.note.isNotBlank()) {
+                                            Text(
+                                                text = record.note,
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                    }
+                                    Text(
+                                        text = currencyFormat.format(record.totalValue),
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                    IconButton(onClick = {
+                                        editNoteText = record.note
+                                        editTarget = record
+                                    }) {
+                                        Icon(
+                                            Icons.Default.Edit,
+                                            contentDescription = "Edit note",
+                                            tint = MaterialTheme.colorScheme.primary
+                                        )
+                                    }
+                                    IconButton(onClick = {
+                                        if (warnBeforeDelete) {
+                                            deleteTarget = record
+                                        } else {
+                                            viewModel.deleteRecord(record)
+                                        }
+                                    }) {
+                                        Icon(
+                                            Icons.Default.Delete,
+                                            contentDescription = "Delete",
+                                            tint = MaterialTheme.colorScheme.error
+                                        )
+                                    }
+                                }
                             }
-                        }) {
-                            Icon(
-                                Icons.Default.Delete,
-                                contentDescription = "Delete",
-                                tint = MaterialTheme.colorScheme.error
-                            )
                         }
                     }
                 }
@@ -570,6 +758,7 @@ private data class ChartSeries(
 @Composable
 private fun PerformanceLineChart(
     seriesList: List<ChartSeries>,
+    smoothCurve: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     if (seriesList.isEmpty()) return
@@ -589,7 +778,7 @@ private fun PerformanceLineChart(
     val valRange = (globalMax - globalMin).let { if (it < 0.01) 1.0 else it }
 
     // Global time range across all series
-    val allEpochs = seriesList.flatMap { s -> s.records.map { it.dateTime.toEpochSecond(ZoneOffset.UTC) } }
+    val allEpochs = seriesList.flatMap { s -> s.records.map { it.date.toEpochDay() } }
     val minEpoch = allEpochs.min()
     val maxEpoch = allEpochs.max()
     val timeRange = (maxEpoch - minEpoch).let { if (it < 1L) 1L else it }
@@ -659,7 +848,7 @@ private fun PerformanceLineChart(
 
                                 seriesList.forEachIndexed { sIdx, series ->
                                     series.records.forEachIndexed { pIdx, record ->
-                                        val epoch = record.dateTime.toEpochSecond(ZoneOffset.UTC)
+                                        val epoch = record.date.toEpochDay()
                                         val normX = (epoch - minEpoch).toFloat() / timeRange
                                         val screenX = normX * virtualWidth - scrollOffset
                                         val dist = abs(offset.x - screenX)
@@ -726,20 +915,28 @@ private fun PerformanceLineChart(
                         val fillPath = Path()
                         var lastScreenX = 0f
 
-                        series.records.forEachIndexed { i, record ->
-                            val epoch = record.dateTime.toEpochSecond(ZoneOffset.UTC)
+                        val points = series.records.map { record ->
+                            val epoch = record.date.toEpochDay()
                             val normX = (epoch - minEpoch).toFloat() / timeRange
                             val screenX = normX * virtualWidth - scrollOffset
                             val screenY = ((globalMax - record.totalValue) / valRange * chartHeight).toFloat()
-                            lastScreenX = screenX
+                            Offset(screenX, screenY)
+                        }
 
+                        points.forEachIndexed { i, pt ->
+                            lastScreenX = pt.x
                             if (i == 0) {
-                                path.moveTo(screenX, screenY)
-                                fillPath.moveTo(screenX, chartHeight)
-                                fillPath.lineTo(screenX, screenY)
+                                path.moveTo(pt.x, pt.y)
+                                fillPath.moveTo(pt.x, chartHeight)
+                                fillPath.lineTo(pt.x, pt.y)
+                            } else if (smoothCurve) {
+                                val prev = points[i - 1]
+                                val cpX = (prev.x + pt.x) / 2f
+                                path.cubicTo(cpX, prev.y, cpX, pt.y, pt.x, pt.y)
+                                fillPath.cubicTo(cpX, prev.y, cpX, pt.y, pt.x, pt.y)
                             } else {
-                                path.lineTo(screenX, screenY)
-                                fillPath.lineTo(screenX, screenY)
+                                path.lineTo(pt.x, pt.y)
+                                fillPath.lineTo(pt.x, pt.y)
                             }
                         }
 
@@ -756,7 +953,7 @@ private fun PerformanceLineChart(
 
                         // Data point dots
                         series.records.forEach { record ->
-                            val epoch = record.dateTime.toEpochSecond(ZoneOffset.UTC)
+                            val epoch = record.date.toEpochDay()
                             val normX = (epoch - minEpoch).toFloat() / timeRange
                             val screenX = normX * virtualWidth - scrollOffset
                             val screenY = ((globalMax - record.totalValue) / valRange * chartHeight).toFloat()
@@ -771,7 +968,7 @@ private fun PerformanceLineChart(
                         if (sIdx < seriesList.size && pIdx < seriesList[sIdx].records.size) {
                             val series = seriesList[sIdx]
                             val record = series.records[pIdx]
-                            val epoch = record.dateTime.toEpochSecond(ZoneOffset.UTC)
+                            val epoch = record.date.toEpochDay()
                             val normX = (epoch - minEpoch).toFloat() / timeRange
                             val screenX = normX * virtualWidth - scrollOffset
                             val screenY = ((globalMax - record.totalValue) / valRange * chartHeight).toFloat()
@@ -790,8 +987,8 @@ private fun PerformanceLineChart(
                             drawCircle(color = series.color, radius = 5f, center = Offset(screenX, screenY))
 
                             // Tooltip box
-                            val tooltipDateFmt = DateTimeFormatter.ofPattern("MM/dd/yy HH:mm")
-                            val tooltipStr = "${series.accountName}: ${currencyFormat.format(record.totalValue)}  ${record.dateTime.format(tooltipDateFmt)}"
+                            val tooltipDateFmt = DateTimeFormatter.ofPattern("MM/dd/yy")
+                            val tooltipStr = "${series.accountName}: ${currencyFormat.format(record.totalValue)}  ${record.date.format(tooltipDateFmt)}"
                             val paint = android.graphics.Paint().apply {
                                 textSize = 11.dp.toPx()
                                 isAntiAlias = true
@@ -830,10 +1027,10 @@ private fun PerformanceLineChart(
                     chartWidth / 2 to centerFraction,
                     chartWidth to rightFraction
                 ).forEach { (screenX, fraction) ->
-                    val epoch = minEpoch + (fraction * timeRange).toLong()
-                    val dateTime = LocalDateTime.ofEpochSecond(epoch, 0, ZoneOffset.UTC)
+                    val epochDay = minEpoch + (fraction * timeRange).toLong()
+                    val labelDate = LocalDate.ofEpochDay(epochDay)
                     drawContext.canvas.nativeCanvas.drawText(
-                        dateTime.format(dateFormatter),
+                        labelDate.format(dateFormatter),
                         screenX,
                         chartHeight + 16.dp.toPx(),
                         android.graphics.Paint().apply {

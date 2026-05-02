@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Invest Help - Guide</title>
+<style>
+  :root {
+    --bg: #121212;
+    --surface: #1e1e1e;
+    --primary: #90caf9;
+    --on-bg: #e0e0e0;
+    --muted: #aaaaaa;
+    --divider: #333333;
+    --accent-green: #66bb6a;
+    --accent-red: #ef5350;
+    --accent-orange: #ffa726;
+    --accent-purple: #ce93d8;
+    --accent-teal: #4dd0e1;
+    --accent-blue: #42a5f5;
+  }
+  @media (prefers-color-scheme: light) {
+    :root {
+      --bg: #fafafa;
+      --surface: #ffffff;
+      --primary: #1565c0;
+      --on-bg: #212121;
+      --muted: #616161;
+      --divider: #e0e0e0;
+      --accent-green: #2e7d32;
+      --accent-red: #c62828;
+      --accent-orange: #e65100;
+      --accent-purple: #7b1fa2;
+      --accent-teal: #00838f;
+      --accent-blue: #1565c0;
+    }
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, 'Segoe UI', Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--on-bg);
+    padding: 16px;
+    line-height: 1.5;
+  }
+  h1 {
+    font-size: 24px;
+    font-weight: 700;
+    margin-bottom: 16px;
+  }
+  .section {
+    background: var(--surface);
+    border-radius: 12px;
+    padding: 14px 16px;
+    margin-bottom: 12px;
+    border-left: 4px solid var(--primary);
+  }
+  .section h2 {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--primary);
+    margin-bottom: 6px;
+  }
+  .section p, .section ul {
+    font-size: 14px;
+    color: var(--muted);
+  }
+  .section ul {
+    padding-left: 20px;
+    margin-top: 6px;
+  }
+  .section ul li {
+    margin-bottom: 4px;
+  }
+  .nav-map {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  .nav-item {
+    background: var(--surface);
+    border-radius: 10px;
+    padding: 10px 12px;
+    text-align: center;
+    font-size: 13px;
+    font-weight: 500;
+  }
+  .nav-item .icon { font-size: 20px; display: block; margin-bottom: 4px; }
+  .nav-item .label { color: var(--on-bg); }
+  .nav-item .loc { font-size: 11px; color: var(--muted); }
+  .tip-box {
+    background: var(--surface);
+    border-radius: 12px;
+    padding: 14px 16px;
+    margin-bottom: 12px;
+    border-left: 4px solid var(--accent-orange);
+  }
+  .tip-box h2 { color: var(--accent-orange); font-size: 16px; margin-bottom: 8px; }
+  .tip-box ul { padding-left: 20px; font-size: 14px; color: var(--muted); }
+  .tip-box ul li { margin-bottom: 6px; }
+  .shortcut { background: var(--divider); border-radius: 4px; padding: 1px 6px; font-size: 12px; }
+  .kbd {
+    display: inline-block;
+    background: var(--divider);
+    border-radius: 4px;
+    padding: 2px 6px;
+    font-family: monospace;
+    font-size: 12px;
+  }
+  .section.green  { border-left-color: var(--accent-green); }
+  .section.green h2  { color: var(--accent-green); }
+  .section.red    { border-left-color: var(--accent-red); }
+  .section.red h2    { color: var(--accent-red); }
+  .section.orange { border-left-color: var(--accent-orange); }
+  .section.orange h2 { color: var(--accent-orange); }
+  .section.purple { border-left-color: var(--accent-purple); }
+  .section.purple h2 { color: var(--accent-purple); }
+  .section.teal   { border-left-color: var(--accent-teal); }
+  .section.teal h2   { color: var(--accent-teal); }
+  .section.blue   { border-left-color: var(--accent-blue); }
+  .section.blue h2   { color: var(--accent-blue); }
+</style>
+</head>
+<body>
+
+<h1>Help Guide</h1>
+
+<h2 style="font-size:15px; color:var(--muted); margin-bottom:12px;">Navigation Overview</h2>
+<div class="nav-map">
+  <div class="nav-item">
+    <span class="icon">&#128202;</span>
+    <span class="label">Dashboard</span>
+    <span class="loc">Bottom Nav</span>
+  </div>
+  <div class="nav-item">
+    <span class="icon">&#128200;</span>
+    <span class="label">Items</span>
+    <span class="loc">Bottom Nav</span>
+  </div>
+  <div class="nav-item">
+    <span class="icon">&#128179;</span>
+    <span class="label">Transfer</span>
+    <span class="loc">Bottom Nav</span>
+  </div>
+  <div class="nav-item">
+    <span class="icon">&#128203;</span>
+    <span class="label">Transaction</span>
+    <span class="loc">Bottom Nav</span>
+  </div>
+  <div class="nav-item">
+    <span class="icon">&#128200;</span>
+    <span class="label">Simulation</span>
+    <span class="loc">Bottom Nav</span>
+  </div>
+  <div class="nav-item">
+    <span class="icon">&#127974;</span>
+    <span class="label">Accounts</span>
+    <span class="loc">Menu</span>
+  </div>
+  <div class="nav-item">
+    <span class="icon">&#128201;</span>
+    <span class="label">Performance</span>
+    <span class="loc">Menu</span>
+  </div>
+  <div class="nav-item">
+    <span class="icon">&#11088;</span>
+    <span class="label">Watch List</span>
+    <span class="loc">Menu</span>
+  </div>
+  <div class="nav-item">
+    <span class="icon">&#9881;</span>
+    <span class="label">Settings</span>
+    <span class="loc">Menu</span>
+  </div>
+  <div class="nav-item">
+    <span class="icon">&#128451;</span>
+    <span class="label">SQL Explorer</span>
+    <span class="loc">Menu</span>
+  </div>
+</div>
+
+<div class="section blue">
+  <h2>Dashboard</h2>
+  <p>Your portfolio overview at a glance.</p>
+  <ul>
+    <li><strong>Market Indices</strong> &mdash; horizontal row of cards showing NASDAQ, S&amp;P 500, Dow, Gold and more. Tap a card to open Yahoo Finance for that index. Customize which indices appear in Settings &gt; Preferences.</li>
+    <li><strong>Daily Glance</strong> &mdash; shows overall daily change for Stocks and ETFs, plus the top 5 gainers and top 5 losers today. Toggle "By Per Share" to switch between total and per-share view. Tap a row to open that item.</li>
+    <li><strong>Positions Pie Chart</strong> &mdash; all tickers by allocation. Legend shows top 20 with a "More" button. Tap a ticker in the legend to navigate to item detail.</li>
+    <li><strong>Position Details</strong> &mdash; scrollable table with current price, total cost, total value, and gain/loss per ticker.</li>
+    <li>All dashboard cards are <strong>collapsible</strong>. Tap the pin icon to keep a card expanded by default.</li>
+  </ul>
+</div>
+
+<div class="section green">
+  <h2>Items (Positions)</h2>
+  <p>Manage every investment you hold.</p>
+  <ul>
+    <li>Each item is identified by its <strong>ticker symbol</strong> (one record per ticker, not per account).</li>
+    <li>Supports types: Stock, ETF, Bond, Mutual Fund, Crypto, Other.</li>
+    <li>Sort by Ticker, Total Value, or Current Price via dropdown.</li>
+    <li>Tap <strong>Refresh All</strong> in the toolbar to fetch the latest prices and company names from Yahoo Finance.</li>
+    <li>Tap an item to see a detail screen with stats, daily high/low, transactions, and analysis.</li>
+    <li>Item detail shows <strong>Analysis Info</strong> (historical highs and lows) and a link to <strong>Yahoo Finance</strong>.</li>
+    <li>New tickers are auto-created when you record a transaction for a ticker that doesn't exist yet.</li>
+  </ul>
+</div>
+
+<div class="section purple">
+  <h2>Transactions</h2>
+  <p>Record every buy and sell.</p>
+  <ul>
+    <li>Fields: ticker, shares, price per share, date (optional time), account, total amount (verification), and note.</li>
+    <li><strong>Analyze Price</strong> &mdash; button next to the Price field. Opens a screen showing current price, your transaction avg/max/min, and historic high/low across multiple time ranges. Tap a price to copy it back to the form.</li>
+    <li><strong>View</strong> &mdash; button next to Ticker opens item detail without losing form state.</li>
+    <li><strong>Simulate</strong> &mdash; calculates days since transaction date and opens simulation with that custom range.</li>
+    <li>Account is auto-selected for new transactions.</li>
+    <li><strong>Multi-select</strong> &mdash; long-press a transaction to enter selection mode. Use Select All and bulk Delete. Respects the "Warn before delete" setting.</li>
+    <li>Each transaction card shows gain/loss and days since purchase.</li>
+  </ul>
+</div>
+
+<div class="section orange">
+  <h2>Bank Transfers</h2>
+  <p>Track fund transfers into investment accounts.</p>
+  <ul>
+    <li>Records date, amount, destination account, and an optional note.</li>
+    <li>Summary at the top shows total amount transferred per account.</li>
+  </ul>
+</div>
+
+<div class="section red">
+  <h2>Simulation</h2>
+  <p>Project future value based on historical data.</p>
+  <ul>
+    <li>Select a ticker and number of shares.</li>
+    <li>Time ranges: 1W, 2W, 1M, 3M, 6M, 1Y, 2Y, 5Y, 10Y, MAX (grouped into Week / Month / Year rows).</li>
+    <li>Tap a point on the chart to see a tooltip with price and date.</li>
+    <li>Custom day ranges when launched from the Transaction form's "Simulate" button.</li>
+  </ul>
+</div>
+
+<div class="section blue">
+  <h2>Accounts</h2>
+  <p>Organize your investment accounts.</p>
+  <ul>
+    <li>Create accounts for different brokerages, IRAs, 401k plans, etc.</li>
+    <li>Transactions and bank transfers reference accounts.</li>
+    <li><strong>Deleting an account</strong> cascades &mdash; it also removes all associated transactions and bank transfers.</li>
+  </ul>
+</div>
+
+<div class="section green">
+  <h2>Performance</h2>
+  <p>Track portfolio value over time.</p>
+  <ul>
+    <li>Add records manually or tap <strong>"Pull from App"</strong> to auto-fill the current total value.</li>
+    <li>Optional note per record (edit via pencil icon).</li>
+    <li><strong>Multi-account chart</strong> &mdash; select accounts via FilterChip toggles. Each gets a distinct color.</li>
+    <li><strong>Pinch to zoom</strong> (1x&ndash;5x), two-finger pan, tap for tooltip, double-tap to reset.</li>
+    <li>Unique constraint: one record per account per date.</li>
+  </ul>
+</div>
+
+<div class="section purple">
+  <h2>Watch List</h2>
+  <p>Track tickers you're interested in.</p>
+  <ul>
+    <li>Create multiple named watch lists, switch via FilterChip selector.</li>
+    <li>Add a ticker with shares count and price-when-added.</li>
+    <li>Tap <strong>"Fetch"</strong> to pull the current market price from Yahoo Finance.</li>
+    <li>Table shows: ticker, shares, current price, added price, $ change, % change, date added.</li>
+    <li>Rename or delete watch lists from the top controls.</li>
+  </ul>
+</div>
+
+<div class="section">
+  <h2>Settings</h2>
+  <p>Configure app behavior and manage data.</p>
+  <ul>
+    <li><strong>Preferences</strong> &mdash; toggle which market indices appear on the Dashboard (8 available). Toggle "Warn before delete" (on by default).</li>
+    <li><strong>Backup &amp; Restore</strong> &mdash; back up or restore the entire database. Choose a backup folder that persists across sessions.</li>
+    <li><strong>CSV Import</strong> &mdash; import Position Details, Transaction Records, or Performance Records from CSV files. Supports column mapping with brokerage aliases (e.g., Symbol &rarr; ticker, Description &rarr; name). Includes a 3-row preview and account selector.</li>
+    <li>Mappings are saved per import type so you don't have to remap each time.</li>
+  </ul>
+</div>
+
+<div class="section teal">
+  <h2>SQL Explorer</h2>
+  <p>Power-user tool for direct database access.</p>
+  <ul>
+    <li>Run any SQL query &mdash; SELECT, INSERT, UPDATE, DELETE, PRAGMA, and more.</li>
+    <li><strong>Table browser</strong> &mdash; lists all tables with expandable column details (name, type, PK/NN).</li>
+    <li>Tap <strong>"Open"</strong> on a table to run <span class="kbd">SELECT * FROM table</span>.</li>
+    <li>Result grid with horizontal and vertical gridlines. Tap a row to view full field values.</li>
+    <li><strong>CSV Export</strong> &mdash; share query results as a CSV file.</li>
+  </ul>
+</div>
+
+<div class="section blue">
+  <h2>Top Bar &amp; Portfolio Card</h2>
+  <ul>
+    <li>The portfolio card at the top always shows <strong>Total Portfolio Value</strong> with daily change in parentheses, color-coded green/red.</li>
+    <li>Second row shows daily % change and all-time % change.</li>
+    <li><strong>Tap the card</strong> to refresh all prices from Yahoo Finance and navigate to Dashboard.</li>
+    <li>A progress bar appears while prices are refreshing.</li>
+  </ul>
+</div>
+
+<div class="tip-box">
+  <h2>Tips &amp; Shortcuts</h2>
+  <ul>
+    <li>Tap the <strong>portfolio card</strong> at the top to refresh all prices at once.</li>
+    <li>Company logos load automatically from the web.</li>
+    <li>New tickers are <strong>auto-created</strong> when you add a transaction for an unknown ticker.</li>
+    <li><strong>Pin</strong> dashboard cards to keep them expanded by default.</li>
+    <li>Use <strong>Analyze Price</strong> to see historical price ranges before buying.</li>
+    <li><strong>Long-press</strong> a transaction to start multi-select mode.</li>
+    <li>In Performance charts, <strong>double-tap</strong> to reset zoom.</li>
+    <li>CSV import auto-detects common brokerage column names (Symbol, Description, Price, Quantity, etc.).</li>
+    <li>The app log (About &gt; Show Log) captures price fetch results and errors for debugging.</li>
+  </ul>
+</div>
+
+</body>
+</html>

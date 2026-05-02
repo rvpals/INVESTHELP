@@ -17,11 +17,36 @@ class DatabaseProvider @Inject constructor(
             InvestHelpDatabase::class.java,
             "invest_help.db"
         )
-            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16)
             .build()
     }
 
     companion object {
+        val MIGRATION_15_16 = object : Migration(15, 16) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """CREATE TABLE IF NOT EXISTS account_performance_new (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        accountId INTEGER NOT NULL,
+                        totalValue REAL NOT NULL,
+                        date INTEGER NOT NULL,
+                        note TEXT NOT NULL DEFAULT '',
+                        FOREIGN KEY(accountId) REFERENCES investment_accounts(id) ON DELETE CASCADE
+                    )"""
+                )
+                // Convert epoch seconds (dateTime) to epoch days (date), keeping latest per accountId+day
+                db.execSQL(
+                    """INSERT OR REPLACE INTO account_performance_new (id, accountId, totalValue, date, note)
+                        SELECT id, accountId, totalValue, CAST(dateTime / 86400 AS INTEGER), note
+                        FROM account_performance"""
+                )
+                db.execSQL("DROP TABLE account_performance")
+                db.execSQL("ALTER TABLE account_performance_new RENAME TO account_performance")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_account_performance_accountId ON account_performance(accountId)")
+                db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_account_performance_accountId_date ON account_performance(accountId, date)")
+            }
+        }
+
         val MIGRATION_14_15 = object : Migration(14, 15) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 // Recreate investment_items with ticker-only PK, no accountId

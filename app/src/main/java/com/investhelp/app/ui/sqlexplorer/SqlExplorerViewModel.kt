@@ -175,6 +175,33 @@ class SqlExplorerViewModel @Inject constructor(
         }
     }
 
+    fun eraseTable(tableName: String) {
+        viewModelScope.launch {
+            _isRunning.value = true
+            _error.value = null
+            _result.value = null
+            try {
+                val startTime = System.currentTimeMillis()
+                withContext(Dispatchers.IO) {
+                    val db = dbProvider.database.openHelper.writableDatabase
+                    db.execSQL("DELETE FROM `$tableName`")
+                }
+                val elapsed = System.currentTimeMillis() - startTime
+                _result.value = QueryResult(
+                    columns = emptyList(),
+                    rows = emptyList(),
+                    rowCount = 0,
+                    executionTimeMs = elapsed,
+                    message = "All entries deleted from $tableName"
+                )
+            } catch (e: Exception) {
+                _error.value = "Erase failed: ${e.message}"
+            } finally {
+                _isRunning.value = false
+            }
+        }
+    }
+
     fun exportCsv(): Intent? {
         val result = _result.value ?: return null
         if (result.columns.isEmpty()) return null

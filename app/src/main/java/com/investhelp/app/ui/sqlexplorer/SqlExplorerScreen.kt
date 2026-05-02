@@ -24,6 +24,7 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Share
+import com.investhelp.app.ui.settings.SettingsViewModel
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -65,6 +66,11 @@ fun SqlExplorerScreen(viewModel: SqlExplorerViewModel) {
 
     var sql by rememberSaveable { mutableStateOf("") }
     var selectedRowIndex by remember { mutableStateOf<Int?>(null) }
+    var tableToErase by remember { mutableStateOf<String?>(null) }
+    val warnBeforeDelete = remember {
+        context.getSharedPreferences(SettingsViewModel.PREFS_NAME, android.content.Context.MODE_PRIVATE)
+            .getBoolean(SettingsViewModel.KEY_WARN_BEFORE_DELETE, true)
+    }
 
     Column(
         modifier = Modifier
@@ -128,6 +134,13 @@ fun SqlExplorerScreen(viewModel: SqlExplorerViewModel) {
                 onOpenTable = { tableName ->
                     sql = "SELECT * FROM $tableName"
                     viewModel.executeQuery(sql)
+                },
+                onEraseTable = { tableName ->
+                    if (warnBeforeDelete) {
+                        tableToErase = tableName
+                    } else {
+                        viewModel.eraseTable(tableName)
+                    }
                 }
             )
         }
@@ -155,6 +168,29 @@ fun SqlExplorerScreen(viewModel: SqlExplorerViewModel) {
                 Spacer(modifier = Modifier.height(8.dp))
                 ResultTable(qr) { index -> selectedRowIndex = index }
             }
+        }
+
+        if (tableToErase != null) {
+            AlertDialog(
+                onDismissRequest = { tableToErase = null },
+                title = { Text("Erase Table") },
+                text = {
+                    Text("This will delete ALL entries from \"${tableToErase}\". This action cannot be undone.")
+                },
+                confirmButton = {
+                    TextButton(onClick = {
+                        viewModel.eraseTable(tableToErase!!)
+                        tableToErase = null
+                    }) {
+                        Text("Erase", color = MaterialTheme.colorScheme.error)
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { tableToErase = null }) {
+                        Text("Cancel")
+                    }
+                }
+            )
         }
 
         if (selectedRowIndex != null && result != null &&
@@ -278,7 +314,8 @@ private fun TableBrowser(
     expandedTable: String?,
     tableColumns: List<ColumnInfo>,
     onTableClick: (String) -> Unit,
-    onOpenTable: (String) -> Unit
+    onOpenTable: (String) -> Unit,
+    onEraseTable: (String) -> Unit
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -325,6 +362,17 @@ private fun TableBrowser(
                             contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 8.dp, vertical = 0.dp)
                         ) {
                             Text("Open", style = MaterialTheme.typography.labelSmall)
+                        }
+                        TextButton(
+                            onClick = { onEraseTable(tableName) },
+                            modifier = Modifier.height(30.dp),
+                            contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 8.dp, vertical = 0.dp)
+                        ) {
+                            Text(
+                                "Erase",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.error
+                            )
                         }
                     }
                     AnimatedVisibility(visible = expandedTable == tableName) {

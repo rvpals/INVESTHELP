@@ -8,7 +8,7 @@ Android investment tracking app built with Kotlin, Jetpack Compose, and Material
 - **Min SDK:** 29, Target SDK: 35
 - **Architecture:** MVVM + Repository pattern
 - **DI:** Hilt (KSP)
-- **Database:** Room, version 15
+- **Database:** Room, version 16
 - **Navigation:** Compose Navigation (type-safe routes)
 - **Splash:** AndroidX SplashScreen API (core-splashscreen 1.0.1)
 - **Charts:** Custom Canvas-drawn (pie chart, line chart) — no external chart library
@@ -20,7 +20,7 @@ Android investment tracking app built with Kotlin, Jetpack Compose, and Material
 - `data/repository/` - Repository interfaces and implementations
 - `di/` - Hilt modules (DatabaseModule, RepositoryModule)
 - `model/` - Domain models and enums
-- `ui/` - Compose screens organized by feature (dashboard, account, item, transaction, transfer, simulation, sqlexplorer, performance, watchlist)
+- `ui/` - Compose screens organized by feature (dashboard, account, item, transaction, transfer, simulation, sqlexplorer, performance, watchlist, help)
 - `ui/components/` - Reusable UI components (CollapsibleCard, ConfirmDeleteDialog, DateRangePicker)
 
 ## Key Design Decisions
@@ -42,7 +42,7 @@ Android investment tracking app built with Kotlin, Jetpack Compose, and Material
 - Auto-create InvestmentItem when transaction references a new ticker (defaults to Stock type, changeable via type selector)
 - Dates stored as epoch days for simple SQL range queries
 - Yahoo Finance v8/v10 API for live prices, historical data, and analysis info
-- Global top bar: portfolio value 3D button (refreshes all prices + navigates to Dashboard) + hamburger menu (Accounts, Performance, Watch List, Settings, SQL Explorer, About)
+- Global top bar: portfolio value 3D button (refreshes all prices + navigates to Dashboard) + hamburger menu (Accounts, Performance, Watch List, Settings, SQL Explorer, Help, About)
 - Top bar shows spinner while refreshing prices
 - Bottom nav: Dashboard, Items, Transfer, Transaction, Simulation (3D gradient icons with shadow)
 - Icon3D composable: renders icons inside gradient-filled rounded boxes with drop shadow; used for bottom nav and hamburger menu icons
@@ -94,7 +94,7 @@ Android investment tracking app built with Kotlin, Jetpack Compose, and Material
 - AppLog: in-memory application log (up to 200 entries) capturing price fetch results, refresh summaries, and errors
 - About dialog: "Show Log" button opens scrollable log viewer (newest first) with clear button; logs include timestamps
 - Item detail transactions: each card shows days since transaction date (e.g. "123d") and G/L = (currentPrice - pricePerShare) * shares; green for gain, red for loss
-- Account Performance: `account_performance` table (id, accountId, totalValue, dateTime, note) with CASCADE delete on account
+- Account Performance: `account_performance` table (id, accountId, totalValue, date, note) with CASCADE delete on account; unique constraint on (accountId, date)
 - Account Performance: accessible from hamburger menu; add record form with account selector, total value + "Pull from App" button, optional note field, auto-timestamp
 - Account Performance: edit note dialog on existing records (pencil icon); note displayed on record cards when present
 - Account Performance: line chart (Canvas-drawn) with multi-account overlay; FilterChip multi-select; each account gets distinct color; pinch-to-zoom (1x–5x) with two-finger pan; double-tap resets zoom; tap-to-select tooltip shows account name + value + date; clipRect for zoomed data area; viewport-aware x-axis labels
@@ -107,12 +107,17 @@ Android investment tracking app built with Kotlin, Jetpack Compose, and Material
 - Database migration v12 -> v13: creates watch_lists and watch_list_items tables
 - Database migration v13 -> v14: creates csv_import_mappings table
 - Database migration v14 -> v15: removes accountId from investment_items, makes ticker sole PK, merges duplicate tickers by summing quantity/cost/value
-- Database version 15
+- Database migration v15 -> v16: converts account_performance dateTime (epoch seconds) to date (epoch days), adds unique index on (accountId, date)
+- Database version 16
 - CSV Import: reusable mapping system for Transaction, Position, Performance imports; mappings persisted in `csv_import_mappings` table; supports date format options per column
 - CSV Transaction Import: does NOT auto-update share counts on items; only creates item stub if ticker doesn't exist
 - Settings Data Management: 3 import types (Transaction Records, Position Details, Performance Records) each with "Define Mapping" and "Start Import" buttons; shared account selector
 - Transaction list: multi-select mode via long-press; contextual top bar with selection count, Select All, and Delete; bulk delete respects "Warn before delete" setting; account filter works with select-all
-- LocalDateTime stored as epoch seconds (UTC) via TypeConverter
+- LocalDateTime stored as epoch seconds (UTC) via TypeConverter; LocalDate stored as epoch days
+- Help screen: accessible from hamburger menu; loads `assets/help.html` via WebView; styled HTML with dark/light theme support; covers all features with navigation overview grid, per-section guides, and tips
+- About dialog: version displayed dynamically from BuildConfig (versionName + versionCode)
+- Build: `buildConfig = true` enabled in build features for BuildConfig access
+- Build: auto-increment versioning via `version.properties` (VERSION_MAJOR, VERSION_MINOR, VERSION_CODE); minor version and version code increment after each assembleDebug/assembleRelease
 
 ## Build
 Open in Android Studio and sync Gradle. Requires JDK 17+.
@@ -120,3 +125,10 @@ Set `JAVA_HOME` to JDK 17 path if building from CLI:
 ```
 JAVA_HOME="E:/Prog/Java/jdk-17" ./gradlew assembleRelease
 ```
+
+## Versioning
+- Version managed via `version.properties` at project root (VERSION_MAJOR, VERSION_MINOR, VERSION_CODE)
+- After each `assembleDebug` or `assembleRelease`, minor version and version code auto-increment by 1
+- `versionName` and `versionCode` in `app/build.gradle.kts` read from `version.properties`
+- To bump major version: edit VERSION_MAJOR in `version.properties` and reset VERSION_MINOR to 0
+- About dialog shows dynamic version via BuildConfig

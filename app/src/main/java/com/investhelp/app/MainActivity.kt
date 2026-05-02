@@ -81,6 +81,8 @@ import com.investhelp.app.ui.navigation.SqlExplorerRoute
 import com.investhelp.app.ui.navigation.SimulationRoute
 import com.investhelp.app.ui.navigation.TransactionListRoute
 import com.investhelp.app.ui.navigation.WatchListRoute
+import com.investhelp.app.ui.navigation.HelpRoute
+import androidx.compose.material.icons.filled.HelpOutline
 import com.investhelp.app.ui.theme.InvestHelpTheme
 import dagger.hilt.android.AndroidEntryPoint
 import java.text.NumberFormat
@@ -148,7 +150,7 @@ fun GlobalTopBar(navController: NavHostController) {
             title = { Text("Invest Help") },
             text = {
                 Column {
-                    Text("Version 1.0")
+                    Text("Version ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})")
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
                         "Investment tracking app for managing portfolios, positions, and transactions.",
@@ -343,6 +345,18 @@ fun GlobalTopBar(navController: NavHostController) {
                         }
                     },
                     leadingIcon = { Icon3D(Icons.Default.Storage, null, Color(0xFFE65100), iconSize = 16.dp, boxSize = 28.dp) }
+                )
+                DropdownMenuItem(
+                    text = { Text("Help") },
+                    onClick = {
+                        menuExpanded = false
+                        navController.navigate(HelpRoute) {
+                            popUpTo(DashboardRoute) { saveState = true }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    },
+                    leadingIcon = { Icon3D(Icons.Default.HelpOutline, null, Color(0xFF00838F), iconSize = 16.dp, boxSize = 28.dp) }
                 )
                 HorizontalDivider()
                 DropdownMenuItem(

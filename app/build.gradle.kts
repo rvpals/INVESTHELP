@@ -16,6 +16,17 @@ val keystoreProperties = Properties().apply {
     }
 }
 
+val versionPropsFile = rootProject.file("version.properties")
+val versionProps = Properties().apply {
+    if (versionPropsFile.exists()) {
+        load(versionPropsFile.inputStream())
+    }
+}
+
+val versionMajor = (versionProps["VERSION_MAJOR"] as String?)?.toIntOrNull() ?: 1
+val versionMinor = (versionProps["VERSION_MINOR"] as String?)?.toIntOrNull() ?: 0
+val appVersionCode = (versionProps["VERSION_CODE"] as String?)?.toIntOrNull() ?: 1
+
 android {
     namespace = "com.investhelp.app"
     compileSdk = 35
@@ -33,8 +44,8 @@ android {
         applicationId = "com.investhelp.app"
         minSdk = 29
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = appVersionCode
+        versionName = "$versionMajor.$versionMinor"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -61,6 +72,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 
@@ -108,4 +120,23 @@ dependencies {
 
     // Image loading
     implementation(libs.coil.compose)
+}
+
+tasks.configureEach {
+    if (name.matches(Regex("assemble(Debug|Release)"))) {
+        doLast {
+            val props = Properties().apply {
+                versionPropsFile.inputStream().use { load(it) }
+            }
+            val major = (props["VERSION_MAJOR"] as String).toInt()
+            val minor = (props["VERSION_MINOR"] as String).toInt()
+            val code = (props["VERSION_CODE"] as String).toInt()
+            val newMinor = minor + 1
+            val newCode = code + 1
+            props["VERSION_MINOR"] = newMinor.toString()
+            props["VERSION_CODE"] = newCode.toString()
+            versionPropsFile.outputStream().use { props.store(it, null) }
+            println("Version bumped: $major.$minor (code $code) -> $major.$newMinor (code $newCode)")
+        }
+    }
 }

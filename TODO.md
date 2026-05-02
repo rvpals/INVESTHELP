@@ -162,6 +162,22 @@
 - [x] Transaction bulk delete: respects "Warn before delete" setting
 - [x] Added deleteTransactions(List) to DAO, Repository, and ViewModel
 
+- [x] SQL Explorer: "Erase" button on each table row to delete all entries from a table
+- [x] SQL Explorer: erase confirmation dialog (respects "Warn before delete" setting)
+
+- [x] Account Performance: `dateTime` field changed to `date` (LocalDate, epoch days) — simpler date-only tracking
+- [x] Account Performance: unique constraint on (accountId, date) — one record per account per day
+- [x] Account Performance: duplicate record prevention with user-friendly error dialog
+- [x] Database migration v15 -> v16 (recreate account_performance with date field, convert epoch seconds to epoch days, add unique index)
+- [x] Database version bumped to 16
+
+- [x] Account Performance screen: three CollapsibleCards (Add Performance Record, Performance Charts, Records) with pin persistence
+- [x] Account Performance chart: "Smooth Curve" checkbox for cubic Bezier curve smoothing
+- [x] Account Performance chart: FlowRow for account selector chips (wrapping instead of horizontal scroll)
+- [x] Account Performance Records: account filter dropdown (Select All/None/individual checkboxes)
+- [x] Account Performance Records: "Order By" dropdown (Account, Date, Total Value, Note) with Asc/Desc toggle
+- [x] Account Performance Records: filter and sort selections persisted to SharedPreferences across sessions
+
 - [x] CSV Import: numeric values with commas (e.g. "92,150.62") parsed correctly via `parseNumeric()` helper
 - [x] CSV Import: enhanced auto-mapping with common brokerage aliases (Price→currentPrice, Description→name, Symbol→ticker, Unrealized G/L→totalGainLoss, Shares→quantity, etc.)
 - [x] CSV Import: non-data rows (blank lines, FOOTNOTES sections) filtered out during import
@@ -176,8 +192,14 @@
 - [x] Items screen: Delete button added to Edit dialog (red "Delete" next to "Cancel", only shown when editing existing item)
 - [x] Items screen: Delete from edit dialog respects "Warn before delete" setting
 
+- [x] Help screen: HTML-based help guide loaded via WebView from `assets/help.html`; covers all features with navigation overview, per-section guides, and tips; dark/light theme support
+- [x] Help menu item added to hamburger menu (between SQL Explorer and About)
+- [x] About dialog: dynamic version from BuildConfig (versionName + versionCode)
+- [x] Auto-increment versioning: `version.properties` tracks VERSION_MAJOR, VERSION_MINOR, VERSION_CODE; minor version and code auto-increment after each assembleDebug/assembleRelease
+- [x] `buildConfig = true` enabled in build features for BuildConfig access
+
 ## Pending
-- [ ] Increment versionCode/versionName for next release
 - [ ] Fix deprecation warning: Icons.Filled.OpenInNew -> Icons.AutoMirrored.Filled.OpenInNew (ItemDetailScreen.kt)
 - [ ] Fix deprecation warning: Icons.Filled.ShowChart/TrendingUp -> AutoMirrored versions (DashboardScreen.kt)
+- [ ] Fix deprecation warning: Icons.Filled.HelpOutline -> Icons.AutoMirrored.Filled.HelpOutline (MainActivity.kt)
 - [ ] Fix deprecation warning: statusBarColor in Theme.kt

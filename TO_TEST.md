@@ -279,6 +279,14 @@
 - [ ] Clicking a result row opens the record detail dialog (existing behavior)
 - [ ] "Open" button works for all listed tables
 
+## SQL Explorer - Erase Table
+- [ ] "Erase" button (red text) visible on each table row in the table browser (next to "Open")
+- [ ] Clicking "Erase" shows confirmation dialog ("Delete all entries from <table>?")
+- [ ] Confirmation dialog respects "Warn before delete" setting (skips dialog when disabled)
+- [ ] Confirming erase deletes all rows from the table
+- [ ] Table structure remains intact after erase (only data deleted)
+- [ ] Success/error feedback shown after erase operation
+
 ## Transaction List Gain/Loss
 - [x] Each transaction card shows G/L line: (currentPrice - pricePerShare) * numberOfShares
 - [x] Positive G/L displayed in primary color with + prefix
@@ -366,11 +374,11 @@
 - [x] "Pull from App" disabled when no account selected
 - [x] "Add Record" button disabled until account selected and valid value entered
 - [x] Note text field visible in add-record form (optional)
-- [x] Adding a record auto-sets current date/time
+- [x] Adding a record auto-sets current date
 - [x] Adding a record with a note stores the note correctly
 - [x] Adding a record without a note stores empty note (no error)
 - [x] Record appears in records list after adding
-- [x] Records list shows account name, date/time, and total value
+- [x] Records list shows account name, date, and total value
 - [x] Note text displayed on record card when present (below date)
 - [x] No note line shown on record card when note is empty
 - [x] Edit button (pencil icon) visible on each record card
@@ -380,7 +388,7 @@
 - [x] Cancel button in edit dialog discards changes
 - [x] Delete button on each record removes it
 - [x] Delete respects "Warn before delete" setting (confirmation dialog when enabled)
-- [x] Performance Chart: FilterChip row for multi-account selection (horizontally scrollable)
+- [x] Performance Chart: FilterChip with FlowRow for multi-account selection (wrapping layout)
 - [x] First account auto-selected in chart filter chips on load
 - [x] Tapping a chip toggles account on/off for chart display
 - [x] Each chip shows colored dot (matching chart line) when selected
@@ -390,7 +398,7 @@
 - [x] Chart shows "Need at least 2 records" message when no selected accounts qualify
 - [x] Chart Y-axis shows dollar amounts (shared scale across all accounts)
 - [x] Chart X-axis shows dates (shared time axis across all accounts)
-- [x] Tap on chart point shows tooltip with account name, value, and date/time
+- [x] Tap on chart point shows tooltip with account name, value, and date
 - [x] Tapping same point again dismisses tooltip
 - [x] Vertical crosshair line at selected point
 - [x] Pinch-to-zoom horizontally (1x to 5x)
@@ -401,13 +409,52 @@
 - [x] Chart data reloads when toggling account chips
 - [x] Deleting an account cascades to delete its performance records
 
+## Account Performance - CollapsibleCards
+- [ ] Performance screen has three CollapsibleCards: "Add Performance Record", "Performance Charts", "Records (N)"
+- [ ] Each card has a pin button; pin states persisted to SharedPreferences
+- [ ] "Add Performance Record" default unpinned (collapsed); "Performance Charts" and "Records" default pinned (expanded)
+- [ ] Records card title shows count of filtered records (e.g. "Records (15)")
+
+## Account Performance - Smooth Curve
+- [ ] "Smooth Curve" checkbox visible in Performance Charts card
+- [ ] When unchecked, chart draws straight lines between data points (default)
+- [ ] When checked, chart draws smooth cubic Bezier curves between data points
+- [ ] Smooth curve toggle applies to all visible account lines simultaneously
+- [ ] Toggle state preserved during screen recompositions (rememberSaveable)
+
+## Account Performance - FlowRow Account Chips
+- [ ] Account selector chips in Performance Charts wrap to next line when they overflow (FlowRow)
+- [ ] All account chips visible without horizontal scrolling
+- [ ] Chip layout adjusts correctly on different screen widths
+
+## Account Performance - Duplicate Record Prevention
+- [ ] Adding a record for the same account and date as an existing record shows error dialog
+- [ ] Error dialog message indicates the duplicate date
+- [ ] Dismissing error dialog allows user to change date or account and retry
+- [ ] Records with same account but different dates are allowed
+- [ ] Records with same date but different accounts are allowed
+
+## Account Performance - Records Filter & Sort
+- [ ] Account filter dropdown visible in Records card header area
+- [ ] Filter dropdown shows "Select All" and "Select None" options at top
+- [ ] Filter dropdown shows individual account checkboxes
+- [ ] Checking/unchecking accounts updates the filtered records list immediately
+- [ ] Default filter: all accounts selected
+- [ ] "Order By" dropdown visible next to filter (options: Account, Date, Total Value, Note)
+- [ ] Default order: Date
+- [ ] Asc/Desc dropdown visible next to Order By
+- [ ] Default direction: Desc (latest first)
+- [ ] Changing sort field or direction re-orders the records list correctly
+- [ ] Filter and sort selections persist across app sessions (SharedPreferences)
+- [ ] Restored filter/sort selections applied correctly on screen load
+
 ## Database Migration v10 -> v11
 - [x] Fresh install works correctly (version 11)
 - [x] Upgrade from v10 to v11 creates account_performance table
 - [x] Existing data (accounts, items, transactions, transfers) retained after migration
 
 ## Database Migration v11 -> v12
-- [x] Fresh install works correctly (version 15)
+- [x] Fresh install works correctly (version 16)
 - [x] Upgrade from v11 to v12 adds note column to account_performance table
 - [x] Existing performance records retained after migration with empty note
 - [x] New records can be created with a note after migration
@@ -486,13 +533,42 @@
 - [ ] Existing data (accounts, items, transactions, transfers, performance, watch lists) retained after migration
 - [ ] New CSV import mappings can be created and persisted after migration
 
+## Database Migration v15 -> v16
+- [ ] Fresh install works correctly (version 16)
+- [ ] Upgrade from v15 to v16 converts account_performance dateTime (epoch seconds) to date (epoch days)
+- [ ] Upgrade from v15 to v16 adds unique index on (accountId, date)
+- [ ] Existing performance records retained after migration with dates converted correctly
+- [ ] Duplicate records (same account, same day) resolved via INSERT OR REPLACE during migration
+
 ## Database Migration v14 -> v15
-- [ ] Fresh install works correctly (version 15)
+- [ ] Fresh install works correctly (version 16)
 - [ ] Upgrade from v14 to v15 recreates investment_items table with ticker-only PK
 - [ ] Duplicate tickers (same ticker across different accounts) merged: quantity, cost, value summed; dayHigh/dayLow take MAX
 - [ ] Items with unique tickers retained with all data intact
 - [ ] accountId column no longer exists in investment_items table
 - [ ] All other tables (accounts, transactions, transfers, performance, watch lists, csv_import_mappings) retained after migration
+
+## Help Screen
+- [ ] "Help" menu item visible in hamburger menu (between SQL Explorer and About)
+- [ ] Tapping "Help" navigates to Help screen
+- [ ] Help screen loads HTML content from assets/help.html via WebView
+- [ ] Navigation overview grid shows all 10 screens with correct labels
+- [ ] All feature sections present: Dashboard, Items, Transactions, Transfers, Simulation, Accounts, Performance, Watch List, Settings, SQL Explorer, Top Bar, Tips
+- [ ] Dark theme: dark background with light text and colored section borders
+- [ ] Light theme: light background with dark text and colored section borders
+- [ ] Content scrollable for full page
+- [ ] No JavaScript enabled (security)
+
+## About Dialog - Dynamic Version
+- [ ] About dialog shows "Version X.Y (Z)" where X.Y is versionName and Z is versionCode
+- [ ] Version matches values in version.properties file
+
+## Auto-Increment Versioning
+- [ ] version.properties exists at project root with VERSION_MAJOR, VERSION_MINOR, VERSION_CODE
+- [ ] After assembleRelease, VERSION_MINOR increments by 1
+- [ ] After assembleRelease, VERSION_CODE increments by 1
+- [ ] VERSION_MAJOR unchanged after build (manual edit only)
+- [ ] Built APK uses the pre-increment version (increment happens after build)
 
 ## App Icon & Splash
 - [x] App icon appears correctly on home screen / app drawer

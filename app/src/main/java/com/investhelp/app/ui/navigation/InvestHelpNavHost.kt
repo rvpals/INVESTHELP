@@ -36,6 +36,7 @@ import com.investhelp.app.ui.transfer.BankTransferListScreen
 import com.investhelp.app.ui.transfer.BankTransferViewModel
 import com.investhelp.app.ui.watchlist.WatchListScreen
 import com.investhelp.app.ui.watchlist.WatchListViewModel
+import com.investhelp.app.ui.help.HelpScreen
 
 @Composable
 fun InvestHelpNavHost(
@@ -251,6 +252,10 @@ fun InvestHelpNavHost(
         composable<WatchListRoute> {
             val viewModel: WatchListViewModel = hiltViewModel()
             WatchListScreen(viewModel = viewModel)
+        }
+
+        composable<HelpRoute> {
+            HelpScreen()
         }
     }
 }

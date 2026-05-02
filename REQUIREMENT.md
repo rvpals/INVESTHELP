@@ -4,7 +4,7 @@
 Android app to track personal investments.
 
 ## Storage
-- Room (SQLite) for local storage, version 15
+- Room (SQLite) for local storage, version 16
 - No encryption — database opens directly on app launch
 
 ## Data Objects
@@ -49,8 +49,9 @@ Android app to track personal investments.
 ### Account Performance
 - Account (FK to investment_accounts, CASCADE delete)
 - Total Value (user-entered or pulled from app)
-- Date/Time (auto-set on record creation)
+- Date (auto-set to today on record creation; date-only, no time component)
 - Note (optional text)
+- Unique constraint: one record per account per date (accountId + date)
 
 ### Watch List
 - Name (user-defined)
@@ -73,8 +74,8 @@ Android app to track personal investments.
 ### Navigation
 - **Global top bar** — persistent across all screens:
   - Portfolio value 3D button (tap to navigate to Dashboard, auto-refreshes); shows daily % and all-time % gain/loss below the total value, color-coded green/red
-  - Hamburger menu (Accounts, Performance, Watch List, Settings, SQL Explorer, About)
-  - About dialog includes "Show Log" button for viewing application log
+  - Hamburger menu (Accounts, Performance, Watch List, Settings, SQL Explorer, Help, About)
+  - About dialog includes "Show Log" button for viewing application log; version displayed dynamically from BuildConfig
 - **Bottom nav** — Dashboard, Items, Transfer, Transaction, Simulation (3D gradient icons with shadow)
 
 ### Dashboard
@@ -154,17 +155,19 @@ Android app to track personal investments.
 - Result table with column headers, horizontal and vertical gridlines, horizontal scrolling, monospace font
 - Export results to CSV via share intent (FileProvider)
 - Error display for invalid SQL
-- **Table browser** — lists all database tables (excludes internal sqlite/room/android tables); click to expand column details (name, type, PK/NN indicators); animated expand/collapse; "Open" button on each table row runs `SELECT * FROM <table>` and shows results
+- **Table browser** — lists all database tables (excludes internal sqlite/room/android tables); click to expand column details (name, type, PK/NN indicators); animated expand/collapse; "Open" button on each table row runs `SELECT * FROM <table>` and shows results; "Erase" button (red) on each table row to delete all entries from that table with confirmation dialog (respects "Warn before delete" setting)
 - **Row detail dialog** — click any result row to view all field values untruncated in a scrollable dialog
 
 ### Account Performance
 - Accessible from hamburger menu in top bar
 - Tracks account total value over time for trending analysis
+- Screen organized into three **CollapsibleCards** with pin persistence: "Add Performance Record" (default unpinned), "Performance Charts" (default pinned), "Records (N)" (default pinned)
 - **Add Record** form: account selector dropdown, total value text field, optional note field, "Pull from App" button (computes current value from items), "Add Record" button
-- Records auto-timestamped with current date/time on creation
-- **Records list** — all records ordered newest first, showing account name, date/time, note (when present), total value, edit button (pencil icon), delete button
+- Records auto-set to current date on creation (date-only, no time component)
+- Unique constraint: one record per account per date; duplicate attempts show error dialog
+- **Records list** — filterable and sortable; account filter dropdown (Select All/None/individual checkboxes); "Order By" dropdown (Account, Date, Total Value, Note) with Asc/Desc toggle; default: all accounts, Date descending; filter and sort selections persisted to SharedPreferences
 - **Edit Note** — dialog to edit the note on an existing record; pre-fills with current note
-- **Performance Chart** — multi-account overlay line chart (Canvas-drawn); FilterChip multi-select for accounts; each account gets distinct color from 8-color palette; time-based shared x-axis; tap-to-select tooltip with account name, value, and date; requires 2+ records per account to display series
+- **Performance Chart** — multi-account overlay line chart (Canvas-drawn); FilterChip multi-select for accounts in FlowRow (wrapping layout); each account gets distinct color from 8-color palette; time-based shared x-axis; tap-to-select tooltip with account name, value, and date; requires 2+ records per account to display series; "Smooth Curve" checkbox enables cubic Bezier curve smoothing
 - **Zoom** — pinch-to-zoom (1x–5x) with two-finger pan; double-tap resets zoom; clipRect clips zoomed lines to data area; x-axis labels update to reflect visible viewport
 - Delete respects "Warn before delete" setting
 - Deleting an account cascades to delete its performance records
@@ -192,6 +195,19 @@ Android app to track personal investments.
 - Log viewer shows entries newest-first with timestamps (MM-dd HH:mm:ss format)
 - Clear button to wipe all log entries
 
+### Help
+- Accessible from hamburger menu (between SQL Explorer and About)
+- HTML-based help guide loaded via WebView from `assets/help.html`
+- Covers all features: navigation overview grid, per-section guides (Dashboard, Items, Transactions, Transfers, Simulation, Accounts, Performance, Watch List, Settings, SQL Explorer), and tips
+- Styled with dark/light theme support via CSS `prefers-color-scheme`
+- Color-coded section borders matching app icon colors
+
 ### App Branding
 - Custom app icon (invest_help_icon.png)
 - Splash screen with app icon on startup (AndroidX SplashScreen API)
+
+### Versioning
+- Version managed via `version.properties` at project root (VERSION_MAJOR, VERSION_MINOR, VERSION_CODE)
+- Minor version and version code auto-increment after each assembleDebug/assembleRelease build
+- `versionName` and `versionCode` in build.gradle.kts read from version.properties
+- About dialog shows dynamic version via BuildConfig

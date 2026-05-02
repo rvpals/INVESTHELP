@@ -4,7 +4,7 @@ import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
-import java.time.LocalDateTime
+import java.time.LocalDate
 
 @Entity(
     tableName = "account_performance",
@@ -16,12 +16,15 @@ import java.time.LocalDateTime
             onDelete = ForeignKey.CASCADE
         )
     ],
-    indices = [Index("accountId")]
+    indices = [
+        Index("accountId"),
+        Index(value = ["accountId", "date"], unique = true)
+    ]
 )
 data class AccountPerformanceEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val accountId: Long,
     val totalValue: Double,
-    val dateTime: LocalDateTime,
+    val date: LocalDate,
     val note: String = ""
 )
