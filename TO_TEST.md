@@ -112,6 +112,15 @@
 - [ ] Dropdown menu items (Accounts, Performance, Settings, SQL Explorer, About) each have 3D icons with distinct colors
 - [ ] Icons look consistent and not clipped across different screen sizes
 
+## Dashboard Market Index Cards - Drag-and-Drop Reorder
+- [ ] Long-press a market index card to start dragging
+- [ ] Card floats above others while dragging (elevated z-index)
+- [ ] Dragging past half a card width swaps with the neighbor
+- [ ] Releasing the card persists the new order to SharedPreferences
+- [ ] New order reflected on next app launch
+- [ ] New order reflected in Settings > Preferences (arrow buttons match)
+- [ ] Drag cancel (e.g. second finger) restores card to original position
+
 ## Dashboard Market Index Cards
 - [x] Market index cards row appears at top of dashboard when indices are enabled
 - [x] Default 4 cards: NASDAQ, S&P 500, Dow, Gold
@@ -126,6 +135,11 @@
 - [x] All 8 market index toggles visible and accessible (scrollable preferences)
 - [x] Each of 8 indices has a toggle (NASDAQ, S&P 500, Dow, Gold, Russell 2K, Silver, Oil, Bitcoin)
 - [x] Toggling an index on/off persists after app restart
+- [ ] Up/down arrow buttons visible next to each index in Settings > Preferences
+- [ ] First index has disabled up arrow; last index has disabled down arrow
+- [ ] Clicking up arrow moves index one position up; clicking down moves it down
+- [ ] Reorder persists across app restarts
+- [ ] Dashboard reflects the custom order from Settings
 - [x] Disabling all indices hides the cards row on dashboard
 - [x] Enabling additional indices adds them to the dashboard row
 
@@ -408,6 +422,24 @@
 - [x] X-axis date labels update to reflect visible viewport when zoomed
 - [x] Chart data reloads when toggling account chips
 - [x] Deleting an account cascades to delete its performance records
+
+## Account Performance - Full-Screen Chart
+- [ ] Double-tap inline chart opens full-screen chart dialog
+- [ ] Full-screen dialog has close button (X icon) in top bar
+- [ ] Full-screen chart fills entire screen
+- [ ] Legend and smooth curve toggle visible in full-screen mode
+- [ ] Pinch-to-zoom works in full-screen chart (1x–5x)
+- [ ] Two-finger pan works in full-screen chart
+- [ ] Tap-to-select with tooltip works in full-screen chart
+- [ ] Double-tap in full-screen resets zoom (does not close dialog)
+- [ ] Closing full-screen returns to normal performance screen
+
+## Account Performance - Note Indicators on Chart
+- [ ] Data points with notes appear larger (bold) on the chart — white outer ring + colored inner circle
+- [ ] Data points without notes appear as normal small dots
+- [ ] Tapping a bold (noted) data point shows tooltip with two lines: value line + note line (bold)
+- [ ] Tapping a normal (no-note) data point shows single-line tooltip (unchanged behavior)
+- [ ] Note indicator visibility consistent across zoom levels
 
 ## Account Performance - CollapsibleCards
 - [ ] Performance screen has three CollapsibleCards: "Add Performance Record", "Performance Charts", "Records (N)"

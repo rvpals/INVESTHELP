@@ -12,9 +12,13 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -26,6 +30,8 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuAnchorType
@@ -172,16 +178,51 @@ private fun PreferencesTab(viewModel: SettingsViewModel, uiState: SettingsUiStat
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        SettingsViewModel.AVAILABLE_MARKET_INDICES.forEach { index ->
+        val orderedIndices = remember(uiState.marketIndicesOrder) {
+            val orderMap = uiState.marketIndicesOrder.withIndex().associate { it.value to it.index }
+            SettingsViewModel.AVAILABLE_MARKET_INDICES.sortedBy { orderMap[it.symbol] ?: Int.MAX_VALUE }
+        }
+
+        orderedIndices.forEachIndexed { displayIndex, index ->
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    "${index.label} (${index.symbol})",
-                    style = MaterialTheme.typography.bodyLarge
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Column {
+                        IconButton(
+                            onClick = { viewModel.moveMarketIndex(index.symbol, -1) },
+                            enabled = displayIndex > 0,
+                            modifier = Modifier.size(24.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.KeyboardArrowUp,
+                                contentDescription = "Move up",
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                        IconButton(
+                            onClick = { viewModel.moveMarketIndex(index.symbol, 1) },
+                            enabled = displayIndex < orderedIndices.lastIndex,
+                            modifier = Modifier.size(24.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.KeyboardArrowDown,
+                                contentDescription = "Move down",
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        "${index.label} (${index.symbol})",
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                }
                 Switch(
                     checked = uiState.enabledMarketIndices.contains(index.symbol),
                     onCheckedChange = { viewModel.toggleMarketIndex(index.symbol, it) }

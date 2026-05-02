@@ -74,7 +74,8 @@ Android investment tracking app built with Kotlin, Jetpack Compose, and Material
 - Top bar portfolio button: total value row shows daily change amount in parentheses (e.g. "(+$123.45)") color-coded green/red; hidden when zero
 - Top bar portfolio button: second row shows (Day: ±X.XX%  All: ±X.XX%) color-coded green/red
 - Settings: "Warn before delete" toggle (default: on) — when off, skips confirmation dialogs for delete actions
-- Settings: "Dashboard Market Indices" section with toggles for 8 indices (NASDAQ, S&P 500, Dow, Gold, Russell 2K, Silver, Oil, Bitcoin); default: first 4 enabled
+- Settings: "Dashboard Market Indices" section with toggles for 8 indices (NASDAQ, S&P 500, Dow, Gold, Russell 2K, Silver, Oil, Bitcoin); default: first 4 enabled; up/down arrow buttons to reorder indices; order persisted via `market_indices_order` SharedPreferences key
+- Dashboard Market Indices: long-press drag-and-drop reorder on index cards; swaps on half-slot-width threshold; persists order to SharedPreferences; syncs with Settings arrow reorder
 - Settings: Preferences tab scrollable to accommodate all content
 - Transaction form: "Simulate" button calculates days since transaction date and opens simulation with custom range
 - Simulation: supports custom day ranges from transaction simulation (auto-runs on navigation)
@@ -97,7 +98,10 @@ Android investment tracking app built with Kotlin, Jetpack Compose, and Material
 - Account Performance: `account_performance` table (id, accountId, totalValue, date, note) with CASCADE delete on account; unique constraint on (accountId, date)
 - Account Performance: accessible from hamburger menu; add record form with account selector, total value + "Pull from App" button, optional note field, auto-timestamp
 - Account Performance: edit note dialog on existing records (pencil icon); note displayed on record cards when present
-- Account Performance: line chart (Canvas-drawn) with multi-account overlay; FilterChip multi-select; each account gets distinct color; pinch-to-zoom (1x–5x) with two-finger pan; double-tap resets zoom; tap-to-select tooltip shows account name + value + date; clipRect for zoomed data area; viewport-aware x-axis labels
+- Account Performance: line chart (Canvas-drawn) with multi-account overlay; FilterChip multi-select; each account gets distinct color; pinch-to-zoom (1x–5x) with two-finger pan; tap-to-select tooltip shows account name + value + date; clipRect for zoomed data area; viewport-aware x-axis labels
+- Account Performance chart: double-tap inline chart opens full-screen dialog (Dialog with usePlatformDefaultWidth=false, Scaffold with close button); full-screen chart supports zoom/pan/tap-to-select; double-tap in full-screen resets zoom
+- Account Performance chart: data points with notes rendered bold (white outer circle radius 9 + colored inner circle radius 7); normal points use radius 4
+- Account Performance chart: tapping a noted data point shows two-line tooltip — value/date on line 1, note text in bold on line 2; tooltip auto-sizes for both lines
 - Watch List: accessible from hamburger menu; multiple named watch lists via FilterChip selector; add/rename/delete watch lists
 - Watch List: add ticker with shares count and price-when-added; "Fetch" button fetches current price from Yahoo Finance
 - Watch List: table shows ticker, shares, current price, added price, change $ (currentValue - costBasis), change %, added date, delete button

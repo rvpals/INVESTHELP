@@ -198,6 +198,12 @@
 - [x] Auto-increment versioning: `version.properties` tracks VERSION_MAJOR, VERSION_MINOR, VERSION_CODE; minor version and code auto-increment after each assembleDebug/assembleRelease
 - [x] `buildConfig = true` enabled in build features for BuildConfig access
 
+- [x] Account Performance chart: double-tap inline chart opens full-screen chart dialog with zoom/pan/tap-to-select
+- [x] Account Performance chart: data points with notes rendered bold (larger radius with white outline)
+- [x] Account Performance chart: tapping a noted data point shows the note text in the tooltip (bold second line)
+- [x] Dashboard Market Indices: user-configurable order via Settings up/down arrows
+- [x] Dashboard Market Indices: drag-and-drop reorder via long-press on dashboard cards; order persisted to SharedPreferences
+
 ## Pending
 - [ ] Fix deprecation warning: Icons.Filled.OpenInNew -> Icons.AutoMirrored.Filled.OpenInNew (ItemDetailScreen.kt)
 - [ ] Fix deprecation warning: Icons.Filled.ShowChart/TrendingUp -> AutoMirrored versions (DashboardScreen.kt)

@@ -133,6 +133,13 @@ class DashboardViewModel @Inject constructor(
         _pinStates.value = _pinStates.value.toMutableMap().apply { put(key, pinned) }
     }
 
+    fun reorderMarketIndices(newOrder: List<String>) {
+        prefs.edit().putString(SettingsViewModel.KEY_MARKET_INDICES_ORDER, newOrder.joinToString(",")).apply()
+        _marketIndices.value = newOrder.mapNotNull { symbol ->
+            _marketIndices.value.find { it.symbol == symbol }
+        }
+    }
+
     private val _marketIndices = MutableStateFlow<List<MarketIndexQuote>>(emptyList())
 
     init {
@@ -146,8 +153,16 @@ class DashboardViewModel @Inject constructor(
                 SettingsViewModel.KEY_MARKET_INDICES, null
             ) ?: SettingsViewModel.DEFAULT_MARKET_INDICES
 
+            val savedOrder = prefs.getString(SettingsViewModel.KEY_MARKET_INDICES_ORDER, null)
+            val orderList = savedOrder?.split(",")?.filter { it.isNotBlank() }
+            val orderMap = orderList?.withIndex()?.associate { it.value to it.index }
+
             val orderedSymbols = SettingsViewModel.AVAILABLE_MARKET_INDICES
                 .filter { it.symbol in enabledSymbols }
+                .let { list ->
+                    if (orderMap != null) list.sortedBy { orderMap[it.symbol] ?: Int.MAX_VALUE }
+                    else list
+                }
 
             _marketIndices.value = orderedSymbols.map {
                 MarketIndexQuote(symbol = it.symbol, label = it.label)

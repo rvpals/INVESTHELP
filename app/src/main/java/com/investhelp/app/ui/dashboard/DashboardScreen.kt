@@ -67,6 +67,16 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import android.content.Intent
 import android.net.Uri
+import androidx.compose.animation.core.animateIntOffsetAsState
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
+import androidx.compose.foundation.layout.offset
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.toMutableStateList
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.zIndex
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
@@ -123,7 +133,10 @@ fun DashboardScreen(
                     ) {
                         Column {
                             Spacer(modifier = Modifier.height(8.dp))
-                            MarketIndexCards(indices = uiState.marketIndices)
+                            MarketIndexCards(
+                                indices = uiState.marketIndices,
+                                onReorder = { viewModel.reorderMarketIndices(it) }
+                            )
                         }
                     }
                 }
@@ -181,13 +194,84 @@ fun DashboardScreen(
 }
 
 @Composable
-private fun MarketIndexCards(indices: List<MarketIndexQuote>) {
-    LazyRow(
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        modifier = Modifier.fillMaxWidth()
+private fun MarketIndexCards(
+    indices: List<MarketIndexQuote>,
+    onReorder: (List<String>) -> Unit
+) {
+    val density = LocalDensity.current
+    val items = remember(indices.map { it.symbol }) { indices.toMutableStateList() }
+    val cardWidthDp = 140.dp
+    val spacingDp = 8.dp
+    val slotWidthPx = with(density) { (cardWidthDp + spacingDp).toPx() }
+
+    var draggingIndex by remember { mutableIntStateOf(-1) }
+    var dragOffsetX by remember { mutableFloatStateOf(0f) }
+
+    // Sync when upstream list changes (e.g. after price refresh)
+    if (items.map { it.symbol } != indices.map { it.symbol }) {
+        items.clear()
+        items.addAll(indices)
+    } else {
+        indices.forEachIndexed { i, updated ->
+            if (items[i] != updated) items[i] = updated
+        }
+    }
+
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(spacingDp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState())
     ) {
-        items(indices, key = { it.symbol }) { index ->
-            MarketIndexCard(index = index)
+        items.forEachIndexed { index, quote ->
+            val isDragging = draggingIndex == index
+            val offsetPx = if (isDragging) dragOffsetX.toInt() else 0
+            val animatedOffset by animateIntOffsetAsState(
+                targetValue = IntOffset(offsetPx, 0),
+                label = "dragOffset"
+            )
+
+            Box(
+                modifier = Modifier
+                    .zIndex(if (isDragging) 1f else 0f)
+                    .offset { animatedOffset }
+                    .pointerInput(Unit) {
+                        detectDragGesturesAfterLongPress(
+                            onDragStart = {
+                                draggingIndex = index
+                                dragOffsetX = 0f
+                            },
+                            onDrag = { change, dragAmount ->
+                                change.consume()
+                                dragOffsetX += dragAmount.x
+                                val currentIdx = items.indexOfFirst { it.symbol == quote.symbol }
+                                if (currentIdx < 0) return@detectDragGesturesAfterLongPress
+                                if (dragOffsetX > slotWidthPx * 0.5f && currentIdx < items.lastIndex) {
+                                    val item = items.removeAt(currentIdx)
+                                    items.add(currentIdx + 1, item)
+                                    draggingIndex = currentIdx + 1
+                                    dragOffsetX -= slotWidthPx
+                                } else if (dragOffsetX < -slotWidthPx * 0.5f && currentIdx > 0) {
+                                    val item = items.removeAt(currentIdx)
+                                    items.add(currentIdx - 1, item)
+                                    draggingIndex = currentIdx - 1
+                                    dragOffsetX += slotWidthPx
+                                }
+                            },
+                            onDragEnd = {
+                                draggingIndex = -1
+                                dragOffsetX = 0f
+                                onReorder(items.map { it.symbol })
+                            },
+                            onDragCancel = {
+                                draggingIndex = -1
+                                dragOffsetX = 0f
+                            }
+                        )
+                    }
+            ) {
+                MarketIndexCard(index = quote)
+            }
         }
     }
 }

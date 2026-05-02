@@ -81,7 +81,7 @@ Android app to track personal investments.
 ### Dashboard
 - All dashboard sections (Market Indices, Daily Glance, Positions, Position Details) use **CollapsibleCard** — reusable component with title, pin button (top-right), HorizontalDivider between header and content, and expand/collapse toggle; unpinned cards default collapsed, pinned cards default expanded; pin state persisted to SharedPreferences
 - **Portfolio button** (top bar) — shows total value on first row with daily change amount in parentheses (e.g. "(+$123.45)") color-coded green/red (hidden when zero); daily % and all-time % gain/loss on second row, color-coded green/red
-- **Market index cards** — horizontal scrollable row of small cards; default: NASDAQ (^IXIC), S&P 500 (^GSPC), Dow (^DJI), Gold (GC=F); also available: Russell 2K, Silver, Oil, Bitcoin; each card shows label, price, daily change with percentage; clicking a card opens Yahoo Finance page for the index; customizable in Settings > Preferences; auto-refreshes on app start and with Refresh All
+- **Market index cards** — horizontal scrollable row of small cards; default: NASDAQ (^IXIC), S&P 500 (^GSPC), Dow (^DJI), Gold (GC=F); also available: Russell 2K, Silver, Oil, Bitcoin; each card shows label, price, daily change with percentage; clicking a card opens Yahoo Finance page for the index; customizable in Settings > Preferences; auto-refreshes on app start and with Refresh All; user-configurable display order via up/down arrows in Settings or long-press drag-and-drop reorder directly on dashboard; order persisted to SharedPreferences
 - **Daily Glance** — "Overall Daily" section at top showing Stock and ETF total daily change in $ and %, separated by HorizontalDivider; "By Per Share" checkbox toggles between total value and per-share sorting/display; then top 5 performing and top 5 losing assets today; each row shows ticker, company name, gain/loss $ and %; clickable to navigate to item detail; aggregated per-ticker across all accounts
 - **Pie chart** — positions card; shows all items by ticker value with shares labels inside slices; legend limited to top 20 with "More" button to show all; clicking a ticker row in the legend navigates to item detail
 - **Position Details** — collapsible card with pin; horizontally scrollable table showing ticker (with 3D icon), shares, current price, total cost, total value, change $ and change %; change computed as currentValue - totalCost; clickable rows navigate to item detail; sortable column headers
@@ -130,7 +130,7 @@ Android app to track personal investments.
 - **Preferences tab:**
   - Auto-update position shares toggle
   - Warn before delete toggle (default: on) — when off, skips confirmation dialogs for all delete actions
-  - Dashboard Market Indices toggles — choose which market indices to show on the dashboard (8 available, 4 default)
+  - Dashboard Market Indices toggles — choose which market indices to show on the dashboard (8 available, 4 default); up/down arrow buttons to reorder indices
 - **Data Management tab:**
   - **Import Data** — 3 import types (Transaction Records, Position Details, Performance Records); each has "Define Mapping" and "Start Import" buttons; shared account selector; column mapping dialog with 3-row preview, auto-mapping with common brokerage aliases (Price→currentPrice, Description→name, etc.), date format options per column, progress bar during import; mappings persisted to database for reuse
   - Position import shows confirmation dialog before overwriting existing data
@@ -168,7 +168,9 @@ Android app to track personal investments.
 - **Records list** — filterable and sortable; account filter dropdown (Select All/None/individual checkboxes); "Order By" dropdown (Account, Date, Total Value, Note) with Asc/Desc toggle; default: all accounts, Date descending; filter and sort selections persisted to SharedPreferences
 - **Edit Note** — dialog to edit the note on an existing record; pre-fills with current note
 - **Performance Chart** — multi-account overlay line chart (Canvas-drawn); FilterChip multi-select for accounts in FlowRow (wrapping layout); each account gets distinct color from 8-color palette; time-based shared x-axis; tap-to-select tooltip with account name, value, and date; requires 2+ records per account to display series; "Smooth Curve" checkbox enables cubic Bezier curve smoothing
-- **Zoom** — pinch-to-zoom (1x–5x) with two-finger pan; double-tap resets zoom; clipRect clips zoomed lines to data area; x-axis labels update to reflect visible viewport
+- **Zoom** — pinch-to-zoom (1x–5x) with two-finger pan; clipRect clips zoomed lines to data area; x-axis labels update to reflect visible viewport
+- **Full-screen chart** — double-tap inline chart opens full-screen dialog with close button, legend, smooth curve toggle, and the chart filling the entire screen; supports pinch-to-zoom, pan, and tap-to-select; double-tap in full-screen resets zoom
+- **Note indicators** — data points with notes are bold (larger radius with white outline); tapping a noted point shows the note as a bold second line in the tooltip
 - Delete respects "Warn before delete" setting
 - Deleting an account cascades to delete its performance records
 

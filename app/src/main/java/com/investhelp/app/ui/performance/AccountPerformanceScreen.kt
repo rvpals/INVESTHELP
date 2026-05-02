@@ -25,6 +25,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.AlertDialog
@@ -33,6 +34,8 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -112,6 +115,7 @@ fun AccountPerformanceScreen(
     var editDateText by remember { mutableStateOf("") }
     var chartSelectedAccountIds by remember { mutableStateOf(setOf<Long>()) }
     var smoothCurve by remember { mutableStateOf(false) }
+    var showFullScreenChart by remember { mutableStateOf(false) }
 
     // Records filter & sort state (persisted via ViewModel)
     val recordFilterAccountIds by viewModel.recordFilterAccountIds.collectAsStateWithLifecycle()
@@ -254,6 +258,87 @@ fun AccountPerformanceScreen(
                 TextButton(onClick = { viewModel.clearSaveError() }) { Text("OK") }
             }
         )
+    }
+
+    // Full-screen chart dialog
+    if (showFullScreenChart) {
+        val fullSeriesList = remember(chartData, accounts) {
+            chartData.entries
+                .filter { (_, records) -> records.size >= 2 }
+                .map { (accountId, records) ->
+                    val accountIndex = accounts.indexOfFirst { it.id == accountId }
+                    val color = CHART_COLORS[
+                        (if (accountIndex >= 0) accountIndex else 0) % CHART_COLORS.size
+                    ]
+                    ChartSeries(
+                        accountId = accountId,
+                        accountName = accounts.find { it.id == accountId }?.name ?: "Unknown",
+                        color = color,
+                        records = records
+                    )
+                }
+        }
+        Dialog(
+            onDismissRequest = { showFullScreenChart = false },
+            properties = DialogProperties(usePlatformDefaultWidth = false)
+        ) {
+            Scaffold(
+                topBar = {
+                    TopAppBar(
+                        title = { Text("Performance Chart") },
+                        navigationIcon = {
+                            IconButton(onClick = { showFullScreenChart = false }) {
+                                Icon(Icons.Default.Close, contentDescription = "Close")
+                            }
+                        }
+                    )
+                }
+            ) { innerPadding ->
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(innerPadding)
+                        .padding(horizontal = 8.dp)
+                ) {
+                    // Legend
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState())
+                            .padding(horizontal = 4.dp, vertical = 4.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        fullSeriesList.forEach { series ->
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Canvas(modifier = Modifier.size(10.dp)) {
+                                    drawCircle(color = series.color)
+                                }
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(series.accountName, style = MaterialTheme.typography.labelSmall)
+                            }
+                        }
+                    }
+
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(horizontal = 4.dp)
+                    ) {
+                        Checkbox(checked = smoothCurve, onCheckedChange = { smoothCurve = it })
+                        Text("Smooth Curve", style = MaterialTheme.typography.bodySmall)
+                    }
+
+                    if (fullSeriesList.isNotEmpty()) {
+                        PerformanceLineChart(
+                            seriesList = fullSeriesList,
+                            smoothCurve = smoothCurve,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(bottom = 8.dp)
+                        )
+                    }
+                }
+            }
+        }
     }
 
     Scaffold(
@@ -462,6 +547,7 @@ fun AccountPerformanceScreen(
                             PerformanceLineChart(
                                 seriesList = seriesList,
                                 smoothCurve = smoothCurve,
+                                onDoubleTap = { showFullScreenChart = true },
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .height(300.dp)
@@ -759,6 +845,7 @@ private data class ChartSeries(
 private fun PerformanceLineChart(
     seriesList: List<ChartSeries>,
     smoothCurve: Boolean = false,
+    onDoubleTap: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     if (seriesList.isEmpty()) return
@@ -874,10 +961,14 @@ private fun PerformanceLineChart(
                                 }
                             },
                             onDoubleTap = {
-                                zoom = 1f
-                                scrollOffset = 0f
-                                selectedSeriesIdx = null
-                                selectedPointIdx = null
+                                if (onDoubleTap != null) {
+                                    onDoubleTap()
+                                } else {
+                                    zoom = 1f
+                                    scrollOffset = 0f
+                                    selectedSeriesIdx = null
+                                    selectedPointIdx = null
+                                }
                             }
                         )
                     }
@@ -951,13 +1042,19 @@ private fun PerformanceLineChart(
                             style = Stroke(width = 3f, cap = StrokeCap.Round)
                         )
 
-                        // Data point dots
+                        // Data point dots — bold for records with notes
                         series.records.forEach { record ->
                             val epoch = record.date.toEpochDay()
                             val normX = (epoch - minEpoch).toFloat() / timeRange
                             val screenX = normX * virtualWidth - scrollOffset
                             val screenY = ((globalMax - record.totalValue) / valRange * chartHeight).toFloat()
-                            drawCircle(color = seriesColor, radius = 4f, center = Offset(screenX, screenY))
+                            val hasNote = record.note.isNotBlank()
+                            if (hasNote) {
+                                drawCircle(color = Color.White, radius = 9f, center = Offset(screenX, screenY))
+                                drawCircle(color = seriesColor, radius = 7f, center = Offset(screenX, screenY))
+                            } else {
+                                drawCircle(color = seriesColor, radius = 4f, center = Offset(screenX, screenY))
+                            }
                         }
                     }
 
@@ -988,16 +1085,25 @@ private fun PerformanceLineChart(
 
                             // Tooltip box
                             val tooltipDateFmt = DateTimeFormatter.ofPattern("MM/dd/yy")
-                            val tooltipStr = "${series.accountName}: ${currencyFormat.format(record.totalValue)}  ${record.date.format(tooltipDateFmt)}"
+                            val line1 = "${series.accountName}: ${currencyFormat.format(record.totalValue)}  ${record.date.format(tooltipDateFmt)}"
+                            val hasNote = record.note.isNotBlank()
                             val paint = android.graphics.Paint().apply {
                                 textSize = 11.dp.toPx()
                                 isAntiAlias = true
                             }
-                            val textWidth = paint.measureText(tooltipStr)
+                            val line1Width = paint.measureText(line1)
                             val tooltipPadH = 8.dp.toPx()
                             val tooltipPadV = 5.dp.toPx()
-                            val tooltipW = textWidth + tooltipPadH * 2
-                            val tooltipH = paint.textSize + tooltipPadV * 2
+                            val lineHeight = paint.textSize * 1.3f
+
+                            val noteText = if (hasNote) record.note else null
+                            val noteWidth = noteText?.let { paint.measureText(it) } ?: 0f
+                            val tooltipW = maxOf(line1Width, noteWidth) + tooltipPadH * 2
+                            val tooltipH = if (hasNote) {
+                                tooltipPadV * 2 + lineHeight + paint.textSize
+                            } else {
+                                paint.textSize + tooltipPadV * 2
+                            }
                             val tooltipX = (screenX - tooltipW / 2).coerceIn(0f, chartWidth - tooltipW)
                             val tooltipY = (screenY - tooltipH - 12.dp.toPx()).coerceAtLeast(0f)
 
@@ -1008,11 +1114,25 @@ private fun PerformanceLineChart(
                                 cornerRadius = CornerRadius(6.dp.toPx())
                             )
                             drawContext.canvas.nativeCanvas.drawText(
-                                tooltipStr,
+                                line1,
                                 tooltipX + tooltipPadH,
                                 tooltipY + tooltipPadV + paint.textSize * 0.85f,
                                 paint.apply { color = tooltipTextColor.hashCode() }
                             )
+                            if (hasNote && noteText != null) {
+                                val notePaint = android.graphics.Paint().apply {
+                                    textSize = 11.dp.toPx()
+                                    isAntiAlias = true
+                                    color = tooltipTextColor.hashCode()
+                                    typeface = android.graphics.Typeface.DEFAULT_BOLD
+                                }
+                                drawContext.canvas.nativeCanvas.drawText(
+                                    noteText,
+                                    tooltipX + tooltipPadH,
+                                    tooltipY + tooltipPadV + lineHeight + paint.textSize * 0.85f,
+                                    notePaint
+                                )
+                            }
                         }
                     }
                 }

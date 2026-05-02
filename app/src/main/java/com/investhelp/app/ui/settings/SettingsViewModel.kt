@@ -73,6 +73,7 @@ data class SettingsUiState(
     val autoUpdateShares: Boolean = false,
     val warnBeforeDelete: Boolean = true,
     val enabledMarketIndices: Set<String> = SettingsViewModel.DEFAULT_MARKET_INDICES,
+    val marketIndicesOrder: List<String> = SettingsViewModel.AVAILABLE_MARKET_INDICES.map { it.symbol },
     val csvImport: CsvImportState? = null,
     val csvMappingDialog: CsvMappingDialogState? = null,
     val accounts: List<InvestmentAccountEntity> = emptyList()
@@ -94,6 +95,7 @@ class SettingsViewModel @Inject constructor(
         const val KEY_AUTO_UPDATE_SHARES = "auto_update_shares"
         const val KEY_WARN_BEFORE_DELETE = "warn_before_delete"
         const val KEY_MARKET_INDICES = "market_indices"
+        const val KEY_MARKET_INDICES_ORDER = "market_indices_order"
         const val KEY_BACKUP_FOLDER_URI = "backup_folder_uri"
 
         data class MarketIndexConfig(
@@ -119,12 +121,24 @@ class SettingsViewModel @Inject constructor(
 
     private val savedBackupUri: Uri? = prefs.getString(KEY_BACKUP_FOLDER_URI, null)?.let { Uri.parse(it) }
 
+    private val defaultOrder = AVAILABLE_MARKET_INDICES.map { it.symbol }
+
+    private fun loadMarketIndicesOrder(): List<String> {
+        val saved = prefs.getString(KEY_MARKET_INDICES_ORDER, null)
+        if (saved.isNullOrBlank()) return defaultOrder
+        val ordered = saved.split(",").filter { it.isNotBlank() }
+        val allSymbols = defaultOrder.toSet()
+        val missing = allSymbols - ordered.toSet()
+        return (ordered.filter { it in allSymbols } + missing)
+    }
+
     private val _uiState = MutableStateFlow(
         SettingsUiState(
             autoUpdateShares = prefs.getBoolean(KEY_AUTO_UPDATE_SHARES, false),
             warnBeforeDelete = prefs.getBoolean(KEY_WARN_BEFORE_DELETE, true),
             enabledMarketIndices = prefs.getStringSet(KEY_MARKET_INDICES, null)
                 ?: DEFAULT_MARKET_INDICES,
+            marketIndicesOrder = loadMarketIndicesOrder(),
             backupFolderUri = savedBackupUri,
             backupFolderName = savedBackupUri?.let {
                 DocumentFile.fromTreeUri(context, it)?.name ?: it.lastPathSegment
@@ -157,6 +171,17 @@ class SettingsViewModel @Inject constructor(
         if (enabled) current.add(symbol) else current.remove(symbol)
         prefs.edit().putStringSet(KEY_MARKET_INDICES, current).apply()
         _uiState.value = _uiState.value.copy(enabledMarketIndices = current)
+    }
+
+    fun moveMarketIndex(symbol: String, direction: Int) {
+        val order = _uiState.value.marketIndicesOrder.toMutableList()
+        val idx = order.indexOf(symbol)
+        if (idx < 0) return
+        val newIdx = idx + direction
+        if (newIdx < 0 || newIdx >= order.size) return
+        order[idx] = order[newIdx].also { order[newIdx] = order[idx] }
+        prefs.edit().putString(KEY_MARKET_INDICES_ORDER, order.joinToString(",")).apply()
+        _uiState.value = _uiState.value.copy(marketIndicesOrder = order)
     }
 
     fun setBackupFolder(uri: Uri) {
