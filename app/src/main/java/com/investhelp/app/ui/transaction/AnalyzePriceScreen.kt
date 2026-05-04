@@ -4,6 +4,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -24,6 +25,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -144,34 +146,43 @@ fun AnalyzePriceScreen(
                         uiState.highMax != null || uiState.lowMax != null
 
                 if (hasAnyHistoric) {
+                    val histDividerColor = MaterialTheme.colorScheme.outlineVariant
                     // Column headers
-                    Row(modifier = Modifier.fillMaxWidth()) {
+                    HorizontalDivider(color = histDividerColor)
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(IntrinsicSize.Min),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
                         Spacer(modifier = Modifier.weight(1f))
+                        VerticalDivider(color = histDividerColor)
                         Text(
                             "High",
                             style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.Bold,
-                            modifier = Modifier.weight(1f),
+                            modifier = Modifier
+                                .weight(1f)
+                                .padding(vertical = 6.dp),
                             textAlign = TextAlign.Center
                         )
+                        VerticalDivider(color = histDividerColor)
                         Text(
                             "Low",
                             style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.Bold,
-                            modifier = Modifier.weight(1f),
+                            modifier = Modifier
+                                .weight(1f)
+                                .padding(vertical = 6.dp),
                             textAlign = TextAlign.Center
                         )
                     }
+                    HorizontalDivider(thickness = 2.dp, color = histDividerColor)
 
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    HistoricPriceRow("Last Week", uiState.highLastWeek, uiState.lowLastWeek, currencyFormat, onSelectPrice)
-                    Spacer(modifier = Modifier.height(6.dp))
-                    HistoricPriceRow("Last Month", uiState.highLastMonth, uiState.lowLastMonth, currencyFormat, onSelectPrice)
-                    Spacer(modifier = Modifier.height(6.dp))
-                    HistoricPriceRow("Last Year", uiState.highLastYear, uiState.lowLastYear, currencyFormat, onSelectPrice)
-                    Spacer(modifier = Modifier.height(6.dp))
-                    HistoricPriceRow("Max", uiState.highMax, uiState.lowMax, currencyFormat, onSelectPrice)
+                    HistoricPriceRow("Last Week", uiState.highLastWeek, uiState.lowLastWeek, currencyFormat, onSelectPrice, histDividerColor)
+                    HistoricPriceRow("Last Month", uiState.highLastMonth, uiState.lowLastMonth, currencyFormat, onSelectPrice, histDividerColor)
+                    HistoricPriceRow("Last Year", uiState.highLastYear, uiState.lowLastYear, currencyFormat, onSelectPrice, histDividerColor)
+                    HistoricPriceRow("Max", uiState.highMax, uiState.lowMax, currencyFormat, onSelectPrice, histDividerColor)
                 } else {
                     Text(
                         "Historical data unavailable",
@@ -217,23 +228,30 @@ private fun HistoricPriceRow(
     high: Double?,
     low: Double?,
     currencyFormat: NumberFormat,
-    onSelectPrice: (Double) -> Unit
+    onSelectPrice: (Double) -> Unit,
+    dividerColor: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.outlineVariant
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(IntrinsicSize.Min),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
             label,
             style = MaterialTheme.typography.bodyMedium,
-            modifier = Modifier.weight(1f)
+            modifier = Modifier
+                .weight(1f)
+                .padding(vertical = 6.dp)
         )
+        VerticalDivider(color = dividerColor)
         ClickablePrice(
             price = high,
             currencyFormat = currencyFormat,
             onSelectPrice = onSelectPrice,
             modifier = Modifier.weight(1f)
         )
+        VerticalDivider(color = dividerColor)
         ClickablePrice(
             price = low,
             currencyFormat = currencyFormat,
@@ -241,6 +259,7 @@ private fun HistoricPriceRow(
             modifier = Modifier.weight(1f)
         )
     }
+    HorizontalDivider(color = dividerColor)
 }
 
 @Composable

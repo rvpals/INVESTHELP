@@ -204,6 +204,9 @@
 - [x] Dashboard Market Indices: user-configurable order via Settings up/down arrows
 - [x] Dashboard Market Indices: drag-and-drop reorder via long-press on dashboard cards; order persisted to SharedPreferences
 
+- [x] Dashboard pie chart legend: vertical dividers added between Ticker, Shares, % columns; consistent gridlines with other tables
+- [x] Analyze Price historic prices table: full gridlines (horizontal + vertical) between Period, High, Low columns
+
 ## Pending
 - [ ] Fix deprecation warning: Icons.Filled.OpenInNew -> Icons.AutoMirrored.Filled.OpenInNew (ItemDetailScreen.kt)
 - [ ] Fix deprecation warning: Icons.Filled.ShowChart/TrendingUp -> AutoMirrored versions (DashboardScreen.kt)

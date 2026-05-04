@@ -620,12 +620,14 @@ private fun PositionsPieChartContent(
         Spacer(modifier = Modifier.height(12.dp))
 
         // Legend table with grid lines
+        val legendDividerColor = MaterialTheme.colorScheme.outlineVariant
         Column(modifier = Modifier.fillMaxWidth()) {
             // Header row
-            HorizontalDivider()
+            HorizontalDivider(color = legendDividerColor)
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .height(IntrinsicSize.Min)
                     .padding(vertical = 6.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -636,6 +638,7 @@ private fun PositionsPieChartContent(
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.weight(1f)
                 )
+                VerticalDivider(color = legendDividerColor)
                 Text(
                     text = "Shares",
                     style = MaterialTheme.typography.labelMedium,
@@ -643,6 +646,7 @@ private fun PositionsPieChartContent(
                     modifier = Modifier.weight(1f),
                     textAlign = TextAlign.End
                 )
+                VerticalDivider(color = legendDividerColor)
                 Text(
                     text = "%",
                     style = MaterialTheme.typography.labelMedium,
@@ -651,7 +655,7 @@ private fun PositionsPieChartContent(
                     textAlign = TextAlign.End
                 )
             }
-            HorizontalDivider()
+            HorizontalDivider(thickness = 2.dp, color = legendDividerColor)
 
             // Data rows
             visiblePositions.forEachIndexed { index, pos ->
@@ -659,6 +663,7 @@ private fun PositionsPieChartContent(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .height(IntrinsicSize.Min)
                         .clickable { onItemClick(pos.ticker) }
                         .padding(vertical = 6.dp),
                     verticalAlignment = Alignment.CenterVertically
@@ -675,12 +680,14 @@ private fun PositionsPieChartContent(
                         style = MaterialTheme.typography.bodyMedium,
                         modifier = Modifier.weight(1f)
                     )
+                    VerticalDivider(color = legendDividerColor)
                     Text(
                         text = sharesFormat.format(pos.totalQuantity),
                         style = MaterialTheme.typography.bodySmall,
                         modifier = Modifier.weight(1f),
                         textAlign = TextAlign.End
                     )
+                    VerticalDivider(color = legendDividerColor)
                     Text(
                         text = String.format("%.1f%%", pct),
                         style = MaterialTheme.typography.bodySmall,
@@ -689,7 +696,7 @@ private fun PositionsPieChartContent(
                         textAlign = TextAlign.End
                     )
                 }
-                HorizontalDivider()
+                HorizontalDivider(color = legendDividerColor)
             }
 
             if (hasMore) {

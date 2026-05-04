@@ -50,9 +50,9 @@ Android investment tracking app built with Kotlin, Jetpack Compose, and Material
 - Simulation chart supports tap-to-select with tooltip (price + date)
 - Dashboard market index cards: horizontal row of small cards (NASDAQ, S&P 500, Dow, Gold + more) showing price and daily change; clickable to open Yahoo Finance page for the index; customizable in Settings > Preferences
 - Dashboard pie chart shows all items by ticker with shares labels inside slices
-- Dashboard pie chart legend uses grid-line table with Ticker, Shares, % columns; clicking a ticker row navigates to item detail
+- Dashboard pie chart legend uses grid-line table with Ticker, Shares, % columns with both horizontal and vertical dividers; clicking a ticker row navigates to item detail
 - Transaction form: "Analyze Price" button next to Price field opens price analysis screen
-- Analyze Price screen: current price, transaction avg/max/min, historic high/low (week/month/year/max)
+- Analyze Price screen: current price, transaction avg/max/min, historic high/low (week/month/year/max) with grid-line table (horizontal and vertical dividers) for historic prices
 - Clicking a price in Analyze Price copies it back to the transaction form Price field
 - Transaction form: "View" button next to Ticker opens item detail; form state preserved via rememberSaveable
 - Transaction form: auto-selects first account for new transactions
