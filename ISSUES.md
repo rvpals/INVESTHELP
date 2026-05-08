@@ -17,6 +17,7 @@
 
 ## Notes
 - Build requires JAVA_HOME set to JDK 17+ (system default is JDK 8)
+- Migration 16->17 drops bank_transfers table (Bank Transfer feature removed); existing bank transfer data is lost on upgrade
 - Migration 4->5 drops existing positions table (fresh install or re-entry needed after upgrade)
 - Migration 5->6 recreates transactions table; existing transactions map investmentItemId to ticker via items table
 - Migration 8->9 merges positions into investment_items table; items without positions are dropped during migration

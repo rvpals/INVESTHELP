@@ -98,11 +98,13 @@
 - [x] About dialog shows app name, version, description
 
 ## Bottom Navigation
-- [x] 5 items: Dashboard, Items, Transfer, Transaction, Simulation
+- [ ] 5 items: Dashboard, Items, Performance, Transaction, Simulation
 - [x] Each icon has distinct color
 - [x] Selected item shows full color, unselected faded
 - [x] Navigation works correctly between all screens
 - [x] Shadow/elevation visible on nav bar
+- [ ] Performance button navigates to Account Performance screen
+- [ ] Performance button highlighted when on performance screen
 
 ## 3D Icons (Icon3D)
 - [ ] Bottom nav icons rendered as gradient-filled rounded boxes with drop shadow
@@ -250,7 +252,7 @@
 - [ ] Restore v3 backup correctly recreates all items (ticker-only PK)
 - [x] Restore v1 backup assigns items to first account, maps numShares to quantity
 - [ ] Restore v2 backup: ignores accountId, items created with ticker-only PK
-- [x] Restored data matches original (accounts, items, transactions, bank transfers)
+- [x] Restored data matches original (accounts, items, transactions)
 
 ## Database Migration v9 -> v10
 - [x] Fresh install works correctly (version 10)
@@ -601,6 +603,23 @@
 - [ ] After assembleRelease, VERSION_CODE increments by 1
 - [ ] VERSION_MAJOR unchanged after build (manual edit only)
 - [ ] Built APK uses the pre-increment version (increment happens after build)
+
+## Theme Selection
+- [ ] Settings > Preferences shows "Theme" section at top
+- [ ] All 10 themes listed: Default Green, Ocean Blue, Sunset Orange, Midnight Purple, Forest Moss, Ruby Red, Arctic Ice, Gold Rush, Sakura Pink, Charcoal Dark
+- [ ] Each theme row shows color preview swatch (primary color) and theme label
+- [ ] Selected theme has border highlight and checkmark icon
+- [ ] Tapping a theme immediately applies it (colors change throughout app)
+- [ ] Theme persists after app restart
+- [ ] Theme works correctly in light mode
+- [ ] Theme works correctly in dark mode (system dark theme)
+- [ ] Default theme is "Default Green" on fresh install
+
+## Database Migration v16 -> v17
+- [ ] Fresh install works correctly (version 17)
+- [ ] Upgrade from v16 to v17 drops bank_transfers table
+- [ ] Existing data (accounts, items, transactions, performance, watch lists) retained after migration
+- [ ] No crashes when navigating bottom nav after upgrade
 
 ## App Icon & Splash
 - [x] App icon appears correctly on home screen / app drawer

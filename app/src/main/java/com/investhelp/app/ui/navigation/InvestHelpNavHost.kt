@@ -31,9 +31,6 @@ import com.investhelp.app.ui.transaction.AnalyzePriceViewModel
 import com.investhelp.app.ui.transaction.TransactionFormScreen
 import com.investhelp.app.ui.transaction.TransactionListScreen
 import com.investhelp.app.ui.transaction.TransactionViewModel
-import com.investhelp.app.ui.transfer.BankTransferFormScreen
-import com.investhelp.app.ui.transfer.BankTransferListScreen
-import com.investhelp.app.ui.transfer.BankTransferViewModel
 import com.investhelp.app.ui.watchlist.WatchListScreen
 import com.investhelp.app.ui.watchlist.WatchListViewModel
 import com.investhelp.app.ui.help.HelpScreen
@@ -199,29 +196,6 @@ fun InvestHelpNavHost(
             )
         }
 
-        composable<BankTransferListRoute> {
-            val viewModel: BankTransferViewModel = hiltViewModel()
-            BankTransferListScreen(
-                viewModel = viewModel,
-                onAddTransfer = {
-                    navController.navigate(BankTransferFormRoute())
-                },
-                onEditTransfer = { transferId ->
-                    navController.navigate(BankTransferFormRoute(transferId))
-                }
-            )
-        }
-
-        composable<BankTransferFormRoute> { backStackEntry ->
-            val route = backStackEntry.toRoute<BankTransferFormRoute>()
-            val viewModel: BankTransferViewModel = hiltViewModel()
-            BankTransferFormScreen(
-                transferId = if (route.transferId == -1L) null else route.transferId,
-                viewModel = viewModel,
-                onSaved = { navController.popBackStack() },
-                onBack = { navController.popBackStack() }
-            )
-        }
 
         composable<SimulationRoute> { backStackEntry ->
             val route = backStackEntry.toRoute<SimulationRoute>()

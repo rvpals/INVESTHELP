@@ -60,7 +60,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.filled.Check
 import com.investhelp.app.model.CsvImportType
+import com.investhelp.app.ui.theme.AppTheme
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -110,6 +117,82 @@ private fun PreferencesTab(viewModel: SettingsViewModel, uiState: SettingsUiStat
             .verticalScroll(rememberScrollState())
             .padding(24.dp)
     ) {
+        Text("Theme", style = MaterialTheme.typography.titleMedium)
+
+        Spacer(modifier = Modifier.height(4.dp))
+
+        Text(
+            "Choose a color theme for the app",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            AppTheme.entries.forEach { theme ->
+                val isSelected = uiState.selectedTheme == theme
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .then(
+                            if (isSelected) Modifier.border(
+                                2.dp,
+                                MaterialTheme.colorScheme.primary,
+                                MaterialTheme.shapes.medium
+                            ) else Modifier
+                        )
+                        .clickable { viewModel.setTheme(theme) },
+                    colors = CardDefaults.cardColors(
+                        containerColor = if (isSelected)
+                            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+                        else
+                            MaterialTheme.colorScheme.surfaceContainerLow
+                    )
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(24.dp)
+                                    .background(
+                                        theme.lightScheme.primary,
+                                        RoundedCornerShape(6.dp)
+                                    )
+                            )
+                            Text(
+                                theme.label,
+                                style = MaterialTheme.typography.bodyLarge
+                            )
+                        }
+                        if (isSelected) {
+                            Icon(
+                                Icons.Default.Check,
+                                contentDescription = "Selected",
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        HorizontalDivider()
+
+        Spacer(modifier = Modifier.height(24.dp))
+
         Text("Transactions", style = MaterialTheme.typography.titleMedium)
 
         Spacer(modifier = Modifier.height(12.dp))
@@ -153,7 +236,7 @@ private fun PreferencesTab(viewModel: SettingsViewModel, uiState: SettingsUiStat
                     style = MaterialTheme.typography.bodyLarge
                 )
                 Text(
-                    "Show a confirmation dialog before deleting items, transactions, transfers, or accounts",
+                    "Show a confirmation dialog before deleting items, transactions, or accounts",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

@@ -207,8 +207,14 @@
 - [x] Dashboard pie chart legend: vertical dividers added between Ticker, Shares, % columns; consistent gridlines with other tables
 - [x] Analyze Price historic prices table: full gridlines (horizontal + vertical) between Period, High, Low columns
 
+- [x] Removed Bank Transfer feature entirely (Transfer screen, entity, DAO, repository, database table dropped in v17)
+- [x] Moved Performance from hamburger menu to bottom nav (replaced Transfer)
+- [x] Theme system: 10 selectable color themes with light/dark variants, persisted to SharedPreferences
+- [x] Theme selection UI in Settings > Preferences (color swatch, label, checkmark for selected)
+- [x] Database migration v16 -> v17 (drop bank_transfers table)
+
 ## Pending
 - [ ] Fix deprecation warning: Icons.Filled.OpenInNew -> Icons.AutoMirrored.Filled.OpenInNew (ItemDetailScreen.kt)
-- [ ] Fix deprecation warning: Icons.Filled.ShowChart/TrendingUp -> AutoMirrored versions (DashboardScreen.kt)
+- [ ] Fix deprecation warning: Icons.Filled.ShowChart/TrendingUp -> AutoMirrored versions (DashboardScreen.kt, MainActivity.kt)
 - [ ] Fix deprecation warning: Icons.Filled.HelpOutline -> Icons.AutoMirrored.Filled.HelpOutline (MainActivity.kt)
 - [ ] Fix deprecation warning: statusBarColor in Theme.kt

@@ -27,7 +27,7 @@ com.investhelp.app/
 ├── MainActivity.kt              # Single activity, top bar, bottom nav, navigation host
 ├── data/
 │   ├── local/
-│   │   ├── AppDatabase.kt       # Room database (version 16) with all DAOs and migrations
+│   │   ├── AppDatabase.kt       # Room database (version 17) with all DAOs and migrations
 │   │   ├── DatabaseProvider.kt  # Lazy database initialization pattern
 │   │   ├── dao/                 # Room DAO interfaces
 │   │   └── entity/              # Room entity classes
@@ -52,15 +52,14 @@ com.investhelp.app/
     ├── settings/                # SettingsScreen, SettingsViewModel
     ├── simulation/              # SimulationScreen, SimulationViewModel
     ├── sqlexplorer/             # SqlExplorerScreen, SqlExplorerViewModel
-    ├── theme/                   # Theme.kt, Color.kt, Type.kt
+    ├── theme/                   # Theme.kt, AppTheme.kt, ThemePreferences.kt, Color.kt, Type.kt
     ├── transaction/             # TransactionListScreen, TransactionFormScreen, AnalyzePriceScreen
-    ├── transfer/                # BankTransferListScreen, BankTransferFormScreen
     └── watchlist/               # WatchListScreen, WatchListViewModel
 ```
 
 ## Database
 
-### Room Database (version 16)
+### Room Database (version 17)
 
 **Entities:**
 | Table | Primary Key | Description |
@@ -68,7 +67,6 @@ com.investhelp.app/
 | `investment_accounts` | `id` (auto) | Brokerage accounts |
 | `investment_items` | `ticker` | Holdings (one per ticker) |
 | `investment_transactions` | `id` (auto) | Buy/sell records |
-| `bank_transfers` | `id` (auto) | Fund transfer records |
 | `account_performance` | `id` (auto) | Account value snapshots |
 | `watch_lists` | `id` (auto) | Named watch list groups |
 | `watch_list_items` | `id` (auto) | Watch list ticker entries |
@@ -76,7 +74,6 @@ com.investhelp.app/
 
 **Key Relationships:**
 - Transactions reference accounts by FK (CASCADE delete)
-- Bank transfers reference accounts by FK (CASCADE delete)
 - Account performance references accounts by FK (CASCADE delete), unique (accountId, date)
 - Watch list items reference watch lists by FK (CASCADE delete)
 - Investment items are independent (ticker-only PK, not tied to accounts)
@@ -92,6 +89,7 @@ com.investhelp.app/
 - v13->v14: Create csv_import_mappings table
 - v14->v15: Remove accountId from items, ticker-only PK, merge duplicates
 - v15->v16: Convert performance dateTime to date, add unique index
+- v16->v17: Drop bank_transfers table (feature removed)
 
 ### DatabaseProvider
 Lazy initialization pattern: database opens on first access, not at app startup.

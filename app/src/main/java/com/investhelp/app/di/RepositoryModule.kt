@@ -4,8 +4,6 @@ import com.investhelp.app.data.repository.AccountPerformanceRepository
 import com.investhelp.app.data.repository.AccountPerformanceRepositoryImpl
 import com.investhelp.app.data.repository.AccountRepository
 import com.investhelp.app.data.repository.AccountRepositoryImpl
-import com.investhelp.app.data.repository.BankTransferRepository
-import com.investhelp.app.data.repository.BankTransferRepositoryImpl
 import com.investhelp.app.data.repository.InvestmentItemRepository
 import com.investhelp.app.data.repository.InvestmentItemRepositoryImpl
 import com.investhelp.app.data.repository.TransactionRepository
@@ -30,8 +28,6 @@ abstract class RepositoryModule {
     @Binds
     abstract fun bindTransactionRepository(impl: TransactionRepositoryImpl): TransactionRepository
 
-    @Binds
-    abstract fun bindBankTransferRepository(impl: BankTransferRepositoryImpl): BankTransferRepository
 
     @Binds
     abstract fun bindAccountPerformanceRepository(impl: AccountPerformanceRepositoryImpl): AccountPerformanceRepository

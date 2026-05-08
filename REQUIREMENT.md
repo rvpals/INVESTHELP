@@ -4,7 +4,7 @@
 Android app to track personal investments.
 
 ## Storage
-- Room (SQLite) for local storage, version 16
+- Room (SQLite) for local storage, version 17
 - No encryption — database opens directly on app launch
 
 ## Data Objects
@@ -40,12 +40,6 @@ Android app to track personal investments.
 - Total Amount (calculated display with copy button for verification)
 - Note (optional, multi-line)
 
-### Bank Transfer
-- Date
-- Amount
-- Associated Account
-- Note (optional)
-
 ### Account Performance
 - Account (FK to investment_accounts, CASCADE delete)
 - Total Value (user-entered or pulled from app)
@@ -74,9 +68,9 @@ Android app to track personal investments.
 ### Navigation
 - **Global top bar** — persistent across all screens:
   - Portfolio value 3D button (tap to navigate to Dashboard, auto-refreshes); shows daily % and all-time % gain/loss below the total value, color-coded green/red
-  - Hamburger menu (Accounts, Performance, Watch List, Settings, SQL Explorer, Help, About)
+  - Hamburger menu (Accounts, Watch List, Settings, SQL Explorer, Help, About)
   - About dialog includes "Show Log" button for viewing application log; version displayed dynamically from BuildConfig
-- **Bottom nav** — Dashboard, Items, Transfer, Transaction, Simulation (3D gradient icons with shadow)
+- **Bottom nav** — Dashboard, Items, Performance, Transaction, Simulation (3D gradient icons with shadow)
 
 ### Dashboard
 - All dashboard sections (Market Indices, Daily Glance, Positions, Position Details) use **CollapsibleCard** — reusable component with title, pin button (top-right), HorizontalDivider between header and content, and expand/collapse toggle; unpinned cards default collapsed, pinned cards default expanded; pin state persisted to SharedPreferences
@@ -128,6 +122,7 @@ Android app to track personal investments.
 
 ### Settings
 - **Preferences tab:**
+  - Theme selector: 10 color themes (Default Green, Ocean Blue, Sunset Orange, Midnight Purple, Forest Moss, Ruby Red, Arctic Ice, Gold Rush, Sakura Pink, Charcoal Dark); each defines light and dark color schemes; persisted to SharedPreferences; instant apply
   - Auto-update position shares toggle
   - Warn before delete toggle (default: on) — when off, skips confirmation dialogs for all delete actions
   - Dashboard Market Indices toggles — choose which market indices to show on the dashboard (8 available, 4 default); up/down arrow buttons to reorder indices
@@ -200,7 +195,7 @@ Android app to track personal investments.
 ### Help
 - Accessible from hamburger menu (between SQL Explorer and About)
 - HTML-based help guide loaded via WebView from `assets/help.html`
-- Covers all features: navigation overview grid, per-section guides (Dashboard, Items, Transactions, Transfers, Simulation, Accounts, Performance, Watch List, Settings, SQL Explorer), and tips
+- Covers all features: navigation overview grid, per-section guides (Dashboard, Items, Transactions, Simulation, Accounts, Performance, Watch List, Settings, SQL Explorer), and tips
 - Styled with dark/light theme support via CSS `prefers-color-scheme`
 - Color-coded section borders matching app icon colors
 

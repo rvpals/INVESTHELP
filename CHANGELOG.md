@@ -1,5 +1,21 @@
 # Changelog
 
+## v1.4 (Build 5) - 2026-05-07
+
+### Added
+- Theme system: 10 selectable color themes (Default Green, Ocean Blue, Sunset Orange, Midnight Purple, Forest Moss, Ruby Red, Arctic Ice, Gold Rush, Sakura Pink, Charcoal Dark)
+- Theme selection in Settings > Preferences with color preview swatch and instant apply
+- Performance button moved to bottom navigation bar for quick access
+
+### Removed
+- Bank Transfer feature removed entirely (Transfer screen, entity, DAO, repository, migration drops `bank_transfers` table)
+- Performance entry removed from hamburger menu (now in bottom nav)
+
+### Changed
+- Bottom nav: Dashboard, Items, **Performance**, Transaction, Simulation (replaced Transfer)
+- Database version bumped to 17 (migration v16→v17 drops bank_transfers table)
+- Theme no longer uses Android dynamic colors — uses app-defined theme selection instead
+
 ## v1.2 (Build 3) - 2026-05-03
 
 ### Added

@@ -8,7 +8,7 @@ Android investment tracking app built with Kotlin, Jetpack Compose, and Material
 - **Min SDK:** 29, Target SDK: 35
 - **Architecture:** MVVM + Repository pattern
 - **DI:** Hilt (KSP)
-- **Database:** Room, version 16
+- **Database:** Room, version 17
 - **Navigation:** Compose Navigation (type-safe routes)
 - **Splash:** AndroidX SplashScreen API (core-splashscreen 1.0.1)
 - **Charts:** Custom Canvas-drawn (pie chart, line chart) — no external chart library
@@ -20,7 +20,7 @@ Android investment tracking app built with Kotlin, Jetpack Compose, and Material
 - `data/repository/` - Repository interfaces and implementations
 - `di/` - Hilt modules (DatabaseModule, RepositoryModule)
 - `model/` - Domain models and enums
-- `ui/` - Compose screens organized by feature (dashboard, account, item, transaction, transfer, simulation, sqlexplorer, performance, watchlist, help)
+- `ui/` - Compose screens organized by feature (dashboard, account, item, transaction, simulation, sqlexplorer, performance, watchlist, help)
 - `ui/components/` - Reusable UI components (CollapsibleCard, ConfirmDeleteDialog, DateRangePicker)
 
 ## Key Design Decisions
@@ -31,8 +31,7 @@ Android investment tracking app built with Kotlin, Jetpack Compose, and Material
 - Transaction time is optional (nullable), totalAmount for verification, note field
 - Navigation routes use ticker strings (not Long IDs) for item detail, form, and statistics
 - DatabaseProvider pattern: DB opens lazily on first access
-- CASCADE deletes: removing account removes associated transactions and bank transfers (items are not tied to accounts)
-- Bank transfers table tracks fund transfers to investment accounts (date, amount, account, note)
+- CASCADE deletes: removing account removes associated transactions (items are not tied to accounts)
 - Items screen combines pie chart + STOCK/ETF tabs with Refresh All toolbar action
 - Items screen: sort-by dropdown (Ticker, Total Value, Current Price) above items list; defaults to Total Value descending
 - Items screen: card-style rows with alternating background colors; each row shows TickerIcon3D + ticker (bold titleSmall) with company name (smaller italic) on left, shares count + Total G/L (bold titleSmall, color-coded) on right, secondary line with Price/Value/Day G/L in muted bodySmall
@@ -44,7 +43,7 @@ Android investment tracking app built with Kotlin, Jetpack Compose, and Material
 - Yahoo Finance v8/v10 API for live prices, historical data, and analysis info
 - Global top bar: portfolio value 3D button (refreshes all prices + navigates to Dashboard) + hamburger menu (Accounts, Performance, Watch List, Settings, SQL Explorer, Help, About)
 - Top bar shows spinner while refreshing prices
-- Bottom nav: Dashboard, Items, Transfer, Transaction, Simulation (3D gradient icons with shadow)
+- Bottom nav: Dashboard, Items, Performance, Transaction, Simulation (3D gradient icons with shadow)
 - Icon3D composable: renders icons inside gradient-filled rounded boxes with drop shadow; used for bottom nav and hamburger menu icons
 - Simulation time ranges: 1W, 2W, 1M, 3M, 6M, 1Y, 2Y, 5Y, 10Y, MAX (grouped in Week/Month/Year rows)
 - Simulation chart supports tap-to-select with tooltip (price + date)
@@ -59,7 +58,6 @@ Android investment tracking app built with Kotlin, Jetpack Compose, and Material
 - Item detail: "Analysis Info" and "Yahoo Finance" buttons on same row
 - Item detail: collapsible "<TICKER> Stats" section (replaces separate statistics screen)
 - Item detail: collapsible "Transactions" section
-- Bank Transfers screen: total amount summary grouped by account at top
 - **Image loading:** Coil 2.7.0 for company logos
 - Item add/edit dialog: type selector dropdown (Stock, ETF, Bond, MutualFund, Crypto, Other); auto-fills type when selecting existing ticker
 - Item detail card row 1 (big font): Total Shares, Total Value, Total Cost, Total G/L
@@ -112,7 +110,8 @@ Android investment tracking app built with Kotlin, Jetpack Compose, and Material
 - Database migration v13 -> v14: creates csv_import_mappings table
 - Database migration v14 -> v15: removes accountId from investment_items, makes ticker sole PK, merges duplicate tickers by summing quantity/cost/value
 - Database migration v15 -> v16: converts account_performance dateTime (epoch seconds) to date (epoch days), adds unique index on (accountId, date)
-- Database version 16
+- Database migration v16 -> v17: drops bank_transfers table (feature removed)
+- Database version 17
 - CSV Import: reusable mapping system for Transaction, Position, Performance imports; mappings persisted in `csv_import_mappings` table; supports date format options per column
 - CSV Transaction Import: does NOT auto-update share counts on items; only creates item stub if ticker doesn't exist
 - Settings Data Management: 3 import types (Transaction Records, Position Details, Performance Records) each with "Define Mapping" and "Start Import" buttons; shared account selector

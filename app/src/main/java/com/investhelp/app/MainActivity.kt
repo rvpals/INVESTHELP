@@ -19,13 +19,13 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountBalance
-import androidx.compose.material.icons.filled.AccountBalanceWallet
 import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.PieChart
 import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.ShowChart
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
@@ -71,7 +71,6 @@ import androidx.navigation.compose.rememberNavController
 import androidx.compose.material.icons.filled.Delete
 import com.investhelp.app.ui.dashboard.DashboardViewModel
 import com.investhelp.app.ui.navigation.AccountListRoute
-import com.investhelp.app.ui.navigation.BankTransferListRoute
 import com.investhelp.app.ui.navigation.DashboardRoute
 import com.investhelp.app.ui.navigation.InvestHelpNavHost
 import com.investhelp.app.ui.navigation.ItemListRoute
@@ -84,6 +83,7 @@ import com.investhelp.app.ui.navigation.WatchListRoute
 import com.investhelp.app.ui.navigation.HelpRoute
 import androidx.compose.material.icons.filled.HelpOutline
 import com.investhelp.app.ui.theme.InvestHelpTheme
+import com.investhelp.app.ui.theme.ThemePreferences
 import dagger.hilt.android.AndroidEntryPoint
 import java.text.NumberFormat
 import java.util.Locale
@@ -98,7 +98,7 @@ data class BottomNavItem(
 val bottomNavItems = listOf(
     BottomNavItem("Dashboard", Icons.Default.Dashboard, DashboardRoute, Color(0xFF1E88E5)),
     BottomNavItem("Items", Icons.Default.PieChart, ItemListRoute, Color(0xFF43A047)),
-    BottomNavItem("Transfer", Icons.Default.AccountBalanceWallet, BankTransferListRoute, Color(0xFFF57C00)),
+    BottomNavItem("Performance", Icons.Default.ShowChart, AccountPerformanceRoute, Color(0xFF2E7D32)),
     BottomNavItem("Transaction", Icons.Default.Receipt, TransactionListRoute, Color(0xFF8E24AA)),
     BottomNavItem("Simulation", Icons.AutoMirrored.Filled.TrendingUp, SimulationRoute(), Color(0xFFE53935))
 )
@@ -110,6 +110,7 @@ class MainActivity : AppCompatActivity() {
         installSplashScreen()
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        ThemePreferences.init(this)
         setContent {
             InvestHelpTheme {
                 val navController = rememberNavController()
@@ -297,18 +298,6 @@ fun GlobalTopBar(navController: NavHostController) {
                         }
                     },
                     leadingIcon = { Icon3D(Icons.Default.AccountBalance, null, Color(0xFF1565C0), iconSize = 16.dp, boxSize = 28.dp) }
-                )
-                DropdownMenuItem(
-                    text = { Text("Performance") },
-                    onClick = {
-                        menuExpanded = false
-                        navController.navigate(AccountPerformanceRoute) {
-                            popUpTo(DashboardRoute) { saveState = true }
-                            launchSingleTop = true
-                            restoreState = true
-                        }
-                    },
-                    leadingIcon = { Icon3D(Icons.AutoMirrored.Filled.TrendingUp, null, Color(0xFF2E7D32), iconSize = 16.dp, boxSize = 28.dp) }
                 )
                 DropdownMenuItem(
                     text = { Text("Watch List") },

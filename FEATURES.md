@@ -7,10 +7,10 @@
 - Second row shows Day % and All-time % gain/loss (color-coded)
 - Tapping refreshes all prices and navigates to Dashboard
 - Spinner shown during price refresh
-- Hamburger menu: Accounts, Performance, Watch List, Settings, SQL Explorer, Help, About
+- Hamburger menu: Accounts, Watch List, Settings, SQL Explorer, Help, About
 
 ### Bottom Navigation
-- 5 tabs: Dashboard, Items, Transfer, Transaction, Simulation
+- 5 tabs: Dashboard, Items, Performance, Transaction, Simulation
 - 3D gradient icons with shadow/elevation effect
 - Selected icon slightly larger than unselected
 
@@ -86,12 +86,6 @@
 - Multi-select mode: long-press to enter, checkboxes, select all, bulk delete
 - Account filter; bulk delete respects "Warn before delete" setting
 
-## Bank Transfers
-
-- Total transfers by account summary card at top
-- Individual transfer cards with date, amount, account, note
-- Add/edit transfer form
-
 ## Simulation
 
 - Ticker and shares input
@@ -128,6 +122,7 @@
 ## Settings
 
 ### Preferences
+- **Theme**: 10 selectable color themes (Default Green, Ocean Blue, Sunset Orange, Midnight Purple, Forest Moss, Ruby Red, Arctic Ice, Gold Rush, Sakura Pink, Charcoal Dark); each theme defines full light and dark color schemes; selection persisted to SharedPreferences; instant apply without restart
 - Auto-update position shares toggle
 - Warn before delete toggle (default: on)
 - Dashboard Market Indices: toggles for 8 indices, up/down arrow reorder

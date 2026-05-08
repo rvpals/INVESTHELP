@@ -5,11 +5,9 @@ import android.net.Uri
 import androidx.documentfile.provider.DocumentFile
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.investhelp.app.data.local.dao.BankTransferDao
 import com.investhelp.app.data.local.dao.InvestmentAccountDao
 import com.investhelp.app.data.local.dao.InvestmentItemDao
 import com.investhelp.app.data.local.dao.InvestmentTransactionDao
-import com.investhelp.app.data.local.entity.BankTransferEntity
 import com.investhelp.app.data.local.entity.InvestmentAccountEntity
 import com.investhelp.app.data.local.entity.InvestmentItemEntity
 import com.investhelp.app.data.local.entity.InvestmentTransactionEntity
@@ -18,11 +16,12 @@ import com.investhelp.app.data.local.dao.CsvImportMappingDao
 import com.investhelp.app.data.local.entity.AccountPerformanceEntity
 import com.investhelp.app.data.local.entity.CsvImportMappingEntity
 import com.investhelp.app.model.BackupAccount
-import com.investhelp.app.model.BackupBankTransfer
 import com.investhelp.app.model.BackupData
 import com.investhelp.app.model.BackupItem
 import com.investhelp.app.model.BackupTransaction
 import com.investhelp.app.model.CsvImportType
+import com.investhelp.app.ui.theme.AppTheme
+import com.investhelp.app.ui.theme.ThemePreferences
 import com.investhelp.app.model.InvestmentType
 import com.investhelp.app.model.TransactionAction
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -72,6 +71,7 @@ data class SettingsUiState(
     val isRestoring: Boolean = false,
     val autoUpdateShares: Boolean = false,
     val warnBeforeDelete: Boolean = true,
+    val selectedTheme: AppTheme = AppTheme.Default,
     val enabledMarketIndices: Set<String> = SettingsViewModel.DEFAULT_MARKET_INDICES,
     val marketIndicesOrder: List<String> = SettingsViewModel.AVAILABLE_MARKET_INDICES.map { it.symbol },
     val csvImport: CsvImportState? = null,
@@ -85,7 +85,6 @@ class SettingsViewModel @Inject constructor(
     private val accountDao: InvestmentAccountDao,
     private val itemDao: InvestmentItemDao,
     private val transactionDao: InvestmentTransactionDao,
-    private val bankTransferDao: BankTransferDao,
     private val accountPerformanceDao: AccountPerformanceDao,
     private val csvMappingDao: CsvImportMappingDao
 ) : ViewModel() {
@@ -97,6 +96,7 @@ class SettingsViewModel @Inject constructor(
         const val KEY_MARKET_INDICES = "market_indices"
         const val KEY_MARKET_INDICES_ORDER = "market_indices_order"
         const val KEY_BACKUP_FOLDER_URI = "backup_folder_uri"
+        const val KEY_THEME = "app_theme"
 
         data class MarketIndexConfig(
             val symbol: String,
@@ -136,6 +136,7 @@ class SettingsViewModel @Inject constructor(
         SettingsUiState(
             autoUpdateShares = prefs.getBoolean(KEY_AUTO_UPDATE_SHARES, false),
             warnBeforeDelete = prefs.getBoolean(KEY_WARN_BEFORE_DELETE, true),
+            selectedTheme = AppTheme.fromName(prefs.getString(KEY_THEME, AppTheme.Default.name) ?: AppTheme.Default.name),
             enabledMarketIndices = prefs.getStringSet(KEY_MARKET_INDICES, null)
                 ?: DEFAULT_MARKET_INDICES,
             marketIndicesOrder = loadMarketIndicesOrder(),
@@ -164,6 +165,11 @@ class SettingsViewModel @Inject constructor(
     fun setWarnBeforeDelete(enabled: Boolean) {
         prefs.edit().putBoolean(KEY_WARN_BEFORE_DELETE, enabled).apply()
         _uiState.value = _uiState.value.copy(warnBeforeDelete = enabled)
+    }
+
+    fun setTheme(theme: AppTheme) {
+        ThemePreferences.setTheme(context, theme)
+        _uiState.value = _uiState.value.copy(selectedTheme = theme)
     }
 
     fun toggleMarketIndex(symbol: String, enabled: Boolean) {
@@ -212,7 +218,6 @@ class SettingsViewModel @Inject constructor(
                 val accounts = accountDao.getAllAccountsSnapshot()
                 val items = itemDao.getAllItemsSnapshot()
                 val transactions = transactionDao.getAllTransactionsSnapshot()
-                val bankTransfers = bankTransferDao.getAllTransfersSnapshot()
 
                 val backupData = BackupData(
                     accounts = accounts.map {
@@ -239,11 +244,6 @@ class SettingsViewModel @Inject constructor(
                             it.action.name, it.accountId, it.ticker,
                             it.numberOfShares, it.pricePerShare,
                             it.totalAmount, it.note
-                        )
-                    },
-                    bankTransfers = bankTransfers.map {
-                        BackupBankTransfer(
-                            it.id, it.date.toEpochDay(), it.amount, it.accountId, it.note
                         )
                     }
                 )
@@ -291,7 +291,6 @@ class SettingsViewModel @Inject constructor(
                 val backupData = json.decodeFromString(BackupData.serializer(), jsonString)
 
                 // Delete in reverse dependency order
-                bankTransferDao.deleteAll()
                 transactionDao.deleteAll()
                 itemDao.deleteAll()
                 accountDao.deleteAll()
@@ -349,19 +348,9 @@ class SettingsViewModel @Inject constructor(
                         )
                     )
                 }
-                for (bt in backupData.bankTransfers) {
-                    bankTransferDao.insertTransfer(
-                        BankTransferEntity(
-                            bt.id,
-                            LocalDate.ofEpochDay(bt.dateEpochDay),
-                            bt.amount, bt.accountId, bt.note
-                        )
-                    )
-                }
-
                 _uiState.value = _uiState.value.copy(
                     isRestoring = false,
-                    message = "Restored ${backupData.accounts.size} accounts, ${backupData.items.size} items, ${backupData.transactions.size} transactions, ${backupData.bankTransfers.size} bank transfers."
+                    message = "Restored ${backupData.accounts.size} accounts, ${backupData.items.size} items, ${backupData.transactions.size} transactions."
                 )
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
