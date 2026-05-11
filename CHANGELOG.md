@@ -1,5 +1,10 @@
 # Changelog
 
+## v1.8 (Build 9) - 2026-05-11
+
+### Fixed
+- App icon: fixed distortion caused by naive resize of non-square source image; properly crops to content area, preserves aspect ratio, centers within adaptive icon safe zone using LANCZOS resampling at all density buckets
+
 ## v1.7 (Build 8) - 2026-05-11
 
 ### Added
