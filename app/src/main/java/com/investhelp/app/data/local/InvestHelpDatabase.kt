@@ -4,6 +4,7 @@ import androidx.room.Database
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import com.investhelp.app.data.local.converter.Converters
+import com.investhelp.app.data.local.dao.ChangeHistoryDao
 import com.investhelp.app.data.local.dao.CsvImportMappingDao
 import com.investhelp.app.data.local.dao.InvestmentAccountDao
 import com.investhelp.app.data.local.dao.InvestmentItemDao
@@ -11,6 +12,7 @@ import com.investhelp.app.data.local.dao.InvestmentTransactionDao
 import com.investhelp.app.data.local.dao.AccountPerformanceDao
 import com.investhelp.app.data.local.dao.WatchListDao
 import com.investhelp.app.data.local.entity.AccountPerformanceEntity
+import com.investhelp.app.data.local.entity.ChangeHistoryEntity
 import com.investhelp.app.data.local.entity.CsvImportMappingEntity
 import com.investhelp.app.data.local.entity.InvestmentAccountEntity
 import com.investhelp.app.data.local.entity.InvestmentItemEntity
@@ -26,9 +28,10 @@ import com.investhelp.app.data.local.entity.WatchListItemEntity
         AccountPerformanceEntity::class,
         WatchListEntity::class,
         WatchListItemEntity::class,
-        CsvImportMappingEntity::class
+        CsvImportMappingEntity::class,
+        ChangeHistoryEntity::class
     ],
-    version = 17,
+    version = 19,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -39,4 +42,5 @@ abstract class InvestHelpDatabase : RoomDatabase() {
     abstract fun accountPerformanceDao(): AccountPerformanceDao
     abstract fun watchListDao(): WatchListDao
     abstract fun csvImportMappingDao(): CsvImportMappingDao
+    abstract fun changeHistoryDao(): ChangeHistoryDao
 }

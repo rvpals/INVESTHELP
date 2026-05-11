@@ -3,6 +3,7 @@ package com.investhelp.app.di
 import android.content.Context
 import com.investhelp.app.data.local.DatabaseProvider
 import com.investhelp.app.data.local.dao.AccountPerformanceDao
+import com.investhelp.app.data.local.dao.ChangeHistoryDao
 import com.investhelp.app.data.local.dao.CsvImportMappingDao
 import com.investhelp.app.data.local.dao.InvestmentAccountDao
 import com.investhelp.app.data.local.dao.InvestmentItemDao
@@ -54,5 +55,10 @@ object DatabaseModule {
     @Provides
     fun provideCsvImportMappingDao(dbProvider: DatabaseProvider): CsvImportMappingDao {
         return dbProvider.database.csvImportMappingDao()
+    }
+
+    @Provides
+    fun provideChangeHistoryDao(dbProvider: DatabaseProvider): ChangeHistoryDao {
+        return dbProvider.database.changeHistoryDao()
     }
 }

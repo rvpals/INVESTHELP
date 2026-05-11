@@ -13,6 +13,9 @@
 - Collapsible "Portfolio Summary" card with pin persistence
 - Total daily value change displayed in 3x larger font (headlineLarge, bold, centered)
 - Day % and All-time % shown below in bodyMedium, centered, color-coded green/red
+- "Refreshed: MMM dd, h:mm a" label showing last price refresh time
+- Mini line chart of total_value from change_history (shown when 2+ records)
+- Click mini chart opens full-screen Change History dialog with zoomable multi-series chart (Total/ETF/Stock lines) + grid data table
 
 ### Bottom Navigation
 - 5 tabs: Dashboard, Items, Performance, Transaction, Simulation
@@ -80,9 +83,10 @@
 ## Transactions
 
 ### Transaction Form
-- Fields: date, time (optional), account, action (Buy/Sell), ticker, shares, price, total, note
+- Fields: date, time (optional), account, action (Buy/Sell), ticker (dropdown from existing items), shares, price, total, note
 - Analyze Price button: current price, avg/max/min, historic high/low (week/month/year/max)
 - View button: opens item detail for the ticker
+- Update/Create and Simulate buttons fixed at bottom of screen (not scrollable)
 - Simulate button: opens simulation from transaction date to today
 - Auto-selects first account; form state preserved via rememberSaveable
 
@@ -122,14 +126,17 @@
 
 - Multiple named watch lists via FilterChip selector
 - Create, rename, delete watch lists (CASCADE)
-- Add ticker: shares, price-when-added, "Fetch" button for current price
-- Table with gridlines: Ticker, Shares, Price, Added @, Change $, Change %, Date, Delete
+- Add ticker: shares, price-when-added, "Fetch" button for current price, optional reminder
+- Table with gridlines: Ticker, Shares, Price, Added @, Change $, Change %, Date, Delete, Reminder bell
+- Reminder bell icon: highlighted when reminder is active; tap to set/edit/clear reminder
+- Reminders: date/time picker + message; scheduled notification via AlarmManager; fires even in doze mode
 - Refresh all tickers in selected list
 
 ## Settings
 
 ### Preferences
-- **Theme**: 10 selectable color themes (Default Green, Ocean Blue, Sunset Orange, Midnight Purple, Forest Moss, Ruby Red, Arctic Ice, Gold Rush, Sakura Pink, Charcoal Dark); each theme defines full light and dark color schemes; selection persisted to SharedPreferences; instant apply without restart
+- **Theme**: 15 selectable color themes (Default Green, Ocean Blue, Sunset Orange, Midnight Purple, Forest Moss, Ruby Red, Arctic Ice, Gold Rush, Sakura Pink, Charcoal Dark, Lavender Fields, Copper Bronze, Emerald Gem, Slate Blue, Mocha Coffee); each theme defines full light and dark color schemes; selection persisted to SharedPreferences; instant apply without restart
+- **Auto Update Change History when refresh**: toggle (default: off); when on, records ETF/Stock/Total values to change_history table after price refresh
 - Auto-update position shares toggle
 - Warn before delete toggle (default: on)
 - Dashboard Market Indices: toggles for 8 indices, up/down arrow reorder

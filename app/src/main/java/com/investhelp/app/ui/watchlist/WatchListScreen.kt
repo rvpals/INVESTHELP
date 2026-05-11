@@ -17,16 +17,22 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.HorizontalDivider
@@ -38,7 +44,10 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TimePicker
 import androidx.compose.material3.VerticalDivider
+import androidx.compose.material3.rememberDatePickerState
+import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -54,9 +63,15 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.investhelp.app.data.local.entity.WatchListItemEntity
 import com.investhelp.app.ui.components.ConfirmDeleteDialog
 import java.text.DecimalFormat
 import java.text.NumberFormat
+import java.time.Instant
+import java.time.LocalDate
+import java.time.LocalDateTime
+import java.time.LocalTime
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
@@ -79,6 +94,7 @@ fun WatchListScreen(
     var showRenameDialog by rememberSaveable { mutableStateOf(false) }
     var watchListToDelete by remember { mutableStateOf<Long?>(null) }
     var itemToDelete by remember { mutableStateOf<WatchListItemUi?>(null) }
+    var itemForReminder by remember { mutableStateOf<WatchListItemEntity?>(null) }
 
     LaunchedEffect(watchLists, selectedId) {
         if (selectedId == null && watchLists.isNotEmpty()) {
@@ -177,7 +193,8 @@ fun WatchListScreen(
                             sharesFormat = sharesFormat,
                             priceFormat = priceFormat,
                             dateFormat = dateFormat,
-                            onDelete = { itemToDelete = it }
+                            onDelete = { itemToDelete = it },
+                            onReminder = { itemForReminder = it.entity }
                         )
                     }
                 } else {
@@ -284,12 +301,29 @@ fun WatchListScreen(
         AddTickerDialog(
             fetchedPrice = fetchedPrice,
             onFetchPrice = { viewModel.fetchPrice(it) },
-            onConfirm = { ticker, shares, price ->
+            onConfirm = { ticker, shares, price, reminderDt, reminderMsg ->
                 showAddItemDialog = false
                 viewModel.clearFetchedPrice()
-                viewModel.addItem(selectedId!!, ticker, shares, price)
+                viewModel.addItem(selectedId!!, ticker, shares, price, reminderDt, reminderMsg)
             },
             onDismiss = { showAddItemDialog = false; viewModel.clearFetchedPrice() }
+        )
+    }
+
+    itemForReminder?.let { item ->
+        ReminderDialog(
+            ticker = item.ticker,
+            initialDateTime = item.reminderDateTime,
+            initialMessage = item.reminderMessage,
+            onConfirm = { dateTime, message ->
+                viewModel.updateItemReminder(item, dateTime, message)
+                itemForReminder = null
+            },
+            onClear = {
+                viewModel.updateItemReminder(item, null, null)
+                itemForReminder = null
+            },
+            onDismiss = { itemForReminder = null }
         )
     }
 }
@@ -301,7 +335,8 @@ private fun WatchListTable(
     sharesFormat: DecimalFormat,
     priceFormat: DecimalFormat,
     dateFormat: DateTimeFormatter,
-    onDelete: (WatchListItemUi) -> Unit
+    onDelete: (WatchListItemUi) -> Unit,
+    onReminder: (WatchListItemUi) -> Unit
 ) {
     val dividerColor = MaterialTheme.colorScheme.outlineVariant
     val horizontalScroll = rememberScrollState()
@@ -338,6 +373,8 @@ private fun WatchListTable(
                 HeaderCell("Change %", 80, TextAlign.End)
                 VerticalDivider(color = dividerColor)
                 HeaderCell("Date", 70, TextAlign.Center)
+                VerticalDivider(color = dividerColor)
+                Spacer(modifier = Modifier.width(36.dp))
                 VerticalDivider(color = dividerColor)
                 Spacer(modifier = Modifier.width(36.dp))
             }
@@ -417,6 +454,20 @@ private fun WatchListTable(
                             modifier = Modifier.size(16.dp)
                         )
                     }
+                    VerticalDivider(color = dividerColor)
+                    IconButton(
+                        onClick = { onReminder(item) },
+                        modifier = Modifier.size(36.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.Notifications,
+                            contentDescription = "Reminder",
+                            tint = if (item.entity.reminderDateTime != null)
+                                MaterialTheme.colorScheme.primary
+                            else MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
                 }
                 HorizontalDivider(color = dividerColor)
             }
@@ -469,16 +520,26 @@ private fun TextInputDialog(
     )
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun AddTickerDialog(
     fetchedPrice: Double?,
     onFetchPrice: (String) -> Unit,
-    onConfirm: (ticker: String, shares: Double, price: Double) -> Unit,
+    onConfirm: (ticker: String, shares: Double, price: Double, reminderDateTime: LocalDateTime?, reminderMessage: String?) -> Unit,
     onDismiss: () -> Unit
 ) {
     var ticker by rememberSaveable { mutableStateOf("") }
     var shares by rememberSaveable { mutableStateOf("") }
     var price by rememberSaveable { mutableStateOf("") }
+    var hasReminder by rememberSaveable { mutableStateOf(false) }
+    var reminderMessage by rememberSaveable { mutableStateOf("") }
+    var reminderDate by remember { mutableStateOf(LocalDate.now().plusDays(1)) }
+    var reminderTime by remember { mutableStateOf(LocalTime.of(9, 0)) }
+    var showDatePicker by remember { mutableStateOf(false) }
+    var showTimePicker by remember { mutableStateOf(false) }
+
+    val dateFormatter = DateTimeFormatter.ofPattern("MMM dd, yyyy")
+    val timeFormatter = DateTimeFormatter.ofPattern("HH:mm")
 
     LaunchedEffect(fetchedPrice) {
         if (fetchedPrice != null) {
@@ -490,7 +551,10 @@ private fun AddTickerDialog(
         onDismissRequest = onDismiss,
         title = { Text("Add Ticker") },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.verticalScroll(rememberScrollState())
+            ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -525,6 +589,43 @@ private fun AddTickerDialog(
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     modifier = Modifier.fillMaxWidth()
                 )
+
+                HorizontalDivider()
+
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Checkbox(
+                        checked = hasReminder,
+                        onCheckedChange = { hasReminder = it }
+                    )
+                    Text("Set Reminder", style = MaterialTheme.typography.bodyMedium)
+                }
+
+                if (hasReminder) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        OutlinedButton(
+                            onClick = { showDatePicker = true },
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text(reminderDate.format(dateFormatter), style = MaterialTheme.typography.labelSmall)
+                        }
+                        OutlinedButton(
+                            onClick = { showTimePicker = true }
+                        ) {
+                            Text(reminderTime.format(timeFormatter), style = MaterialTheme.typography.labelSmall)
+                        }
+                    }
+                    OutlinedTextField(
+                        value = reminderMessage,
+                        onValueChange = { reminderMessage = it },
+                        label = { Text("Reminder Message") },
+                        modifier = Modifier.fillMaxWidth(),
+                        minLines = 2,
+                        maxLines = 3
+                    )
+                }
             }
         },
         confirmButton = {
@@ -532,7 +633,13 @@ private fun AddTickerDialog(
                 onClick = {
                     val s = shares.toDoubleOrNull() ?: return@TextButton
                     val p = price.toDoubleOrNull() ?: return@TextButton
-                    if (ticker.isNotBlank()) onConfirm(ticker, s, p)
+                    if (ticker.isNotBlank()) {
+                        val dt = if (hasReminder && reminderMessage.isNotBlank())
+                            LocalDateTime.of(reminderDate, reminderTime) else null
+                        val msg = if (hasReminder && reminderMessage.isNotBlank())
+                            reminderMessage.trim() else null
+                        onConfirm(ticker, s, p, dt, msg)
+                    }
                 },
                 enabled = ticker.isNotBlank()
                         && shares.toDoubleOrNull() != null
@@ -545,4 +652,174 @@ private fun AddTickerDialog(
             TextButton(onClick = onDismiss) { Text("Cancel") }
         }
     )
+
+    if (showDatePicker) {
+        val datePickerState = rememberDatePickerState(
+            initialSelectedDateMillis = reminderDate.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+        )
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    datePickerState.selectedDateMillis?.let { millis ->
+                        reminderDate = Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault()).toLocalDate()
+                    }
+                    showDatePicker = false
+                }) { Text("OK") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDatePicker = false }) { Text("Cancel") }
+            }
+        ) {
+            DatePicker(state = datePickerState)
+        }
+    }
+
+    if (showTimePicker) {
+        val timePickerState = rememberTimePickerState(
+            initialHour = reminderTime.hour,
+            initialMinute = reminderTime.minute
+        )
+        AlertDialog(
+            onDismissRequest = { showTimePicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    reminderTime = LocalTime.of(timePickerState.hour, timePickerState.minute)
+                    showTimePicker = false
+                }) { Text("OK") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showTimePicker = false }) { Text("Cancel") }
+            },
+            text = {
+                TimePicker(state = timePickerState)
+            }
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ReminderDialog(
+    ticker: String,
+    initialDateTime: LocalDateTime?,
+    initialMessage: String?,
+    onConfirm: (LocalDateTime, String) -> Unit,
+    onClear: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    var reminderDate by remember {
+        mutableStateOf(initialDateTime?.toLocalDate() ?: LocalDate.now().plusDays(1))
+    }
+    var reminderTime by remember {
+        mutableStateOf(initialDateTime?.toLocalTime() ?: LocalTime.of(9, 0))
+    }
+    var message by rememberSaveable { mutableStateOf(initialMessage ?: "") }
+    var showDatePicker by remember { mutableStateOf(false) }
+    var showTimePicker by remember { mutableStateOf(false) }
+
+    val dateFormatter = DateTimeFormatter.ofPattern("MMM dd, yyyy")
+    val timeFormatter = DateTimeFormatter.ofPattern("HH:mm")
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Reminder: $ticker") },
+        text = {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.verticalScroll(rememberScrollState())
+            ) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    OutlinedButton(
+                        onClick = { showDatePicker = true },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text(reminderDate.format(dateFormatter), style = MaterialTheme.typography.labelSmall)
+                    }
+                    OutlinedButton(
+                        onClick = { showTimePicker = true }
+                    ) {
+                        Text(reminderTime.format(timeFormatter), style = MaterialTheme.typography.labelSmall)
+                    }
+                }
+                OutlinedTextField(
+                    value = message,
+                    onValueChange = { message = it },
+                    label = { Text("Message") },
+                    modifier = Modifier.fillMaxWidth(),
+                    minLines = 2,
+                    maxLines = 4
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    if (message.isNotBlank()) {
+                        onConfirm(LocalDateTime.of(reminderDate, reminderTime), message.trim())
+                    }
+                },
+                enabled = message.isNotBlank()
+            ) {
+                Text("Save")
+            }
+        },
+        dismissButton = {
+            Row {
+                if (initialDateTime != null) {
+                    TextButton(onClick = onClear) {
+                        Text("Clear", color = MaterialTheme.colorScheme.error)
+                    }
+                }
+                TextButton(onClick = onDismiss) { Text("Cancel") }
+            }
+        }
+    )
+
+    if (showDatePicker) {
+        val datePickerState = rememberDatePickerState(
+            initialSelectedDateMillis = reminderDate.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+        )
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    datePickerState.selectedDateMillis?.let { millis ->
+                        reminderDate = Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault()).toLocalDate()
+                    }
+                    showDatePicker = false
+                }) { Text("OK") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDatePicker = false }) { Text("Cancel") }
+            }
+        ) {
+            DatePicker(state = datePickerState)
+        }
+    }
+
+    if (showTimePicker) {
+        val timePickerState = rememberTimePickerState(
+            initialHour = reminderTime.hour,
+            initialMinute = reminderTime.minute
+        )
+        AlertDialog(
+            onDismissRequest = { showTimePicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    reminderTime = LocalTime.of(timePickerState.hour, timePickerState.minute)
+                    showTimePicker = false
+                }) { Text("OK") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showTimePicker = false }) { Text("Cancel") }
+            },
+            text = {
+                TimePicker(state = timePickerState)
+            }
+        )
+    }
 }

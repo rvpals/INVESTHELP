@@ -35,8 +35,8 @@ class Converters {
     fun toTransactionAction(value: String): TransactionAction = TransactionAction.valueOf(value)
 
     @TypeConverter
-    fun fromLocalDateTime(dateTime: LocalDateTime): Long = dateTime.toEpochSecond(ZoneOffset.UTC)
+    fun fromLocalDateTime(dateTime: LocalDateTime?): Long? = dateTime?.toEpochSecond(ZoneOffset.UTC)
 
     @TypeConverter
-    fun toLocalDateTime(epochSecond: Long): LocalDateTime = LocalDateTime.ofEpochSecond(epochSecond, 0, ZoneOffset.UTC)
+    fun toLocalDateTime(epochSecond: Long?): LocalDateTime? = epochSecond?.let { LocalDateTime.ofEpochSecond(it, 0, ZoneOffset.UTC) }
 }

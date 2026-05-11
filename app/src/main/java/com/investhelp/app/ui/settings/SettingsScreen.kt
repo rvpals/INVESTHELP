@@ -232,6 +232,30 @@ private fun PreferencesTab(viewModel: SettingsViewModel, uiState: SettingsUiStat
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
+                    "Auto Update Change History when refresh",
+                    style = MaterialTheme.typography.bodyLarge
+                )
+                Text(
+                    "Automatically record ETF, Stock, and Total values to Change History when refreshing prices",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Switch(
+                checked = uiState.autoUpdateChangeHistory,
+                onCheckedChange = { viewModel.setAutoUpdateChangeHistory(it) }
+            )
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
                     "Warn before delete",
                     style = MaterialTheme.typography.bodyLarge
                 )

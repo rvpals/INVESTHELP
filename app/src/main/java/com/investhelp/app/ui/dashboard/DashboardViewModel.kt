@@ -3,9 +3,12 @@ package com.investhelp.app.ui.dashboard
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.investhelp.app.data.local.entity.ChangeHistoryEntity
 import com.investhelp.app.data.remote.StockPriceService
 import com.investhelp.app.data.repository.AccountRepository
+import com.investhelp.app.data.repository.ChangeHistoryRepository
 import com.investhelp.app.data.repository.InvestmentItemRepository
+import kotlinx.coroutines.flow.Flow
 import com.investhelp.app.model.AccountWithValue
 import com.investhelp.app.model.InvestmentType
 import com.investhelp.app.ui.settings.SettingsViewModel
@@ -20,6 +23,8 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import java.time.LocalDate
+import java.time.LocalDateTime
 import javax.inject.Inject
 
 data class TickerPosition(
@@ -78,7 +83,8 @@ class DashboardViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     accountRepository: AccountRepository,
     private val itemRepository: InvestmentItemRepository,
-    private val stockPriceService: StockPriceService
+    private val stockPriceService: StockPriceService,
+    private val changeHistoryRepository: ChangeHistoryRepository
 ) : ViewModel() {
 
     private val prefs = context.getSharedPreferences(
@@ -93,8 +99,13 @@ class DashboardViewModel @Inject constructor(
         const val KEY_PIN_PORTFOLIO_SUMMARY = "pin_card_portfolio_summary"
     }
 
+    val changeHistoryRecords: Flow<List<ChangeHistoryEntity>> = changeHistoryRepository.getAllRecords()
+
     private val _isRefreshing = MutableStateFlow(false)
     val isRefreshing: StateFlow<Boolean> = _isRefreshing.asStateFlow()
+
+    private val _lastRefreshedAt = MutableStateFlow<LocalDateTime?>(null)
+    val lastRefreshedAt: StateFlow<LocalDateTime?> = _lastRefreshedAt.asStateFlow()
 
     private val _pinStates = MutableStateFlow(
         mapOf(
@@ -229,9 +240,43 @@ class DashboardViewModel @Inject constructor(
                 }
                 AppLog.log("Portfolio refresh: $successCount tickers ok" +
                         if (failCount > 0) ", $failCount failed" else "")
+
+                _lastRefreshedAt.value = LocalDateTime.now()
+
+                if (prefs.getBoolean(SettingsViewModel.KEY_AUTO_UPDATE_CHANGE_HISTORY, false)) {
+                    recordChangeHistory()
+                }
             } finally {
                 _isRefreshing.value = false
             }
+        }
+    }
+
+    private suspend fun recordChangeHistory() {
+        try {
+            val allItems = itemRepository.getAllItems().first()
+            val etfValue = allItems
+                .filter { it.type == InvestmentType.ETF }
+                .sumOf { it.value }
+            val stockValue = allItems
+                .filter { it.type == InvestmentType.Stock }
+                .sumOf { it.value }
+            val totalValue = allItems.sumOf { it.value }
+            val today = LocalDate.now()
+
+            val existing = changeHistoryRepository.getRecordByDate(today)
+            changeHistoryRepository.upsertRecord(
+                ChangeHistoryEntity(
+                    id = existing?.id ?: 0,
+                    date = today,
+                    etfValue = etfValue,
+                    stockValue = stockValue,
+                    totalValue = totalValue
+                )
+            )
+            AppLog.log("Change history recorded: ETF=${"%.2f".format(etfValue)}, Stock=${"%.2f".format(stockValue)}, Total=${"%.2f".format(totalValue)}")
+        } catch (e: Exception) {
+            AppLog.log("Change history record failed: ${e.message}")
         }
     }
 

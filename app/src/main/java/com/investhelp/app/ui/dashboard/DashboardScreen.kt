@@ -35,6 +35,9 @@ import androidx.compose.material.icons.filled.Toll
 import androidx.compose.material.icons.filled.TrendingUp
 import androidx.compose.material.icons.filled.Warehouse
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
@@ -55,6 +58,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
@@ -69,21 +73,37 @@ import android.content.Intent
 import android.net.Uri
 import androidx.compose.animation.core.animateIntOffsetAsState
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.rememberTransformableState
+import androidx.compose.foundation.gestures.transformable
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.toMutableStateList
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.zIndex
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import com.investhelp.app.data.local.entity.ChangeHistoryEntity
 import com.investhelp.app.ui.components.CollapsibleCard
 import java.text.DecimalFormat
 import java.text.NumberFormat
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 import java.util.Locale
+import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.sin
 
@@ -110,7 +130,18 @@ fun DashboardScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val pinStates by viewModel.pinStates.collectAsStateWithLifecycle()
     val positionDetails by viewModel.positionDetails.collectAsStateWithLifecycle()
+    val changeHistory by viewModel.changeHistoryRecords.collectAsStateWithLifecycle(initialValue = emptyList())
+    val lastRefreshedAt by viewModel.lastRefreshedAt.collectAsStateWithLifecycle()
     val currencyFormat = NumberFormat.getCurrencyInstance(Locale.US)
+    var showChangeHistoryDialog by remember { mutableStateOf(false) }
+
+    if (showChangeHistoryDialog) {
+        ChangeHistoryFullScreenDialog(
+            records = changeHistory,
+            currencyFormat = currencyFormat,
+            onDismiss = { showChangeHistoryDialog = false }
+        )
+    }
 
     Scaffold { padding ->
         LazyColumn(
@@ -126,7 +157,13 @@ fun DashboardScreen(
                     pinned = pinStates[DashboardViewModel.KEY_PIN_PORTFOLIO_SUMMARY] == true,
                     onPinToggle = { viewModel.setPinState(DashboardViewModel.KEY_PIN_PORTFOLIO_SUMMARY, it) }
                 ) {
-                    PortfolioSummaryRow(uiState = uiState, currencyFormat = currencyFormat)
+                    PortfolioSummaryRow(
+                        uiState = uiState,
+                        currencyFormat = currencyFormat,
+                        changeHistory = changeHistory,
+                        lastRefreshedAt = lastRefreshedAt,
+                        onChartClick = { showChangeHistoryDialog = true }
+                    )
                 }
             }
 
@@ -772,7 +809,10 @@ private fun DashboardTickerIcon(ticker: String, name: String) {
 @Composable
 private fun PortfolioSummaryRow(
     uiState: DashboardUiState,
-    currencyFormat: NumberFormat
+    currencyFormat: NumberFormat,
+    changeHistory: List<ChangeHistoryEntity> = emptyList(),
+    lastRefreshedAt: java.time.LocalDateTime? = null,
+    onChartClick: () -> Unit = {}
 ) {
     val previousValue = uiState.totalPortfolioValue - uiState.totalDayGainLoss
     val dailyPct = if (previousValue != 0.0)
@@ -833,6 +873,513 @@ private fun PortfolioSummaryRow(
                 fontWeight = FontWeight.Bold,
                 color = allTimeColor
             )
+        }
+
+        lastRefreshedAt?.let {
+            Spacer(modifier = Modifier.height(6.dp))
+            val refreshFormatter = DateTimeFormatter.ofPattern("MMM dd, h:mm a")
+            Text(
+                text = "Refreshed: ${it.format(refreshFormatter)}",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+
+        val sortedHistory = remember(changeHistory) {
+            changeHistory.sortedBy { it.date }
+        }
+        if (sortedHistory.size >= 2) {
+            Spacer(modifier = Modifier.height(12.dp))
+            ChangeHistoryMiniChart(
+                records = sortedHistory,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(100.dp)
+                    .clickable { onChartClick() }
+            )
+        }
+    }
+}
+
+@Composable
+private fun ChangeHistoryMiniChart(
+    records: List<ChangeHistoryEntity>,
+    modifier: Modifier = Modifier
+) {
+    val lineColor = Color(0xFF4285F4)
+    val gridColor = MaterialTheme.colorScheme.outlineVariant
+    val labelColor = MaterialTheme.colorScheme.onSurfaceVariant
+    val dateFormatter = DateTimeFormatter.ofPattern("MM/dd")
+    val currencyFormat = NumberFormat.getCurrencyInstance(Locale.US)
+
+    val values = records.map { it.totalValue }
+    val minVal = values.min() * 0.998
+    val maxVal = values.max() * 1.002
+    val valRange = (maxVal - minVal).let { if (it < 0.01) 1.0 else it }
+    val minEpoch = records.first().date.toEpochDay()
+    val maxEpoch = records.last().date.toEpochDay()
+    val timeRange = (maxEpoch - minEpoch).let { if (it < 1L) 1L else it }
+
+    Card(
+        modifier = modifier,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+        )
+    ) {
+        Canvas(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(top = 8.dp, bottom = 16.dp, start = 4.dp, end = 4.dp)
+        ) {
+            val chartWidth = size.width
+            val chartHeight = size.height
+
+            // Draw line
+            val path = Path()
+            val fillPath = Path()
+            records.forEachIndexed { i, record ->
+                val normX = (record.date.toEpochDay() - minEpoch).toFloat() / timeRange
+                val screenX = normX * chartWidth
+                val screenY = ((maxVal - record.totalValue) / valRange * chartHeight).toFloat()
+                if (i == 0) {
+                    path.moveTo(screenX, screenY)
+                    fillPath.moveTo(screenX, chartHeight)
+                    fillPath.lineTo(screenX, screenY)
+                } else {
+                    path.lineTo(screenX, screenY)
+                    fillPath.lineTo(screenX, screenY)
+                }
+            }
+            fillPath.lineTo(
+                (records.last().date.toEpochDay() - minEpoch).toFloat() / timeRange * chartWidth,
+                chartHeight
+            )
+            fillPath.close()
+
+            drawPath(fillPath, color = lineColor.copy(alpha = 0.1f))
+            drawPath(path, color = lineColor, style = Stroke(width = 2.5f, cap = StrokeCap.Round))
+
+            // Data points
+            records.forEach { record ->
+                val normX = (record.date.toEpochDay() - minEpoch).toFloat() / timeRange
+                val screenX = normX * chartWidth
+                val screenY = ((maxVal - record.totalValue) / valRange * chartHeight).toFloat()
+                drawCircle(color = lineColor, radius = 3f, center = Offset(screenX, screenY))
+            }
+
+            // X-axis labels (start and end)
+            val paint = android.graphics.Paint().apply {
+                color = labelColor.hashCode()
+                textSize = 8.dp.toPx()
+                isAntiAlias = true
+            }
+            drawContext.canvas.nativeCanvas.drawText(
+                records.first().date.format(dateFormatter),
+                0f,
+                chartHeight + 12.dp.toPx(),
+                paint.apply { textAlign = android.graphics.Paint.Align.LEFT }
+            )
+            drawContext.canvas.nativeCanvas.drawText(
+                records.last().date.format(dateFormatter),
+                chartWidth,
+                chartHeight + 12.dp.toPx(),
+                paint.apply { textAlign = android.graphics.Paint.Align.RIGHT }
+            )
+        }
+    }
+}
+
+@Composable
+private fun ChangeHistoryFullScreenDialog(
+    records: List<ChangeHistoryEntity>,
+    currencyFormat: NumberFormat,
+    onDismiss: () -> Unit
+) {
+    val sortedRecords = remember(records) { records.sortedBy { it.date } }
+    val dateFormatter = DateTimeFormatter.ofPattern("MMM dd, yyyy")
+    val dividerColor = MaterialTheme.colorScheme.outlineVariant
+
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Scaffold(
+            topBar = {
+                @OptIn(ExperimentalMaterial3Api::class)
+                TopAppBar(
+                    title = { Text("Change History") },
+                    navigationIcon = {
+                        IconButton(onClick = onDismiss) {
+                            Icon(Icons.Default.Close, contentDescription = "Close")
+                        }
+                    }
+                )
+            }
+        ) { innerPadding ->
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+                    .padding(horizontal = 12.dp)
+                    .verticalScroll(rememberScrollState())
+            ) {
+                if (sortedRecords.size >= 2) {
+                    ChangeHistoryFullChart(
+                        records = sortedRecords,
+                        currencyFormat = currencyFormat,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(300.dp)
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
+
+                // Data table
+                HorizontalDivider(color = dividerColor)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(IntrinsicSize.Min)
+                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f))
+                        .padding(vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        "Date",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.weight(1.2f).padding(horizontal = 6.dp)
+                    )
+                    VerticalDivider()
+                    Text(
+                        "ETF",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.weight(1f).padding(horizontal = 6.dp),
+                        textAlign = TextAlign.End
+                    )
+                    VerticalDivider()
+                    Text(
+                        "Stock",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.weight(1f).padding(horizontal = 6.dp),
+                        textAlign = TextAlign.End
+                    )
+                    VerticalDivider()
+                    Text(
+                        "Total",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.weight(1f).padding(horizontal = 6.dp),
+                        textAlign = TextAlign.End
+                    )
+                }
+                HorizontalDivider(thickness = 2.dp, color = dividerColor)
+
+                val displayRecords = remember(records) { records.sortedByDescending { it.date } }
+                val altColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+                displayRecords.forEachIndexed { index, record ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(IntrinsicSize.Min)
+                            .background(if (index % 2 == 1) altColor else Color.Transparent)
+                            .padding(vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            record.date.format(dateFormatter),
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.weight(1.2f).padding(horizontal = 6.dp)
+                        )
+                        VerticalDivider()
+                        Text(
+                            currencyFormat.format(record.etfValue),
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.weight(1f).padding(horizontal = 6.dp),
+                            textAlign = TextAlign.End
+                        )
+                        VerticalDivider()
+                        Text(
+                            currencyFormat.format(record.stockValue),
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.weight(1f).padding(horizontal = 6.dp),
+                            textAlign = TextAlign.End
+                        )
+                        VerticalDivider()
+                        Text(
+                            currencyFormat.format(record.totalValue),
+                            style = MaterialTheme.typography.bodySmall,
+                            fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.weight(1f).padding(horizontal = 6.dp),
+                            textAlign = TextAlign.End
+                        )
+                    }
+                    HorizontalDivider(color = dividerColor)
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+            }
+        }
+    }
+}
+
+@Composable
+private fun ChangeHistoryFullChart(
+    records: List<ChangeHistoryEntity>,
+    currencyFormat: NumberFormat,
+    modifier: Modifier = Modifier
+) {
+    val totalColor = Color(0xFF4285F4)
+    val etfColor = Color(0xFF34A853)
+    val stockColor = Color(0xFFEA4335)
+    val gridColor = MaterialTheme.colorScheme.outlineVariant
+    val labelColor = MaterialTheme.colorScheme.onSurfaceVariant
+    val tooltipBg = MaterialTheme.colorScheme.inverseSurface
+    val tooltipTextColor = MaterialTheme.colorScheme.inverseOnSurface
+    val dateFormatter = DateTimeFormatter.ofPattern("MM/dd")
+
+    val allValues = records.flatMap { listOf(it.totalValue, it.etfValue, it.stockValue) }
+    val globalMin = allValues.min() * 0.998
+    val globalMax = allValues.max() * 1.002
+    val valRange = (globalMax - globalMin).let { if (it < 0.01) 1.0 else it }
+    val minEpoch = records.first().date.toEpochDay()
+    val maxEpoch = records.last().date.toEpochDay()
+    val timeRange = (maxEpoch - minEpoch).let { if (it < 1L) 1L else it }
+
+    var zoom by remember(records) { mutableStateOf(1f) }
+    var scrollOffset by remember(records) { mutableStateOf(0f) }
+    var chartWidthPx by remember { mutableStateOf(1f) }
+
+    val transformState = rememberTransformableState { zoomChange, panChange, _ ->
+        val oldZoom = zoom
+        val newZoom = (oldZoom * zoomChange).coerceIn(1f, 5f)
+        val maxScroll = (chartWidthPx * newZoom - chartWidthPx).coerceAtLeast(0f)
+        val newScroll = (scrollOffset + chartWidthPx / 2) * (newZoom / oldZoom) -
+                chartWidthPx / 2 - panChange.x
+        scrollOffset = newScroll.coerceIn(0f, maxScroll)
+        zoom = newZoom
+    }
+
+    var selectedIdx by remember(records) { mutableStateOf<Int?>(null) }
+
+    Card(
+        modifier = modifier,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+        )
+    ) {
+        Column(modifier = Modifier.fillMaxSize()) {
+            // Legend
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 6.dp),
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Canvas(modifier = Modifier.size(10.dp)) { drawCircle(color = totalColor) }
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Total", style = MaterialTheme.typography.labelSmall)
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Canvas(modifier = Modifier.size(10.dp)) { drawCircle(color = etfColor) }
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("ETF", style = MaterialTheme.typography.labelSmall)
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Canvas(modifier = Modifier.size(10.dp)) { drawCircle(color = stockColor) }
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Stock", style = MaterialTheme.typography.labelSmall)
+                }
+            }
+
+            Canvas(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+                    .padding(top = 4.dp, bottom = 24.dp, start = 48.dp, end = 12.dp)
+                    .transformable(transformState)
+                    .pointerInput(records) {
+                        detectTapGestures(
+                            onTap = { offset ->
+                                val cw = size.width.toFloat()
+                                val virtualWidth = cw * zoom
+                                var bestDist = Float.MAX_VALUE
+                                var bestIdx = -1
+
+                                records.forEachIndexed { i, record ->
+                                    val normX = (record.date.toEpochDay() - minEpoch).toFloat() / timeRange
+                                    val screenX = normX * virtualWidth - scrollOffset
+                                    val dist = abs(offset.x - screenX)
+                                    if (dist < bestDist) {
+                                        bestDist = dist
+                                        bestIdx = i
+                                    }
+                                }
+
+                                selectedIdx = if (bestDist < 30.dp.toPx()) {
+                                    if (selectedIdx == bestIdx) null else bestIdx
+                                } else null
+                            },
+                            onDoubleTap = {
+                                zoom = 1f
+                                scrollOffset = 0f
+                                selectedIdx = null
+                            }
+                        )
+                    }
+            ) {
+                val chartWidth = size.width
+                val chartHeight = size.height
+                chartWidthPx = chartWidth
+                val virtualWidth = chartWidth * zoom
+
+                // Grid lines + Y-axis labels
+                for (i in 0..3) {
+                    val y = chartHeight * i / 3f
+                    drawLine(gridColor, Offset(0f, y), Offset(chartWidth, y), 1f)
+                    val price = globalMax - (valRange * i / 3)
+                    drawContext.canvas.nativeCanvas.drawText(
+                        currencyFormat.format(price),
+                        -44.dp.toPx(),
+                        y + 4.dp.toPx(),
+                        android.graphics.Paint().apply {
+                            color = labelColor.hashCode()
+                            textSize = 9.dp.toPx()
+                            textAlign = android.graphics.Paint.Align.LEFT
+                        }
+                    )
+                }
+
+                clipRect(0f, 0f, chartWidth, chartHeight) {
+                    val seriesConfigs: List<Pair<Color, (ChangeHistoryEntity) -> Double>> = listOf(
+                        totalColor to { r: ChangeHistoryEntity -> r.totalValue },
+                        etfColor to { r: ChangeHistoryEntity -> r.etfValue },
+                        stockColor to { r: ChangeHistoryEntity -> r.stockValue }
+                    )
+
+                    for ((seriesColor, getValue) in seriesConfigs) {
+                        val path = Path()
+                        val fillPath = Path()
+                        var lastX = 0f
+
+                        records.forEachIndexed { i, record ->
+                            val normX = (record.date.toEpochDay() - minEpoch).toFloat() / timeRange
+                            val screenX = normX * virtualWidth - scrollOffset
+                            val screenY = ((globalMax - getValue(record)) / valRange * chartHeight).toFloat()
+                            lastX = screenX
+                            if (i == 0) {
+                                path.moveTo(screenX, screenY)
+                                fillPath.moveTo(screenX, chartHeight)
+                                fillPath.lineTo(screenX, screenY)
+                            } else {
+                                path.lineTo(screenX, screenY)
+                                fillPath.lineTo(screenX, screenY)
+                            }
+                        }
+                        fillPath.lineTo(lastX, chartHeight)
+                        fillPath.close()
+
+                        drawPath(fillPath, color = seriesColor.copy(alpha = 0.05f))
+                        drawPath(path, color = seriesColor, style = Stroke(width = 2.5f, cap = StrokeCap.Round))
+
+                        // Data points
+                        records.forEach { record ->
+                            val normX = (record.date.toEpochDay() - minEpoch).toFloat() / timeRange
+                            val screenX = normX * virtualWidth - scrollOffset
+                            val screenY = ((globalMax - getValue(record)) / valRange * chartHeight).toFloat()
+                            drawCircle(color = seriesColor, radius = 3f, center = Offset(screenX, screenY))
+                        }
+                    }
+
+                    // Tooltip for selected point
+                    selectedIdx?.let { idx ->
+                        if (idx in records.indices) {
+                            val record = records[idx]
+                            val normX = (record.date.toEpochDay() - minEpoch).toFloat() / timeRange
+                            val screenX = normX * virtualWidth - scrollOffset
+                            val totalY = ((globalMax - record.totalValue) / valRange * chartHeight).toFloat()
+
+                            // Vertical line
+                            drawLine(
+                                color = labelColor.copy(alpha = 0.4f),
+                                start = Offset(screenX, 0f),
+                                end = Offset(screenX, chartHeight),
+                                strokeWidth = 1f,
+                                pathEffect = PathEffect.dashPathEffect(floatArrayOf(6f, 4f))
+                            )
+
+                            // Highlight points
+                            drawCircle(color = Color.White, radius = 6f, center = Offset(screenX, totalY))
+                            drawCircle(color = totalColor, radius = 4f, center = Offset(screenX, totalY))
+
+                            // Tooltip
+                            val tooltipDateFmt = DateTimeFormatter.ofPattern("MM/dd/yy")
+                            val paint = android.graphics.Paint().apply {
+                                textSize = 10.dp.toPx()
+                                isAntiAlias = true
+                            }
+                            val line1 = "Total: ${currencyFormat.format(record.totalValue)}"
+                            val line2 = "ETF: ${currencyFormat.format(record.etfValue)}  Stock: ${currencyFormat.format(record.stockValue)}"
+                            val line3 = record.date.format(tooltipDateFmt)
+                            val maxWidth = maxOf(paint.measureText(line1), paint.measureText(line2), paint.measureText(line3))
+                            val tooltipPadH = 8.dp.toPx()
+                            val tooltipPadV = 5.dp.toPx()
+                            val lineH = paint.textSize * 1.3f
+                            val tooltipW = maxWidth + tooltipPadH * 2
+                            val tooltipH = tooltipPadV * 2 + lineH * 2 + paint.textSize
+                            val tooltipX = (screenX - tooltipW / 2).coerceIn(0f, chartWidth - tooltipW)
+                            val tooltipY = (totalY - tooltipH - 12.dp.toPx()).coerceAtLeast(0f)
+
+                            drawRoundRect(
+                                color = tooltipBg,
+                                topLeft = Offset(tooltipX, tooltipY),
+                                size = Size(tooltipW, tooltipH),
+                                cornerRadius = CornerRadius(6.dp.toPx())
+                            )
+                            paint.color = tooltipTextColor.hashCode()
+                            drawContext.canvas.nativeCanvas.drawText(
+                                line1, tooltipX + tooltipPadH,
+                                tooltipY + tooltipPadV + paint.textSize * 0.85f, paint
+                            )
+                            drawContext.canvas.nativeCanvas.drawText(
+                                line2, tooltipX + tooltipPadH,
+                                tooltipY + tooltipPadV + lineH + paint.textSize * 0.85f, paint
+                            )
+                            drawContext.canvas.nativeCanvas.drawText(
+                                line3, tooltipX + tooltipPadH,
+                                tooltipY + tooltipPadV + lineH * 2 + paint.textSize * 0.85f, paint
+                            )
+                        }
+                    }
+                }
+
+                // X-axis labels
+                val leftFraction = (scrollOffset / virtualWidth).coerceIn(0f, 1f)
+                val centerFraction = ((scrollOffset + chartWidth / 2) / virtualWidth).coerceIn(0f, 1f)
+                val rightFraction = ((scrollOffset + chartWidth) / virtualWidth).coerceIn(0f, 1f)
+
+                listOf(
+                    0f to leftFraction,
+                    chartWidth / 2 to centerFraction,
+                    chartWidth to rightFraction
+                ).forEach { (screenX, fraction) ->
+                    val epochDay = minEpoch + (fraction * timeRange).toLong()
+                    val labelDate = LocalDate.ofEpochDay(epochDay)
+                    drawContext.canvas.nativeCanvas.drawText(
+                        labelDate.format(dateFormatter),
+                        screenX,
+                        chartHeight + 16.dp.toPx(),
+                        android.graphics.Paint().apply {
+                            color = labelColor.hashCode()
+                            textSize = 9.dp.toPx()
+                            textAlign = android.graphics.Paint.Align.CENTER
+                        }
+                    )
+                }
+            }
         }
     }
 }

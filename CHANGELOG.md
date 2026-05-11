@@ -1,5 +1,24 @@
 # Changelog
 
+## v1.7 (Build 8) - 2026-05-11
+
+### Added
+- Change History: `change_history` table recording daily ETF/Stock/Total values; auto-records on price refresh when toggle enabled in Settings
+- Dashboard Portfolio Summary: miniature line chart of total_value history; click opens full-screen chart with zoomable multi-series (Total/ETF/Stock) + grid data table
+- Dashboard Portfolio Summary: "Refreshed: MMM dd, h:mm a" label showing last price refresh time
+- Watch List Reminders: optional reminder per watch list item with date/time + message; scheduled via AlarmManager; notification via BroadcastReceiver; bell icon in table row (highlighted when active); set during add or edit via dedicated dialog
+- 5 new themes: Lavender Fields, Copper Bronze, Emerald Gem, Slate Blue, Mocha Coffee (15 total)
+- Simulation chart: thicker lines (5f stroke) with labels (1W, 3M, etc.) drawn at end of each line
+- New app icon
+
+### Changed
+- Transaction form: Update/Create and Simulate buttons moved to fixed bottom bar (no longer scroll with form content); Update button placed first
+- Transaction form: ticker field now dropdown-only (selects from existing items)
+- Database version bumped to 19 (migrations v17→v18 for change_history, v18→v19 for watch list reminders)
+
+### Fixed
+- CSV Import: ticker field no longer includes trailing " - <shares>" content from brokerage exports (e.g., "MSFT - 50" now correctly imports as "MSFT")
+
 ## v1.6 (Build 7) - 2026-05-10
 
 ### Added

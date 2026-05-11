@@ -1,9 +1,13 @@
 package com.investhelp.app.ui.watchlist
 
+import android.app.AlarmManager
+import android.app.PendingIntent
 import android.content.Context
+import android.content.Intent
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.investhelp.app.AppLog
+import com.investhelp.app.ReminderReceiver
 import com.investhelp.app.data.local.entity.WatchListEntity
 import com.investhelp.app.data.local.entity.WatchListItemEntity
 import com.investhelp.app.data.remote.StockPriceService
@@ -19,6 +23,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.time.LocalDate
+import java.time.LocalDateTime
+import java.time.ZoneId
 import javax.inject.Inject
 
 data class WatchListItemUi(
@@ -144,22 +150,79 @@ class WatchListViewModel @Inject constructor(
         _fetchedPrice.value = null
     }
 
-    fun addItem(watchListId: Long, ticker: String, shares: Double, priceWhenAdded: Double) {
+    fun addItem(
+        watchListId: Long,
+        ticker: String,
+        shares: Double,
+        priceWhenAdded: Double,
+        reminderDateTime: LocalDateTime? = null,
+        reminderMessage: String? = null
+    ) {
         viewModelScope.launch {
-            repository.insertItem(
+            val id = repository.insertItem(
                 WatchListItemEntity(
                     watchListId = watchListId,
                     ticker = ticker.uppercase().trim(),
                     shares = shares,
                     priceWhenAdded = priceWhenAdded,
-                    addedDate = LocalDate.now()
+                    addedDate = LocalDate.now(),
+                    reminderDateTime = reminderDateTime,
+                    reminderMessage = reminderMessage
                 )
             )
+            if (reminderDateTime != null && reminderMessage != null) {
+                scheduleReminder(id, ticker.uppercase().trim(), reminderDateTime, reminderMessage)
+            }
         }
+    }
+
+    fun updateItemReminder(item: WatchListItemEntity, reminderDateTime: LocalDateTime?, reminderMessage: String?) {
+        viewModelScope.launch {
+            repository.updateItem(item.copy(
+                reminderDateTime = reminderDateTime,
+                reminderMessage = reminderMessage
+            ))
+            if (reminderDateTime != null && reminderMessage != null) {
+                scheduleReminder(item.id, item.ticker, reminderDateTime, reminderMessage)
+            } else {
+                cancelReminder(item.id)
+            }
+        }
+    }
+
+    private fun scheduleReminder(itemId: Long, ticker: String, dateTime: LocalDateTime, message: String) {
+        val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        val intent = Intent(context, ReminderReceiver::class.java).apply {
+            putExtra(ReminderReceiver.EXTRA_TICKER, ticker)
+            putExtra(ReminderReceiver.EXTRA_MESSAGE, message)
+            putExtra(ReminderReceiver.EXTRA_ITEM_ID, itemId)
+        }
+        val pendingIntent = PendingIntent.getBroadcast(
+            context, itemId.toInt(), intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        val triggerMs = dateTime.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
+        try {
+            alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerMs, pendingIntent)
+            AppLog.log("Reminder scheduled for $ticker at $dateTime")
+        } catch (e: Exception) {
+            AppLog.log("Failed to schedule reminder for $ticker: ${e.message}")
+        }
+    }
+
+    private fun cancelReminder(itemId: Long) {
+        val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        val intent = Intent(context, ReminderReceiver::class.java)
+        val pendingIntent = PendingIntent.getBroadcast(
+            context, itemId.toInt(), intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        alarmManager.cancel(pendingIntent)
     }
 
     fun deleteItem(item: WatchListItemEntity) {
         viewModelScope.launch {
+            cancelReminder(item.id)
             repository.deleteItem(item)
         }
     }

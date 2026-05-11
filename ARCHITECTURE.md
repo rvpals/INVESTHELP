@@ -27,7 +27,7 @@ com.investhelp.app/
 ├── MainActivity.kt              # Single activity, top bar, bottom nav, navigation host
 ├── data/
 │   ├── local/
-│   │   ├── AppDatabase.kt       # Room database (version 17) with all DAOs and migrations
+│   │   ├── AppDatabase.kt       # Room database (version 19) with all DAOs and migrations
 │   │   ├── DatabaseProvider.kt  # Lazy database initialization pattern
 │   │   ├── dao/                 # Room DAO interfaces
 │   │   └── entity/              # Room entity classes
@@ -59,7 +59,7 @@ com.investhelp.app/
 
 ## Database
 
-### Room Database (version 17)
+### Room Database (version 19)
 
 **Entities:**
 | Table | Primary Key | Description |
@@ -69,8 +69,9 @@ com.investhelp.app/
 | `investment_transactions` | `id` (auto) | Buy/sell records |
 | `account_performance` | `id` (auto) | Account value snapshots |
 | `watch_lists` | `id` (auto) | Named watch list groups |
-| `watch_list_items` | `id` (auto) | Watch list ticker entries |
+| `watch_list_items` | `id` (auto) | Watch list ticker entries (with optional reminder) |
 | `csv_import_mappings` | `importType` | Persistent CSV column maps |
+| `change_history` | `id` (auto) | Daily portfolio value snapshots (ETF/Stock/Total) |
 
 **Key Relationships:**
 - Transactions reference accounts by FK (CASCADE delete)
@@ -90,6 +91,8 @@ com.investhelp.app/
 - v14->v15: Remove accountId from items, ticker-only PK, merge duplicates
 - v15->v16: Convert performance dateTime to date, add unique index
 - v16->v17: Drop bank_transfers table (feature removed)
+- v17->v18: Create change_history table with unique date index
+- v18->v19: Add reminderDateTime and reminderMessage columns to watch_list_items
 
 ### DatabaseProvider
 Lazy initialization pattern: database opens on first access, not at app startup.

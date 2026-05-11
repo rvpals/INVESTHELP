@@ -34,8 +34,8 @@ Version is managed via `version.properties` at the project root:
 
 ```properties
 VERSION_MAJOR=1
-VERSION_MINOR=6
-VERSION_CODE=7
+VERSION_MINOR=7
+VERSION_CODE=8
 ```
 
 - **Auto-increment**: Minor version and version code increment by 1 after each `assembleDebug` or `assembleRelease`
@@ -52,7 +52,7 @@ When modifying the Room database schema:
 3. Register the migration in the database builder
 4. Update `CLAUDE.md` and `ISSUES.md` with migration notes
 
-Current version: **17**
+Current version: **19**
 
 ## Key Conventions
 

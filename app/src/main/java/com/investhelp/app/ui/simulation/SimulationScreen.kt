@@ -666,7 +666,24 @@ private fun MultiLinePriceChart(
                 drawPath(
                     path = path,
                     color = series.color,
-                    style = Stroke(width = 3f, cap = StrokeCap.Round)
+                    style = Stroke(width = 5f, cap = StrokeCap.Round)
+                )
+
+                // Label at end of line
+                val lastPrice = series.prices.last()
+                val lastX = chartWidth
+                val lastY = ((maxPrice - lastPrice.close) / priceRange * chartHeight).toFloat()
+                drawContext.canvas.nativeCanvas.drawText(
+                    series.label,
+                    lastX - 4.dp.toPx(),
+                    (lastY - 6.dp.toPx()).coerceAtLeast(12.dp.toPx()),
+                    android.graphics.Paint().apply {
+                        color = series.color.hashCode()
+                        textSize = 9.dp.toPx()
+                        textAlign = android.graphics.Paint.Align.RIGHT
+                        isFakeBoldText = true
+                        isAntiAlias = true
+                    }
                 )
             }
 

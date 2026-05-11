@@ -71,7 +71,7 @@ Android investment tracking app built with Kotlin, Jetpack Compose, and Material
 - Dashboard positions pie chart: collapsible card, legend limited to top 20 with "More" button to show all
 - Top bar portfolio button: total value row shows daily change amount in parentheses (e.g. "(+$123.45)") color-coded green/red; hidden when zero
 - Top bar portfolio button: second row shows (Day: ±X.XX%  All: ±X.XX%) color-coded green/red
-- Dashboard: "Portfolio Summary" collapsible card with pin persistence; total value change in headlineLarge (3x bigger) bold centered; Day/All percentages in bodyMedium centered below
+- Dashboard: "Portfolio Summary" collapsible card with pin persistence; total value change in headlineLarge (3x bigger) bold centered; Day/All percentages in bodyMedium centered below; mini line chart of total_value from change_history (shown when 2+ records); click mini chart opens full-screen Change History dialog with zoomable multi-series chart (Total/ETF/Stock lines) + grid data table (Date, ETF, Stock, Total columns)
 - Settings: "Warn before delete" toggle (default: on) — when off, skips confirmation dialogs for delete actions
 - Settings: "Dashboard Market Indices" section with toggles for 8 indices (NASDAQ, S&P 500, Dow, Gold, Russell 2K, Silver, Oil, Bitcoin); default: first 4 enabled; up/down arrow buttons to reorder indices; order persisted via `market_indices_order` SharedPreferences key
 - Dashboard Market Indices: long-press drag-and-drop reorder on index cards; swaps on half-slot-width threshold; persists order to SharedPreferences; syncs with Settings arrow reorder
@@ -107,7 +107,8 @@ Android investment tracking app built with Kotlin, Jetpack Compose, and Material
 - Watch List: accessible from hamburger menu; multiple named watch lists via FilterChip selector; add/rename/delete watch lists
 - Watch List: add ticker with shares count and price-when-added; "Fetch" button fetches current price from Yahoo Finance
 - Watch List: table shows ticker, shares, current price, added price, change $ (currentValue - costBasis), change %, added date, delete button
-- Watch List: `watch_lists` table (id, name) and `watch_list_items` table (id, watchListId, ticker, shares, priceWhenAdded, addedDate) with CASCADE delete
+- Watch List: `watch_lists` table (id, name) and `watch_list_items` table (id, watchListId, ticker, shares, priceWhenAdded, addedDate, reminderDateTime, reminderMessage) with CASCADE delete
+- Watch List Reminders: optional reminder per watch list item (date/time + message); scheduled via AlarmManager; notification via BroadcastReceiver; bell icon in table (colored when active); set during add or edit via dedicated dialog with date picker, time picker, and message field; "Clear" option to remove existing reminder
 - Database migration v10 -> v11: creates account_performance table
 - Database migration v11 -> v12: adds note column to account_performance
 - Database migration v12 -> v13: creates watch_lists and watch_list_items tables
@@ -115,7 +116,11 @@ Android investment tracking app built with Kotlin, Jetpack Compose, and Material
 - Database migration v14 -> v15: removes accountId from investment_items, makes ticker sole PK, merges duplicate tickers by summing quantity/cost/value
 - Database migration v15 -> v16: converts account_performance dateTime (epoch seconds) to date (epoch days), adds unique index on (accountId, date)
 - Database migration v16 -> v17: drops bank_transfers table (feature removed)
-- Database version 17
+- Database migration v17 -> v18: creates change_history table (id, date, etfValue, stockValue, totalValue) with unique index on date
+- Database migration v18 -> v19: adds reminderDateTime and reminderMessage columns to watch_list_items
+- Database version 19
+- Change History: `change_history` table records daily portfolio values by type (ETF, Stock, Total); one row per day, overwritten on re-refresh
+- Settings: "Auto Update Change History when refresh" toggle (default: off) — when on, automatically records ETF/Stock/Total values to change_history after price refresh; overwrites existing entry for today
 - CSV Import: reusable mapping system for Transaction, Position, Performance imports; mappings persisted in `csv_import_mappings` table; supports date format options per column
 - CSV Transaction Import: does NOT auto-update share counts on items; only creates item stub if ticker doesn't exist
 - Settings Data Management: 3 import types (Transaction Records, Position Details, Performance Records) each with "Define Mapping" and "Start Import" buttons; shared account selector

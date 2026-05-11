@@ -408,6 +408,206 @@ enum class AppTheme(
             errorContainer = Color(0xFF93000A),
             onErrorContainer = Color(0xFFFFDAD6)
         )
+    ),
+
+    Lavender(
+        label = "Lavender Fields",
+        lightScheme = lightColorScheme(
+            primary = Color(0xFF5C6BC0),
+            onPrimary = Color.White,
+            primaryContainer = Color(0xFFC5CAE9),
+            onPrimaryContainer = Color(0xFF283593),
+            secondary = Color(0xFF5F5D6E),
+            onSecondary = Color.White,
+            secondaryContainer = Color(0xFFE4E1F3),
+            onSecondaryContainer = Color(0xFF1C1A29),
+            tertiary = Color(0xFF7E57C2),
+            onTertiary = Color.White,
+            tertiaryContainer = Color(0xFFD1C4E9),
+            onTertiaryContainer = Color(0xFF4527A0),
+            error = Color(0xFFBA1A1A),
+            onError = Color.White,
+            errorContainer = Color(0xFFFFDAD6),
+            onErrorContainer = Color(0xFF410002)
+        ),
+        darkScheme = darkColorScheme(
+            primary = Color(0xFF9FA8DA),
+            onPrimary = Color(0xFF1A237E),
+            primaryContainer = Color(0xFF303F9F),
+            onPrimaryContainer = Color(0xFFC5CAE9),
+            secondary = Color(0xFFC8C5D7),
+            onSecondary = Color(0xFF312F3E),
+            secondaryContainer = Color(0xFF484556),
+            onSecondaryContainer = Color(0xFFE4E1F3),
+            tertiary = Color(0xFFB39DDB),
+            onTertiary = Color(0xFF311B92),
+            tertiaryContainer = Color(0xFF4527A0),
+            onTertiaryContainer = Color(0xFFEDE7F6),
+            error = Color(0xFFFFB4AB),
+            onError = Color(0xFF690005),
+            errorContainer = Color(0xFF93000A),
+            onErrorContainer = Color(0xFFFFDAD6)
+        )
+    ),
+
+    Copper(
+        label = "Copper Bronze",
+        lightScheme = lightColorScheme(
+            primary = Color(0xFFBF360C),
+            onPrimary = Color.White,
+            primaryContainer = Color(0xFFFFCCBC),
+            onPrimaryContainer = Color(0xFF7F2400),
+            secondary = Color(0xFF6D5B4F),
+            onSecondary = Color.White,
+            secondaryContainer = Color(0xFFF8DFCE),
+            onSecondaryContainer = Color(0xFF271911),
+            tertiary = Color(0xFF795548),
+            onTertiary = Color.White,
+            tertiaryContainer = Color(0xFFD7CCC8),
+            onTertiaryContainer = Color(0xFF3E2723),
+            error = Color(0xFFBA1A1A),
+            onError = Color.White,
+            errorContainer = Color(0xFFFFDAD6),
+            onErrorContainer = Color(0xFF410002)
+        ),
+        darkScheme = darkColorScheme(
+            primary = Color(0xFFFFAB91),
+            onPrimary = Color(0xFF5E1600),
+            primaryContainer = Color(0xFF862200),
+            onPrimaryContainer = Color(0xFFFFDBCF),
+            secondary = Color(0xFFDBBFB3),
+            onSecondary = Color(0xFF3D2E23),
+            secondaryContainer = Color(0xFF554438),
+            onSecondaryContainer = Color(0xFFF8DFCE),
+            tertiary = Color(0xFFBCAAA4),
+            onTertiary = Color(0xFF2C1A12),
+            tertiaryContainer = Color(0xFF4E342E),
+            onTertiaryContainer = Color(0xFFEFEBE9),
+            error = Color(0xFFFFB4AB),
+            onError = Color(0xFF690005),
+            errorContainer = Color(0xFF93000A),
+            onErrorContainer = Color(0xFFFFDAD6)
+        )
+    ),
+
+    Emerald(
+        label = "Emerald Gem",
+        lightScheme = lightColorScheme(
+            primary = Color(0xFF00796B),
+            onPrimary = Color.White,
+            primaryContainer = Color(0xFFB2DFDB),
+            onPrimaryContainer = Color(0xFF004D40),
+            secondary = Color(0xFF4D6357),
+            onSecondary = Color.White,
+            secondaryContainer = Color(0xFFCFE9D9),
+            onSecondaryContainer = Color(0xFF0A2016),
+            tertiary = Color(0xFF00897B),
+            onTertiary = Color.White,
+            tertiaryContainer = Color(0xFFA7F3D0),
+            onTertiaryContainer = Color(0xFF002E25),
+            error = Color(0xFFBA1A1A),
+            onError = Color.White,
+            errorContainer = Color(0xFFFFDAD6),
+            onErrorContainer = Color(0xFF410002)
+        ),
+        darkScheme = darkColorScheme(
+            primary = Color(0xFF80CBC4),
+            onPrimary = Color(0xFF003731),
+            primaryContainer = Color(0xFF00504A),
+            onPrimaryContainer = Color(0xFFB2DFDB),
+            secondary = Color(0xFFB4CCBE),
+            onSecondary = Color(0xFF1F352A),
+            secondaryContainer = Color(0xFF364C40),
+            onSecondaryContainer = Color(0xFFCFE9D9),
+            tertiary = Color(0xFF6EE7B7),
+            onTertiary = Color(0xFF003826),
+            tertiaryContainer = Color(0xFF005138),
+            onTertiaryContainer = Color(0xFFA7F3D0),
+            error = Color(0xFFFFB4AB),
+            onError = Color(0xFF690005),
+            errorContainer = Color(0xFF93000A),
+            onErrorContainer = Color(0xFFFFDAD6)
+        )
+    ),
+
+    Slate(
+        label = "Slate Blue",
+        lightScheme = lightColorScheme(
+            primary = Color(0xFF455A64),
+            onPrimary = Color.White,
+            primaryContainer = Color(0xFFCFD8DC),
+            onPrimaryContainer = Color(0xFF263238),
+            secondary = Color(0xFF607D8B),
+            onSecondary = Color.White,
+            secondaryContainer = Color(0xFFB0BEC5),
+            onSecondaryContainer = Color(0xFF1C313A),
+            tertiary = Color(0xFF1565C0),
+            onTertiary = Color.White,
+            tertiaryContainer = Color(0xFFBBDEFB),
+            onTertiaryContainer = Color(0xFF0D47A1),
+            error = Color(0xFFBA1A1A),
+            onError = Color.White,
+            errorContainer = Color(0xFFFFDAD6),
+            onErrorContainer = Color(0xFF410002)
+        ),
+        darkScheme = darkColorScheme(
+            primary = Color(0xFF90A4AE),
+            onPrimary = Color(0xFF1C2D35),
+            primaryContainer = Color(0xFF37474F),
+            onPrimaryContainer = Color(0xFFCFD8DC),
+            secondary = Color(0xFF78909C),
+            onSecondary = Color(0xFF1C313A),
+            secondaryContainer = Color(0xFF455A64),
+            onSecondaryContainer = Color(0xFFCFD8DC),
+            tertiary = Color(0xFF90CAF9),
+            onTertiary = Color(0xFF0A3262),
+            tertiaryContainer = Color(0xFF0D47A1),
+            onTertiaryContainer = Color(0xFFBBDEFB),
+            error = Color(0xFFFFB4AB),
+            onError = Color(0xFF690005),
+            errorContainer = Color(0xFF93000A),
+            onErrorContainer = Color(0xFFFFDAD6)
+        )
+    ),
+
+    Mocha(
+        label = "Mocha Coffee",
+        lightScheme = lightColorScheme(
+            primary = Color(0xFF4E342E),
+            onPrimary = Color.White,
+            primaryContainer = Color(0xFFD7CCC8),
+            onPrimaryContainer = Color(0xFF3E2723),
+            secondary = Color(0xFF6D4C41),
+            onSecondary = Color.White,
+            secondaryContainer = Color(0xFFEFEBE9),
+            onSecondaryContainer = Color(0xFF321911),
+            tertiary = Color(0xFFFF8F00),
+            onTertiary = Color.White,
+            tertiaryContainer = Color(0xFFFFECB3),
+            onTertiaryContainer = Color(0xFF5D4200),
+            error = Color(0xFFBA1A1A),
+            onError = Color.White,
+            errorContainer = Color(0xFFFFDAD6),
+            onErrorContainer = Color(0xFF410002)
+        ),
+        darkScheme = darkColorScheme(
+            primary = Color(0xFFBCAAA4),
+            onPrimary = Color(0xFF2C1A12),
+            primaryContainer = Color(0xFF4E342E),
+            onPrimaryContainer = Color(0xFFEFEBE9),
+            secondary = Color(0xFFA1887F),
+            onSecondary = Color(0xFF321911),
+            secondaryContainer = Color(0xFF5D4037),
+            onSecondaryContainer = Color(0xFFEFEBE9),
+            tertiary = Color(0xFFFFCA28),
+            onTertiary = Color(0xFF3E2800),
+            tertiaryContainer = Color(0xFF5D4200),
+            onTertiaryContainer = Color(0xFFFFECB3),
+            error = Color(0xFFFFB4AB),
+            onError = Color(0xFF690005),
+            errorContainer = Color(0xFF93000A),
+            onErrorContainer = Color(0xFFFFDAD6)
+        )
     );
 
     companion object {

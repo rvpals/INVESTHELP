@@ -5,6 +5,7 @@ import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
 import java.time.LocalDate
+import java.time.LocalDateTime
 
 @Entity(
     tableName = "watch_list_items",
@@ -24,5 +25,7 @@ data class WatchListItemEntity(
     val ticker: String,
     val shares: Double,
     val priceWhenAdded: Double,
-    val addedDate: LocalDate
+    val addedDate: LocalDate,
+    val reminderDateTime: LocalDateTime? = null,
+    val reminderMessage: String? = null
 )

@@ -48,6 +48,11 @@ class TransactionViewModel @Inject constructor(
             }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
 
+    val allTickers: StateFlow<List<String>> =
+        itemDao.getAllItems()
+            .map { items -> items.map { it.ticker }.sorted() }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
     private val _selectedTransaction = MutableStateFlow<InvestmentTransactionEntity?>(null)
     val selectedTransaction: StateFlow<InvestmentTransactionEntity?> = _selectedTransaction.asStateFlow()
 

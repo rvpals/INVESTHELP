@@ -77,6 +77,7 @@ fun TransactionFormScreen(
     val isEditing = transactionId != null
     val accounts by viewModel.allAccounts.collectAsStateWithLifecycle()
     val existingTransaction by viewModel.selectedTransaction.collectAsStateWithLifecycle()
+    val allTickers by viewModel.allTickers.collectAsStateWithLifecycle()
 
     if (isEditing) {
         LaunchedEffect(transactionId) {
@@ -109,6 +110,7 @@ fun TransactionFormScreen(
     var showDatePicker by remember { mutableStateOf(false) }
     var showTimePicker by remember { mutableStateOf(false) }
     var accountExpanded by remember { mutableStateOf(false) }
+    var tickerExpanded by remember { mutableStateOf(false) }
     var initialized by rememberSaveable { mutableStateOf(false) }
 
     val dateFormatter = DateTimeFormatter.ofPattern("MMM dd, yyyy")
@@ -150,6 +152,8 @@ fun TransactionFormScreen(
         }
     }
 
+    val daysSinceTransaction = ChronoUnit.DAYS.between(date, LocalDate.now()).toInt()
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -160,6 +164,60 @@ fun TransactionFormScreen(
                     }
                 }
             )
+        },
+        bottomBar = {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Button(
+                    onClick = {
+                        val sharesVal = numberOfShares.toDoubleOrNull() ?: 0.0
+                        val priceVal = pricePerShare.toDoubleOrNull() ?: 0.0
+                        val totalVal = totalAmount.toDoubleOrNull() ?: 0.0
+                        if (selectedAccountId != null && ticker.isNotBlank()) {
+                            viewModel.saveTransaction(
+                                date = date,
+                                time = time,
+                                action = action,
+                                accountId = selectedAccountId!!,
+                                ticker = ticker.trim(),
+                                numberOfShares = sharesVal,
+                                pricePerShare = priceVal,
+                                totalAmount = totalVal,
+                                note = note.trim(),
+                                existingId = transactionId
+                            )
+                            onSaved()
+                        }
+                    },
+                    modifier = Modifier.weight(1f),
+                    enabled = selectedAccountId != null && ticker.isNotBlank() &&
+                            numberOfShares.toDoubleOrNull() != null && pricePerShare.toDoubleOrNull() != null
+                ) {
+                    Text(if (isEditing) "Update" else "Create")
+                }
+                Button(
+                    onClick = {
+                        val sharesVal = numberOfShares.toDoubleOrNull() ?: 0.0
+                        onSimulate(ticker.trim(), sharesVal, daysSinceTransaction)
+                    },
+                    modifier = Modifier.weight(1f),
+                    enabled = ticker.isNotBlank() && numberOfShares.toDoubleOrNull() != null && daysSinceTransaction > 0,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.tertiary
+                    )
+                ) {
+                    Icon(
+                        Icons.AutoMirrored.Filled.TrendingUp,
+                        contentDescription = null,
+                        modifier = Modifier.padding(end = 8.dp)
+                    )
+                    Text("Simulate")
+                }
+            }
         }
     ) { padding ->
         Column(
@@ -278,13 +336,37 @@ fun TransactionFormScreen(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                OutlinedTextField(
-                    value = ticker,
-                    onValueChange = { ticker = it.uppercase() },
-                    label = { Text("Ticker") },
-                    singleLine = true,
+                ExposedDropdownMenuBox(
+                    expanded = tickerExpanded,
+                    onExpandedChange = { tickerExpanded = it },
                     modifier = Modifier.weight(1f)
-                )
+                ) {
+                    OutlinedTextField(
+                        value = ticker,
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Ticker") },
+                        singleLine = true,
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = tickerExpanded) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .menuAnchor(MenuAnchorType.PrimaryNotEditable)
+                    )
+                    ExposedDropdownMenu(
+                        expanded = tickerExpanded,
+                        onDismissRequest = { tickerExpanded = false }
+                    ) {
+                        allTickers.forEach { t ->
+                            DropdownMenuItem(
+                                text = { Text(t) },
+                                onClick = {
+                                    ticker = t
+                                    tickerExpanded = false
+                                }
+                            )
+                        }
+                    }
+                }
                 Spacer(modifier = Modifier.width(8.dp))
                 OutlinedButton(
                     onClick = { if (ticker.isNotBlank()) onViewItem(ticker.trim()) },
@@ -376,57 +458,6 @@ fun TransactionFormScreen(
             )
 
             Spacer(modifier = Modifier.height(16.dp))
-
-            // Simulate button - shows price movement from transaction date to now
-            val daysSinceTransaction = ChronoUnit.DAYS.between(date, LocalDate.now()).toInt()
-            Button(
-                onClick = {
-                    val sharesVal = numberOfShares.toDoubleOrNull() ?: 0.0
-                    onSimulate(ticker.trim(), sharesVal, daysSinceTransaction)
-                },
-                modifier = Modifier.fillMaxWidth(),
-                enabled = ticker.isNotBlank() && numberOfShares.toDoubleOrNull() != null && daysSinceTransaction > 0,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.tertiary
-                )
-            ) {
-                Icon(
-                    Icons.AutoMirrored.Filled.TrendingUp,
-                    contentDescription = null,
-                    modifier = Modifier.padding(end = 8.dp)
-                )
-                Text("Simulate")
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            Button(
-                onClick = {
-                    val sharesVal = numberOfShares.toDoubleOrNull() ?: 0.0
-                    val priceVal = pricePerShare.toDoubleOrNull() ?: 0.0
-                    val totalVal = totalAmount.toDoubleOrNull() ?: 0.0
-                    if (selectedAccountId != null && ticker.isNotBlank()) {
-                        viewModel.saveTransaction(
-                            date = date,
-                            time = time,
-                            action = action,
-                            accountId = selectedAccountId!!,
-                            ticker = ticker.trim(),
-                            numberOfShares = sharesVal,
-                            pricePerShare = priceVal,
-                            totalAmount = totalVal,
-                            note = note.trim(),
-                            existingId = transactionId
-                        )
-                        onSaved()
-                    }
-                },
-                modifier = Modifier.fillMaxWidth(),
-                enabled = selectedAccountId != null && ticker.isNotBlank() &&
-                        numberOfShares.toDoubleOrNull() != null && pricePerShare.toDoubleOrNull() != null
-            ) {
-                Text(if (isEditing) "Update" else "Create")
-            }
         }
     }
 

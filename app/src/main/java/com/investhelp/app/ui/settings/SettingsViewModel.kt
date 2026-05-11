@@ -70,6 +70,7 @@ data class SettingsUiState(
     val isExporting: Boolean = false,
     val isRestoring: Boolean = false,
     val autoUpdateShares: Boolean = false,
+    val autoUpdateChangeHistory: Boolean = false,
     val warnBeforeDelete: Boolean = true,
     val selectedTheme: AppTheme = AppTheme.Default,
     val enabledMarketIndices: Set<String> = SettingsViewModel.DEFAULT_MARKET_INDICES,
@@ -95,6 +96,7 @@ class SettingsViewModel @Inject constructor(
         const val KEY_WARN_BEFORE_DELETE = "warn_before_delete"
         const val KEY_MARKET_INDICES = "market_indices"
         const val KEY_MARKET_INDICES_ORDER = "market_indices_order"
+        const val KEY_AUTO_UPDATE_CHANGE_HISTORY = "auto_update_change_history"
         const val KEY_BACKUP_FOLDER_URI = "backup_folder_uri"
         const val KEY_THEME = "app_theme"
 
@@ -135,6 +137,7 @@ class SettingsViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(
         SettingsUiState(
             autoUpdateShares = prefs.getBoolean(KEY_AUTO_UPDATE_SHARES, false),
+            autoUpdateChangeHistory = prefs.getBoolean(KEY_AUTO_UPDATE_CHANGE_HISTORY, false),
             warnBeforeDelete = prefs.getBoolean(KEY_WARN_BEFORE_DELETE, true),
             selectedTheme = AppTheme.fromName(prefs.getString(KEY_THEME, AppTheme.Default.name) ?: AppTheme.Default.name),
             enabledMarketIndices = prefs.getStringSet(KEY_MARKET_INDICES, null)
@@ -160,6 +163,11 @@ class SettingsViewModel @Inject constructor(
     fun setAutoUpdateShares(enabled: Boolean) {
         prefs.edit().putBoolean(KEY_AUTO_UPDATE_SHARES, enabled).apply()
         _uiState.value = _uiState.value.copy(autoUpdateShares = enabled)
+    }
+
+    fun setAutoUpdateChangeHistory(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_AUTO_UPDATE_CHANGE_HISTORY, enabled).apply()
+        _uiState.value = _uiState.value.copy(autoUpdateChangeHistory = enabled)
     }
 
     fun setWarnBeforeDelete(enabled: Boolean) {
@@ -649,7 +657,8 @@ class SettingsViewModel @Inject constructor(
         dateFormats: Map<String, String>,
         defaultAccountId: Long
     ) {
-        val ticker = fields["ticker"]?.uppercase()
+        val rawTicker = fields["ticker"]?.trim()?.uppercase()
+        val ticker = rawTicker?.split("\\s+-\\s+".toRegex())?.firstOrNull()?.trim()
         if (ticker.isNullOrBlank()) throw Exception("Missing ticker")
         val shares = parseNumeric(fields["numberOfShares"])
             ?: throw Exception("Missing numberOfShares")
@@ -708,7 +717,8 @@ class SettingsViewModel @Inject constructor(
         fields: Map<String, String>,
         defaultAccountId: Long
     ) {
-        val ticker = fields["ticker"]?.uppercase()
+        val rawTicker = fields["ticker"]?.trim()?.uppercase()
+        val ticker = rawTicker?.split("\\s+-\\s+".toRegex())?.firstOrNull()?.trim()
         if (ticker.isNullOrBlank()) throw Exception("Missing ticker")
 
         val existing = itemDao.getItemByTicker(ticker)
