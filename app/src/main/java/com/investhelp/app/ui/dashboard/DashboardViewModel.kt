@@ -90,6 +90,7 @@ class DashboardViewModel @Inject constructor(
         const val KEY_PIN_POSITIONS = "pin_card_positions"
         const val KEY_PIN_DAILY_GLANCE = "pin_card_daily_glance"
         const val KEY_PIN_POSITION_DETAILS = "pin_card_position_details"
+        const val KEY_PIN_PORTFOLIO_SUMMARY = "pin_card_portfolio_summary"
     }
 
     private val _isRefreshing = MutableStateFlow(false)
@@ -100,7 +101,8 @@ class DashboardViewModel @Inject constructor(
             KEY_PIN_MARKET_INDICES to prefs.getBoolean(KEY_PIN_MARKET_INDICES, false),
             KEY_PIN_POSITIONS to prefs.getBoolean(KEY_PIN_POSITIONS, false),
             KEY_PIN_DAILY_GLANCE to prefs.getBoolean(KEY_PIN_DAILY_GLANCE, false),
-            KEY_PIN_POSITION_DETAILS to prefs.getBoolean(KEY_PIN_POSITION_DETAILS, false)
+            KEY_PIN_POSITION_DETAILS to prefs.getBoolean(KEY_PIN_POSITION_DETAILS, false),
+            KEY_PIN_PORTFOLIO_SUMMARY to prefs.getBoolean(KEY_PIN_PORTFOLIO_SUMMARY, true)
         )
     )
     val pinStates: StateFlow<Map<String, Boolean>> = _pinStates.asStateFlow()

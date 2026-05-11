@@ -9,6 +9,11 @@
 - Spinner shown during price refresh
 - Hamburger menu: Accounts, Watch List, Settings, SQL Explorer, Help, About
 
+### Dashboard Portfolio Summary
+- Collapsible "Portfolio Summary" card with pin persistence
+- Total daily value change displayed in 3x larger font (headlineLarge, bold, centered)
+- Day % and All-time % shown below in bodyMedium, centered, color-coded green/red
+
 ### Bottom Navigation
 - 5 tabs: Dashboard, Items, Performance, Transaction, Simulation
 - 3D gradient icons with shadow/elevation effect
@@ -68,8 +73,8 @@
 - Card row 2 (medium): Daily G/L, Daily G/L/Share, Daily Min, Daily Max
 - Collapsible Stats section: average/max/min buy/sell prices with date range filter
 - Collapsible Transactions section: each card shows days since date and G/L
-- Analysis Info button: Yahoo Finance quoteSummary (sector, P/E, EPS, 52-week range, etc.)
-- Yahoo Finance link: opens ticker page in browser
+- Collapsible "Analysis Info" panel: auto-fetches Yahoo Finance quoteSummary (sector, P/E, EPS, 52-week range, profit margins, business summary) on screen load; displayed inline
+- Yahoo Finance link: opens ticker page in browser (full-width button)
 - Simulate button: opens simulation with ticker and shares
 
 ## Transactions
@@ -111,7 +116,7 @@
   - "Smooth Curve" checkbox for cubic Bezier smoothing
   - Note indicators: bold data points with white outline
   - Double-tap opens full-screen chart dialog
-- Records list: filterable by account, sortable by Account/Date/Value/Note
+- Records list: grid table with horizontal and vertical gridlines, header row, alternating row colors; filterable by account, sortable by Account/Date/Value/Note
 
 ## Watch List
 

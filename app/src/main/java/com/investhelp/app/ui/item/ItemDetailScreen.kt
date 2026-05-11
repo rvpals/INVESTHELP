@@ -14,15 +14,12 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
-import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
@@ -35,12 +32,10 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -54,6 +49,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.investhelp.app.data.remote.AnalysisInfo
+import com.investhelp.app.ui.components.CollapsibleCard
 import com.investhelp.app.ui.components.DateRangeSelector
 import java.text.NumberFormat
 import java.time.LocalDate
@@ -83,18 +79,17 @@ fun ItemDetailScreen(
     val currencyFormat = NumberFormat.getCurrencyInstance(Locale.US)
     val dateFormatter = DateTimeFormatter.ofPattern("MMM dd, yyyy")
 
-    var showAnalysisSheet by remember { mutableStateOf(false) }
     var statsExpanded by remember { mutableStateOf(false) }
     var transactionsExpanded by remember { mutableStateOf(false) }
     var statsStartDate by remember { mutableStateOf(LocalDate.now().minusYears(1)) }
     var statsEndDate by remember { mutableStateOf(LocalDate.now()) }
 
-    LaunchedEffect(ticker, statsStartDate, statsEndDate) {
-        viewModel.loadStatistics(ticker, statsStartDate, statsEndDate)
+    LaunchedEffect(ticker) {
+        viewModel.fetchAnalysisInfo(ticker)
     }
 
-    LaunchedEffect(analysisInfo) {
-        if (analysisInfo != null) showAnalysisSheet = true
+    LaunchedEffect(ticker, statsStartDate, statsEndDate) {
+        viewModel.loadStatistics(ticker, statsStartDate, statsEndDate)
     }
 
     Scaffold(
@@ -225,63 +220,58 @@ fun ItemDetailScreen(
                 }
             }
 
-            // Action buttons row: Analysis Info + Yahoo Finance
+            // Analysis Info collapsible panel
             item {
-                item?.let { inv ->
-                    Spacer(modifier = Modifier.height(4.dp))
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        val context = LocalContext.current
-                        Button(
-                            onClick = { viewModel.fetchAnalysisInfo(ticker) },
-                            modifier = Modifier.weight(1f),
-                            enabled = !isLoadingAnalysis
-                        ) {
-                            if (isLoadingAnalysis) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.padding(end = 8.dp),
-                                    strokeWidth = 2.dp,
-                                    color = MaterialTheme.colorScheme.onPrimary
-                                )
-                            } else {
-                                Icon(
-                                    Icons.Default.Info,
-                                    contentDescription = null,
-                                    modifier = Modifier.padding(end = 8.dp)
-                                )
-                            }
-                            Text("Analysis Info")
-                        }
-
-                        OutlinedButton(
-                            onClick = {
-                                val intent = Intent(
-                                    Intent.ACTION_VIEW,
-                                    Uri.parse("https://finance.yahoo.com/quote/$ticker")
-                                )
-                                context.startActivity(intent)
-                            },
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Icon(
-                                Icons.Default.OpenInNew,
-                                contentDescription = null,
-                                modifier = Modifier.padding(end = 8.dp)
-                            )
-                            Text("Yahoo Finance")
-                        }
-                    }
-
-                    if (analysisError != null) {
+                Spacer(modifier = Modifier.height(4.dp))
+                CollapsibleCard(
+                    title = "Analysis Info",
+                    pinned = false,
+                    onPinToggle = {}
+                ) {
+                    if (isLoadingAnalysis) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.padding(16.dp),
+                            strokeWidth = 2.dp
+                        )
+                    } else if (analysisError != null) {
                         Text(
                             text = analysisError!!,
                             color = MaterialTheme.colorScheme.error,
                             style = MaterialTheme.typography.bodySmall,
-                            modifier = Modifier.padding(top = 4.dp)
+                            modifier = Modifier.padding(16.dp)
                         )
+                    } else if (analysisInfo != null) {
+                        AnalysisInfoContent(
+                            ticker = ticker,
+                            info = analysisInfo!!,
+                            currencyFormat = currencyFormat
+                        )
+                    }
+                }
+            }
+
+            // Yahoo Finance + Simulate buttons
+            item {
+                item?.let { inv ->
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    val context = LocalContext.current
+                    OutlinedButton(
+                        onClick = {
+                            val intent = Intent(
+                                Intent.ACTION_VIEW,
+                                Uri.parse("https://finance.yahoo.com/quote/$ticker")
+                            )
+                            context.startActivity(intent)
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(
+                            Icons.Default.OpenInNew,
+                            contentDescription = null,
+                            modifier = Modifier.padding(end = 8.dp)
+                        )
+                        Text("Yahoo Finance")
                     }
 
                     Button(
@@ -464,23 +454,6 @@ fun ItemDetailScreen(
         }
     }
 
-    // Analysis Info Bottom Sheet
-    if (showAnalysisSheet && analysisInfo != null) {
-        val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-        ModalBottomSheet(
-            onDismissRequest = {
-                showAnalysisSheet = false
-                viewModel.clearAnalysisInfo()
-            },
-            sheetState = sheetState
-        ) {
-            AnalysisInfoContent(
-                ticker = ticker,
-                info = analysisInfo!!,
-                currencyFormat = currencyFormat
-            )
-        }
-    }
 }
 
 @Composable
@@ -496,9 +469,7 @@ private fun AnalysisInfoContent(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp)
-            .padding(bottom = 32.dp)
-            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 8.dp, vertical = 8.dp)
     ) {
         Text(
             text = info.shortName ?: ticker,

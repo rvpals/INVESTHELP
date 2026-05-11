@@ -7,12 +7,15 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.rememberTransformableState
 import androidx.compose.foundation.gestures.transformable
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -42,6 +45,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.VerticalDivider
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -893,67 +897,120 @@ fun AccountPerformanceScreen(
                             )
                         }
 
-                        filteredAndSorted.forEach { record ->
-                            val accountName = accounts.find { it.id == record.accountId }?.name ?: "Unknown"
-                            Card(modifier = Modifier.fillMaxWidth()) {
+                        if (filteredAndSorted.isNotEmpty()) {
+                            val altColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+                            Column(modifier = Modifier.fillMaxWidth()) {
+                                // Header row
+                                HorizontalDivider()
                                 Row(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .padding(12.dp),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                        .height(IntrinsicSize.Min)
+                                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Column(modifier = Modifier.weight(1f)) {
-                                        Text(
-                                            text = accountName,
-                                            style = MaterialTheme.typography.labelLarge,
-                                            color = MaterialTheme.colorScheme.primary
-                                        )
+                                    Text(
+                                        text = "Account",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontWeight = FontWeight.Bold,
+                                        modifier = Modifier.weight(1.2f).padding(horizontal = 6.dp, vertical = 8.dp)
+                                    )
+                                    VerticalDivider(modifier = Modifier.fillMaxHeight())
+                                    Text(
+                                        text = "Date",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontWeight = FontWeight.Bold,
+                                        modifier = Modifier.weight(1f).padding(horizontal = 6.dp, vertical = 8.dp)
+                                    )
+                                    VerticalDivider(modifier = Modifier.fillMaxHeight())
+                                    Text(
+                                        text = "Value",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontWeight = FontWeight.Bold,
+                                        modifier = Modifier.weight(1f).padding(horizontal = 6.dp, vertical = 8.dp)
+                                    )
+                                    VerticalDivider(modifier = Modifier.fillMaxHeight())
+                                    Text(
+                                        text = "",
+                                        modifier = Modifier.width(80.dp)
+                                    )
+                                }
+                                HorizontalDivider()
+
+                                filteredAndSorted.forEachIndexed { index, record ->
+                                    val accountName = accounts.find { it.id == record.accountId }?.name ?: "Unknown"
+                                    val rowBg = if (index % 2 == 1) altColor else Color.Transparent
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .height(IntrinsicSize.Min)
+                                            .background(rowBg),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Column(modifier = Modifier.weight(1.2f).padding(horizontal = 6.dp, vertical = 6.dp)) {
+                                            Text(
+                                                text = accountName,
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.primary
+                                            )
+                                            if (record.note.isNotBlank()) {
+                                                Text(
+                                                    text = record.note,
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                )
+                                            }
+                                        }
+                                        VerticalDivider(modifier = Modifier.fillMaxHeight())
                                         Text(
                                             text = record.date.format(dateFormatter),
                                             style = MaterialTheme.typography.bodySmall,
                                             color = MaterialTheme.colorScheme.primary,
-                                            modifier = Modifier.clickable {
-                                                editDateText = record.date.format(dateInputFormatter)
-                                                editDateTarget = record
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .padding(horizontal = 6.dp, vertical = 6.dp)
+                                                .clickable {
+                                                    editDateText = record.date.format(dateInputFormatter)
+                                                    editDateTarget = record
+                                                }
+                                        )
+                                        VerticalDivider(modifier = Modifier.fillMaxHeight())
+                                        Text(
+                                            text = currencyFormat.format(record.totalValue),
+                                            style = MaterialTheme.typography.bodySmall,
+                                            fontWeight = FontWeight.SemiBold,
+                                            modifier = Modifier.weight(1f).padding(horizontal = 6.dp, vertical = 6.dp)
+                                        )
+                                        VerticalDivider(modifier = Modifier.fillMaxHeight())
+                                        Row(modifier = Modifier.width(80.dp), horizontalArrangement = Arrangement.Center) {
+                                            IconButton(onClick = {
+                                                editNoteText = record.note
+                                                editTarget = record
+                                            }, modifier = Modifier.size(32.dp)) {
+                                                Icon(
+                                                    Icons.Default.Edit,
+                                                    contentDescription = "Edit note",
+                                                    tint = MaterialTheme.colorScheme.primary,
+                                                    modifier = Modifier.size(16.dp)
+                                                )
                                             }
-                                        )
-                                        if (record.note.isNotBlank()) {
-                                            Text(
-                                                text = record.note,
-                                                style = MaterialTheme.typography.bodySmall,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                                            )
+                                            IconButton(onClick = {
+                                                if (warnBeforeDelete) {
+                                                    deleteTarget = record
+                                                } else {
+                                                    viewModel.deleteRecord(record)
+                                                }
+                                            }, modifier = Modifier.size(32.dp)) {
+                                                Icon(
+                                                    Icons.Default.Delete,
+                                                    contentDescription = "Delete",
+                                                    tint = MaterialTheme.colorScheme.error,
+                                                    modifier = Modifier.size(16.dp)
+                                                )
+                                            }
                                         }
                                     }
-                                    Text(
-                                        text = currencyFormat.format(record.totalValue),
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        fontWeight = FontWeight.SemiBold
-                                    )
-                                    IconButton(onClick = {
-                                        editNoteText = record.note
-                                        editTarget = record
-                                    }) {
-                                        Icon(
-                                            Icons.Default.Edit,
-                                            contentDescription = "Edit note",
-                                            tint = MaterialTheme.colorScheme.primary
-                                        )
-                                    }
-                                    IconButton(onClick = {
-                                        if (warnBeforeDelete) {
-                                            deleteTarget = record
-                                        } else {
-                                            viewModel.deleteRecord(record)
-                                        }
-                                    }) {
-                                        Icon(
-                                            Icons.Default.Delete,
-                                            contentDescription = "Delete",
-                                            tint = MaterialTheme.colorScheme.error
-                                        )
-                                    }
+                                    HorizontalDivider()
                                 }
                             }
                         }

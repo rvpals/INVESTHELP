@@ -103,8 +103,8 @@ Android app to track personal investments.
 - Card row 1 (big font): Total Shares, Total Value, Total Cost, Total G/L
 - Card row 2 (medium font): Daily G/L, Daily G/L/Share, Daily Min Price, Daily Max Price
 - Transactions list for the ticker — each card shows days since transaction date and G/L (current price vs transaction price), colored green/red
-- **Analysis Info** — fetches Yahoo Finance quoteSummary (sector, industry, P/E, EPS, 52-week range, profit margins, business summary) displayed in a bottom sheet
-- **Yahoo Finance link** — opens ticker page in browser
+- **Analysis Info** — collapsible panel that auto-fetches Yahoo Finance quoteSummary (sector, industry, P/E, EPS, 52-week range, profit margins, business summary) on screen load; displayed inline
+- **Yahoo Finance link** — full-width button that opens ticker page in browser
 - **View Statistics** — average/max/min buy/sell prices filterable by date range
 - **Simulate** — navigates to simulation pre-filled with ticker and shares
 

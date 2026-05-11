@@ -1,5 +1,15 @@
 # Changelog
 
+## v1.6 (Build 7) - 2026-05-10
+
+### Added
+- Dashboard: "Portfolio Summary" collapsible card wrapping daily change amount and Day/All percentages; total value change displayed in 3x larger font (headlineLarge)
+- Performance screen: Records list converted from cards to grid table with horizontal and vertical gridlines, header row, and alternating row colors
+
+### Changed
+- Item detail: "Analysis Info" now displayed as an inline collapsible panel (auto-fetches on screen load) instead of a button that opens a bottom sheet
+- Item detail: removed "Analysis Info" button; Yahoo Finance button now full-width on its own row
+
 ## v1.5 (Build 6) - 2026-05-10
 
 ### Added

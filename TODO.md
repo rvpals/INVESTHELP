@@ -217,6 +217,11 @@
 - [x] Account Performance: "Recent" button in Add Record form loads latest record value for selected account
 - [x] Account Performance: mini chart in Add Record section showing selected account history (150dp, visible when 2+ records)
 
+- [x] Dashboard: "Portfolio Summary" collapsible card with pin persistence wrapping total value change (3x larger headlineLarge font) and Day/All percentages
+- [x] Performance screen: Records list grid table with horizontal and vertical gridlines, header row, and alternating row colors
+- [x] Item detail: "Analysis Info" converted from button+bottom sheet to inline collapsible panel with auto-fetch on screen load
+- [x] Item detail: removed "Analysis Info" button; Yahoo Finance button full-width standalone
+
 ## Pending
 - [ ] Fix deprecation warning: Icons.Filled.OpenInNew -> Icons.AutoMirrored.Filled.OpenInNew (ItemDetailScreen.kt)
 - [ ] Fix deprecation warning: Icons.Filled.ShowChart/TrendingUp -> AutoMirrored versions (DashboardScreen.kt, MainActivity.kt)

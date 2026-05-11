@@ -55,7 +55,7 @@ Android investment tracking app built with Kotlin, Jetpack Compose, and Material
 - Clicking a price in Analyze Price copies it back to the transaction form Price field
 - Transaction form: "View" button next to Ticker opens item detail; form state preserved via rememberSaveable
 - Transaction form: auto-selects first account for new transactions
-- Item detail: "Analysis Info" and "Yahoo Finance" buttons on same row
+- Item detail: "Analysis Info" collapsible panel (auto-fetches on screen load, displayed inline before Yahoo Finance button)
 - Item detail: collapsible "<TICKER> Stats" section (replaces separate statistics screen)
 - Item detail: collapsible "Transactions" section
 - **Image loading:** Coil 2.7.0 for company logos
@@ -71,6 +71,7 @@ Android investment tracking app built with Kotlin, Jetpack Compose, and Material
 - Dashboard positions pie chart: collapsible card, legend limited to top 20 with "More" button to show all
 - Top bar portfolio button: total value row shows daily change amount in parentheses (e.g. "(+$123.45)") color-coded green/red; hidden when zero
 - Top bar portfolio button: second row shows (Day: ±X.XX%  All: ±X.XX%) color-coded green/red
+- Dashboard: "Portfolio Summary" collapsible card with pin persistence; total value change in headlineLarge (3x bigger) bold centered; Day/All percentages in bodyMedium centered below
 - Settings: "Warn before delete" toggle (default: on) — when off, skips confirmation dialogs for delete actions
 - Settings: "Dashboard Market Indices" section with toggles for 8 indices (NASDAQ, S&P 500, Dow, Gold, Russell 2K, Silver, Oil, Bitcoin); default: first 4 enabled; up/down arrow buttons to reorder indices; order persisted via `market_indices_order` SharedPreferences key
 - Dashboard Market Indices: long-press drag-and-drop reorder on index cards; swaps on half-slot-width threshold; persists order to SharedPreferences; syncs with Settings arrow reorder
@@ -98,6 +99,7 @@ Android investment tracking app built with Kotlin, Jetpack Compose, and Material
 - Account Performance: mini chart (150dp) in Add Record section shows selected account's history when 2+ records exist
 - Account Performance: "Chart Data" collapsible panel below chart shows tabular data (Account, Date, Value) for chart-selected accounts; sorted by account name then date
 - Account Performance: edit note dialog on existing records (pencil icon); note displayed on record cards when present
+- Account Performance: Records list uses grid table with horizontal/vertical gridlines, header row (Account, Date, Value, actions), and alternating row colors
 - Account Performance: line chart (Canvas-drawn) with multi-account overlay; FilterChip multi-select; each account gets distinct color; pinch-to-zoom (1x–5x) with two-finger pan; tap-to-select tooltip shows account name + value + date; clipRect for zoomed data area; viewport-aware x-axis labels
 - Account Performance chart: double-tap inline chart opens full-screen dialog (Dialog with usePlatformDefaultWidth=false, Scaffold with close button); full-screen chart supports zoom/pan/tap-to-select; double-tap in full-screen resets zoom
 - Account Performance chart: data points with notes rendered bold (white outer circle radius 9 + colored inner circle radius 7); normal points use radius 4

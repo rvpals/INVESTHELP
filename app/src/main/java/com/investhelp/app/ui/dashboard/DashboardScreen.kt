@@ -121,7 +121,13 @@ fun DashboardScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             item(key = "portfolio_summary") {
-                PortfolioSummaryRow(uiState = uiState, currencyFormat = currencyFormat)
+                CollapsibleCard(
+                    title = "Portfolio Summary",
+                    pinned = pinStates[DashboardViewModel.KEY_PIN_PORTFOLIO_SUMMARY] == true,
+                    onPinToggle = { viewModel.setPinState(DashboardViewModel.KEY_PIN_PORTFOLIO_SUMMARY, it) }
+                ) {
+                    PortfolioSummaryRow(uiState = uiState, currencyFormat = currencyFormat)
+                }
             }
 
             if (uiState.marketIndices.isNotEmpty()) {
@@ -785,41 +791,45 @@ private fun PortfolioSummaryRow(
     }
     val sign = { v: Double -> if (v > 0) "+" else "" }
 
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
         if (uiState.totalDayGainLoss != 0.0) {
             val dayChangeColor = if (uiState.totalDayGainLoss > 0) Color(0xFF2E7D32) else Color(0xFFC62828)
             val dayChangeSign = if (uiState.totalDayGainLoss > 0) "+" else ""
             Text(
                 text = "${dayChangeSign}${currencyFormat.format(uiState.totalDayGainLoss)}",
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.SemiBold,
+                style = MaterialTheme.typography.headlineLarge,
+                fontWeight = FontWeight.Bold,
                 color = dayChangeColor
             )
+            Spacer(modifier = Modifier.height(8.dp))
         }
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
             Text(
                 text = "Day: ",
-                style = MaterialTheme.typography.bodySmall,
+                style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Text(
                 text = "${sign(dailyPct)}${"%.2f".format(dailyPct)}%",
-                style = MaterialTheme.typography.bodySmall,
+                style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.Bold,
                 color = dailyColor
             )
             Text(
-                text = "  All: ",
-                style = MaterialTheme.typography.bodySmall,
+                text = "    All: ",
+                style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Text(
                 text = "${sign(allTimePct)}${"%.2f".format(allTimePct)}%",
-                style = MaterialTheme.typography.bodySmall,
+                style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.Bold,
                 color = allTimeColor
             )
