@@ -34,6 +34,7 @@ class AccountPerformanceViewModel @Inject constructor(
     companion object {
         const val KEY_PIN_ADD_RECORD = "pin_card_perf_add_record"
         const val KEY_PIN_CHART = "pin_card_perf_chart"
+        const val KEY_PIN_CHART_DATA = "pin_card_perf_chart_data"
         const val KEY_PIN_RECORDS = "pin_card_perf_records"
         const val KEY_RECORD_FILTER_ACCOUNT_IDS = "perf_record_filter_account_ids"
         const val KEY_RECORD_SORT_FIELD = "perf_record_sort_field"
@@ -44,6 +45,7 @@ class AccountPerformanceViewModel @Inject constructor(
         mapOf(
             KEY_PIN_ADD_RECORD to prefs.getBoolean(KEY_PIN_ADD_RECORD, false),
             KEY_PIN_CHART to prefs.getBoolean(KEY_PIN_CHART, true),
+            KEY_PIN_CHART_DATA to prefs.getBoolean(KEY_PIN_CHART_DATA, false),
             KEY_PIN_RECORDS to prefs.getBoolean(KEY_PIN_RECORDS, true),
         )
     )

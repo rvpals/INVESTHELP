@@ -1,5 +1,15 @@
 # Changelog
 
+## v1.5 (Build 6) - 2026-05-10
+
+### Added
+- Performance screen: "Chart Data" collapsible panel below chart showing tabular data (Account, Date, Value columns) for selected chart accounts
+- Performance screen: "Recent" button in Add Record form pulls value from latest record for the selected account
+- Performance screen: mini chart in Add Record section showing selected account's performance history (150dp, appears when 2+ records exist)
+
+### Changed
+- Performance screen: "Pull from App" button shortened to "Pull" to accommodate the new "Recent" button
+
 ## v1.4 (Build 5) - 2026-05-07
 
 ### Added

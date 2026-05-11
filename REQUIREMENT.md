@@ -156,8 +156,10 @@ Android app to track personal investments.
 ### Account Performance
 - Accessible from hamburger menu in top bar
 - Tracks account total value over time for trending analysis
-- Screen organized into three **CollapsibleCards** with pin persistence: "Add Performance Record" (default unpinned), "Performance Charts" (default pinned), "Records (N)" (default pinned)
-- **Add Record** form: account selector dropdown, total value text field, optional note field, "Pull from App" button (computes current value from items), "Add Record" button
+- Screen organized into four **CollapsibleCards** with pin persistence: "Add Performance Record" (default unpinned), "Performance Charts" (default pinned), "Chart Data" (default unpinned), "Records (N)" (default pinned)
+- **Add Record** form: account selector dropdown, total value text field, optional note field, "Pull" button (computes current value from items), "Recent" button (loads latest record value for selected account), "Add Record" button
+- **Add Record mini chart**: below the form fields, a 150dp line chart showing the selected account's performance history (visible when 2+ records exist)
+- **Chart Data** table: collapsible panel below chart showing Account, Date, Value columns for all data points used in the chart; sorted by account name then date
 - Records auto-set to current date on creation (date-only, no time component)
 - Unique constraint: one record per account per date; duplicate attempts show error dialog
 - **Records list** — filterable and sortable; account filter dropdown (Select All/None/individual checkboxes); "Order By" dropdown (Account, Date, Total Value, Note) with Asc/Desc toggle; default: all accounts, Date descending; filter and sort selections persisted to SharedPreferences

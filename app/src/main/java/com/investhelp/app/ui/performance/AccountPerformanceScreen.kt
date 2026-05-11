@@ -80,6 +80,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.investhelp.app.data.local.entity.AccountPerformanceEntity
 import com.investhelp.app.ui.settings.SettingsViewModel
+import androidx.compose.ui.text.style.TextAlign
 import java.text.NumberFormat
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -394,7 +395,7 @@ fun AccountPerformanceScreen(
 
                         Spacer(modifier = Modifier.height(8.dp))
 
-                        // Total Value + Pull from App
+                        // Total Value + Pull from App + Recent
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             verticalAlignment = Alignment.CenterVertically
@@ -411,7 +412,20 @@ fun AccountPerformanceScreen(
                             OutlinedButton(
                                 onClick = { viewModel.pullValueFromApp() }
                             ) {
-                                Text("Pull from App")
+                                Text("Pull")
+                            }
+                            Spacer(modifier = Modifier.width(4.dp))
+                            val latestRecord = remember(allRecords, selectedAccountId) {
+                                allRecords.filter { it.accountId == selectedAccountId }
+                                    .maxByOrNull { it.date }
+                            }
+                            OutlinedButton(
+                                onClick = {
+                                    latestRecord?.let { totalValueText = "%.2f".format(it.totalValue) }
+                                },
+                                enabled = latestRecord != null
+                            ) {
+                                Text("Recent")
                             }
                         }
 
@@ -471,6 +485,42 @@ fun AccountPerformanceScreen(
                             Icon(Icons.Default.Add, contentDescription = null)
                             Spacer(modifier = Modifier.width(4.dp))
                             Text("Add Record")
+                        }
+
+                        // Mini chart for selected account
+                        val accountRecords = remember(allRecords, selectedAccountId) {
+                            allRecords.filter { it.accountId == selectedAccountId }
+                                .sortedBy { it.date }
+                        }
+                        if (accountRecords.size >= 2) {
+                            Spacer(modifier = Modifier.height(12.dp))
+                            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                "${accounts.find { it.id == selectedAccountId }?.name ?: ""} History",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            val accountIndex = accounts.indexOfFirst { it.id == selectedAccountId }
+                            val miniColor = CHART_COLORS[
+                                (if (accountIndex >= 0) accountIndex else 0) % CHART_COLORS.size
+                            ]
+                            val miniSeries = listOf(
+                                ChartSeries(
+                                    accountId = selectedAccountId ?: 0L,
+                                    accountName = accounts.find { it.id == selectedAccountId }?.name ?: "",
+                                    color = miniColor,
+                                    records = accountRecords
+                                )
+                            )
+                            PerformanceLineChart(
+                                seriesList = miniSeries,
+                                smoothCurve = false,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(150.dp)
+                            )
                         }
                     }
                 }
@@ -573,6 +623,99 @@ fun AccountPerformanceScreen(
                                         style = MaterialTheme.typography.bodyMedium,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Chart Data table section
+            item {
+                val chartDataRecords = remember(chartData, chartSelectedAccountIds, accounts) {
+                    chartData.entries
+                        .filter { (accountId, records) -> accountId in chartSelectedAccountIds && records.isNotEmpty() }
+                        .flatMap { (accountId, records) ->
+                            records.map { record ->
+                                Triple(
+                                    accounts.find { it.id == accountId }?.name ?: "Unknown",
+                                    record.date,
+                                    record.totalValue
+                                )
+                            }
+                        }
+                        .sortedWith(compareBy({ it.first }, { it.second }))
+                }
+
+                CollapsibleCard(
+                    title = "Chart Data (${chartDataRecords.size})",
+                    pinned = pinStates[AccountPerformanceViewModel.KEY_PIN_CHART_DATA] == true,
+                    onPinToggle = { viewModel.setPinState(AccountPerformanceViewModel.KEY_PIN_CHART_DATA, it) }
+                ) {
+                    if (chartDataRecords.isEmpty()) {
+                        Text(
+                            "No chart data to display",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(16.dp)
+                        )
+                    } else {
+                        Column {
+                            // Header row
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 4.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(
+                                    "Account",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.weight(1.2f)
+                                )
+                                Text(
+                                    "Date",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                Text(
+                                    "Value",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.weight(1f),
+                                    textAlign = TextAlign.End
+                                )
+                            }
+                            HorizontalDivider()
+                            chartDataRecords.forEachIndexed { index, (accountName, date, value) ->
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 4.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text(
+                                        accountName,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        modifier = Modifier.weight(1.2f),
+                                        maxLines = 1
+                                    )
+                                    Text(
+                                        date.format(dateFormatter),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                    Text(
+                                        currencyFormat.format(value),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        modifier = Modifier.weight(1f),
+                                        textAlign = TextAlign.End
+                                    )
+                                }
+                                if (index < chartDataRecords.size - 1) {
+                                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
                                 }
                             }
                         }

@@ -213,6 +213,10 @@
 - [x] Theme selection UI in Settings > Preferences (color swatch, label, checkmark for selected)
 - [x] Database migration v16 -> v17 (drop bank_transfers table)
 
+- [x] Account Performance: "Chart Data" collapsible panel below chart showing tabular data (Account, Date, Value) for chart-selected accounts
+- [x] Account Performance: "Recent" button in Add Record form loads latest record value for selected account
+- [x] Account Performance: mini chart in Add Record section showing selected account history (150dp, visible when 2+ records)
+
 ## Pending
 - [ ] Fix deprecation warning: Icons.Filled.OpenInNew -> Icons.AutoMirrored.Filled.OpenInNew (ItemDetailScreen.kt)
 - [ ] Fix deprecation warning: Icons.Filled.ShowChart/TrendingUp -> AutoMirrored versions (DashboardScreen.kt, MainActivity.kt)

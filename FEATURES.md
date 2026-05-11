@@ -98,8 +98,10 @@
 
 ## Account Performance
 
-- Three CollapsibleCards: Add Record, Charts, Records
-- Add record: account selector, total value, "Pull from App" button, optional note
+- Four CollapsibleCards: Add Record, Charts, Chart Data, Records
+- Add record: account selector, total value, "Pull from App" button, "Recent" button (loads latest record value), optional note
+- Add record: mini chart below form fields showing selected account's history (when 2+ records exist)
+- Chart Data: collapsible table showing Account, Date, Value for all data points in the chart
 - One record per account per date (unique constraint)
 - Multi-account overlay line chart (Canvas-drawn)
   - FilterChip multi-select in FlowRow

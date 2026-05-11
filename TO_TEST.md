@@ -444,10 +444,32 @@
 - [ ] Note indicator visibility consistent across zoom levels
 
 ## Account Performance - CollapsibleCards
-- [ ] Performance screen has three CollapsibleCards: "Add Performance Record", "Performance Charts", "Records (N)"
+- [ ] Performance screen has four CollapsibleCards: "Add Performance Record", "Performance Charts", "Chart Data (N)", "Records (N)"
 - [ ] Each card has a pin button; pin states persisted to SharedPreferences
-- [ ] "Add Performance Record" default unpinned (collapsed); "Performance Charts" and "Records" default pinned (expanded)
+- [ ] "Add Performance Record" default unpinned (collapsed); "Performance Charts" and "Records" default pinned (expanded); "Chart Data" default unpinned (collapsed)
 - [ ] Records card title shows count of filtered records (e.g. "Records (15)")
+- [ ] Chart Data card title shows count of data records (e.g. "Chart Data (12)")
+
+## Account Performance - Recent Button & Mini Chart
+- [ ] "Recent" button visible next to "Pull" button in Add Record form
+- [ ] "Recent" button disabled when no records exist for selected account
+- [ ] Clicking "Recent" populates Total Value field with latest record's value for selected account
+- [ ] Changing selected account updates "Recent" button state (enabled/disabled based on records)
+- [ ] Mini chart visible below Add Record button when selected account has 2+ records
+- [ ] Mini chart hidden when selected account has fewer than 2 records
+- [ ] Mini chart shows correct account color from palette
+- [ ] Mini chart label shows "<Account Name> History"
+- [ ] Mini chart updates when switching selected account
+
+## Account Performance - Chart Data Table
+- [ ] "Chart Data" collapsible card visible between "Performance Charts" and "Records"
+- [ ] Table shows Account, Date, Value columns with header row
+- [ ] Table shows data for accounts currently selected in chart filter chips
+- [ ] Data sorted by account name then date
+- [ ] Rows separated by horizontal dividers
+- [ ] Value column right-aligned with currency format
+- [ ] Empty state ("No chart data to display") shown when no chart accounts selected
+- [ ] Changing chart filter chips updates chart data table content
 
 ## Account Performance - Smooth Curve
 - [ ] "Smooth Curve" checkbox visible in Performance Charts card

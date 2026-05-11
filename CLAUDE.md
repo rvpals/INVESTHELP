@@ -94,7 +94,9 @@ Android investment tracking app built with Kotlin, Jetpack Compose, and Material
 - About dialog: "Show Log" button opens scrollable log viewer (newest first) with clear button; logs include timestamps
 - Item detail transactions: each card shows days since transaction date (e.g. "123d") and G/L = (currentPrice - pricePerShare) * shares; green for gain, red for loss
 - Account Performance: `account_performance` table (id, accountId, totalValue, date, note) with CASCADE delete on account; unique constraint on (accountId, date)
-- Account Performance: accessible from hamburger menu; add record form with account selector, total value + "Pull from App" button, optional note field, auto-timestamp
+- Account Performance: accessible from hamburger menu; add record form with account selector, total value + "Pull" button + "Recent" button (loads latest record value for account), optional note field, auto-timestamp
+- Account Performance: mini chart (150dp) in Add Record section shows selected account's history when 2+ records exist
+- Account Performance: "Chart Data" collapsible panel below chart shows tabular data (Account, Date, Value) for chart-selected accounts; sorted by account name then date
 - Account Performance: edit note dialog on existing records (pencil icon); note displayed on record cards when present
 - Account Performance: line chart (Canvas-drawn) with multi-account overlay; FilterChip multi-select; each account gets distinct color; pinch-to-zoom (1x–5x) with two-finger pan; tap-to-select tooltip shows account name + value + date; clipRect for zoomed data area; viewport-aware x-axis labels
 - Account Performance chart: double-tap inline chart opens full-screen dialog (Dialog with usePlatformDefaultWidth=false, Scaffold with close button); full-screen chart supports zoom/pan/tap-to-select; double-tap in full-screen resets zoom
