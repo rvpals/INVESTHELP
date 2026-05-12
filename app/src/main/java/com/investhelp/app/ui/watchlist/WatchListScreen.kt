@@ -65,13 +65,20 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.investhelp.app.data.local.entity.WatchListItemEntity
 import com.investhelp.app.ui.components.ConfirmDeleteDialog
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.ContextCompat
 import java.text.DecimalFormat
 import java.text.NumberFormat
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
-import java.time.ZoneId
+import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
@@ -95,6 +102,18 @@ fun WatchListScreen(
     var watchListToDelete by remember { mutableStateOf<Long?>(null) }
     var itemToDelete by remember { mutableStateOf<WatchListItemUi?>(null) }
     var itemForReminder by remember { mutableStateOf<WatchListItemEntity?>(null) }
+
+    val context = LocalContext.current
+    var hasNotificationPermission by remember {
+        mutableStateOf(
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+            } else true
+        )
+    }
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted -> hasNotificationPermission = granted }
 
     LaunchedEffect(watchLists, selectedId) {
         if (selectedId == null && watchLists.isNotEmpty()) {
@@ -304,6 +323,11 @@ fun WatchListScreen(
             onConfirm = { ticker, shares, price, reminderDt, reminderMsg ->
                 showAddItemDialog = false
                 viewModel.clearFetchedPrice()
+                if (reminderDt != null) {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !hasNotificationPermission) {
+                        notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                    }
+                }
                 viewModel.addItem(selectedId!!, ticker, shares, price, reminderDt, reminderMsg)
             },
             onDismiss = { showAddItemDialog = false; viewModel.clearFetchedPrice() }
@@ -316,6 +340,9 @@ fun WatchListScreen(
             initialDateTime = item.reminderDateTime,
             initialMessage = item.reminderMessage,
             onConfirm = { dateTime, message ->
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !hasNotificationPermission) {
+                    notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                }
                 viewModel.updateItemReminder(item, dateTime, message)
                 itemForReminder = null
             },
@@ -655,14 +682,14 @@ private fun AddTickerDialog(
 
     if (showDatePicker) {
         val datePickerState = rememberDatePickerState(
-            initialSelectedDateMillis = reminderDate.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+            initialSelectedDateMillis = reminderDate.atStartOfDay().toInstant(ZoneOffset.UTC).toEpochMilli()
         )
         DatePickerDialog(
             onDismissRequest = { showDatePicker = false },
             confirmButton = {
                 TextButton(onClick = {
                     datePickerState.selectedDateMillis?.let { millis ->
-                        reminderDate = Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault()).toLocalDate()
+                        reminderDate = Instant.ofEpochMilli(millis).atZone(ZoneOffset.UTC).toLocalDate()
                     }
                     showDatePicker = false
                 }) { Text("OK") }
@@ -781,14 +808,14 @@ private fun ReminderDialog(
 
     if (showDatePicker) {
         val datePickerState = rememberDatePickerState(
-            initialSelectedDateMillis = reminderDate.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+            initialSelectedDateMillis = reminderDate.atStartOfDay().toInstant(ZoneOffset.UTC).toEpochMilli()
         )
         DatePickerDialog(
             onDismissRequest = { showDatePicker = false },
             confirmButton = {
                 TextButton(onClick = {
                     datePickerState.selectedDateMillis?.let { millis ->
-                        reminderDate = Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault()).toLocalDate()
+                        reminderDate = Instant.ofEpochMilli(millis).atZone(ZoneOffset.UTC).toLocalDate()
                     }
                     showDatePicker = false
                 }) { Text("OK") }

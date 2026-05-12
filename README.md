@@ -2,7 +2,7 @@
 
 Android investment tracking app built with Kotlin, Jetpack Compose, and Material 3.
 
-**Version:** 1.9 (Build 10)
+**Version:** 1.10 (Build 11)
 
 ## Overview
 
@@ -81,7 +81,7 @@ app/src/main/java/com/investhelp/app/
     ├── settings/       # Settings, backup/restore, CSV import
     ├── simulation/     # Price simulation with historical charts
     ├── sqlexplorer/    # SQL Explorer for raw database queries
-    ├── theme/          # Material 3 theme configuration (15 selectable themes)
+    ├── theme/          # Material 3 theme configuration (21 selectable themes)
     ├── transaction/    # Transaction list, form, and price analysis
     └── watchlist/      # Watch list management
 ```

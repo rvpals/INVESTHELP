@@ -60,10 +60,10 @@
 - Pie chart section (collapsible) showing allocation by ticker value
 - STOCK/ETF tabs filter by type
 - Sort dropdown: Ticker, Total Value (default), Current Price
-- Card-style rows with alternating backgrounds
-  - Left: 3D ticker icon + ticker (bold) + company name (italic)
-  - Right: shares count + Total G/L (color-coded)
-  - Secondary line: Price, Value, Day G/L
+- Brokerage-style card rows with thin dividers (inspired by Chase app layout)
+  - Left: 3D ticker icon + ticker (bold) + uppercase company name
+  - Below ticker: current price with day change $ and % (color-coded)
+  - Right: total position value + gain/loss badge (green/red chip)
 - Edit button per row; Delete available in Edit dialog
 - Add/edit via form with type selector (Stock, ETF, Bond, MutualFund, Crypto, Other)
 - Refresh All updates live prices for all items
@@ -135,7 +135,7 @@
 ## Settings
 
 ### Preferences
-- **Theme**: 15 selectable color themes (Default Green, Ocean Blue, Sunset Orange, Midnight Purple, Forest Moss, Ruby Red, Arctic Ice, Gold Rush, Sakura Pink, Charcoal Dark, Lavender Fields, Copper Bronze, Emerald Gem, Slate Blue, Mocha Coffee); each theme defines full light and dark color schemes; selection persisted to SharedPreferences; instant apply without restart
+- **Theme**: 21 selectable color themes (Default Green, Ocean Blue, Sunset Orange, Midnight Purple, Forest Moss, Ruby Red, Arctic Ice, Gold Rush, Sakura Pink, Charcoal Dark, Lavender Fields, Copper Bronze, Emerald Gem, Slate Blue, Mocha Coffee, Navy Marine, Tropical Mint, Wine Burgundy, Desert Sand, Nordic Pine, Chase); each theme defines full light and dark color schemes; selection persisted to SharedPreferences; instant apply without restart
 - **Auto Update Change History when refresh**: toggle (default: off); when on, records ETF/Stock/Total values to change_history table after price refresh
 - Auto-update position shares toggle
 - Warn before delete toggle (default: on)

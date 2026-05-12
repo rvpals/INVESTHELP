@@ -4,6 +4,7 @@ import android.app.AlarmManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.os.Build
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.investhelp.app.AppLog
@@ -192,6 +193,10 @@ class WatchListViewModel @Inject constructor(
 
     private fun scheduleReminder(itemId: Long, ticker: String, dateTime: LocalDateTime, message: String) {
         val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !alarmManager.canScheduleExactAlarms()) {
+            AppLog.log("Cannot schedule exact alarm for $ticker — permission not granted")
+            return
+        }
         val intent = Intent(context, ReminderReceiver::class.java).apply {
             putExtra(ReminderReceiver.EXTRA_TICKER, ticker)
             putExtra(ReminderReceiver.EXTRA_MESSAGE, message)

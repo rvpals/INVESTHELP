@@ -34,7 +34,7 @@ Android investment tracking app built with Kotlin, Jetpack Compose, and Material
 - CASCADE deletes: removing account removes associated transactions (items are not tied to accounts)
 - Items screen combines pie chart + STOCK/ETF tabs with Refresh All toolbar action
 - Items screen: sort-by dropdown (Ticker, Total Value, Current Price) above items list; defaults to Total Value descending
-- Items screen: card-style rows with alternating background colors; each row shows TickerIcon3D + ticker (bold titleSmall) with company name (smaller italic) on left, shares count + Total G/L (bold titleSmall, color-coded) on right, secondary line with Price/Value/Day G/L in muted bodySmall
+- Items screen: brokerage-style card rows with thin dividers; each row shows TickerIcon3D + ticker (bold) + uppercase company name on left, current price with day change $ and % below, total position value on right with colored gain/loss badge (green/red chip)
 - Items screen: only Edit button per row (no Delete in table); Delete available in Edit dialog
 - TickerIcon3D: gradient-filled rounded-corner (10dp) box with shadow; color derived from ticker hash; white letter fallback; company logo overlay from companiesmarketcap.com CDN via Coil
 - Company full name fetched from Yahoo Finance `shortName` during price refresh

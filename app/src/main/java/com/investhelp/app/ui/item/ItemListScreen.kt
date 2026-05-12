@@ -63,7 +63,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -386,124 +385,110 @@ private fun ItemsTable(
     onItemClick: (String) -> Unit,
     onEdit: (InvestmentItemEntity) -> Unit
 ) {
-    val sharesFormat = remember { DecimalFormat("#,##0.##") }
-    val altRowColor = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.5f)
+    val priceFormat = remember { DecimalFormat("#,##0.00") }
+    val pctFormat = remember { DecimalFormat("0.00") }
 
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-        )
-    ) {
-        Column {
-            items.forEachIndexed { index, item ->
-                val gainColor = if (item.totalGainLoss >= 0)
-                    Color(0xFF2E7D32) else MaterialTheme.colorScheme.error
-                val dayColor = if (item.dayGainLoss >= 0)
-                    Color(0xFF2E7D32) else MaterialTheme.colorScheme.error
-                val rowBg = if (index % 2 == 1) altRowColor else Color.Transparent
+    Column(verticalArrangement = Arrangement.spacedBy(0.dp)) {
+        items.forEach { item ->
+            val dayChange = item.dayGainLoss
+            val dayPct = if (item.currentPrice != 0.0 && item.quantity != 0.0)
+                (dayChange / (item.value - dayChange)) * 100.0 else 0.0
+            val gainColor = if (dayChange >= 0) Color(0xFF2E8540) else Color(0xFFCF2A2A)
+            val gainBg = if (dayChange >= 0) Color(0xFFE6F4EA) else Color(0xFFFDE8E8)
 
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onItemClick(item.ticker) },
+                shape = RoundedCornerShape(0.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+            ) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(rowBg)
-                        .clickable { onItemClick(item.ticker) }
-                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                        .padding(horizontal = 16.dp, vertical = 14.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     TickerIcon3D(ticker = item.ticker, name = item.name)
-                    Spacer(modifier = Modifier.width(10.dp))
+                    Spacer(modifier = Modifier.width(12.dp))
 
                     Column(modifier = Modifier.weight(1f)) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = item.ticker,
-                                    style = MaterialTheme.typography.titleSmall,
-                                    fontWeight = FontWeight.Bold
-                                )
-                                if (item.name != item.ticker) {
-                                    Text(
-                                        text = item.name,
-                                        style = MaterialTheme.typography.bodySmall,
-                                        fontWeight = FontWeight.Normal,
-                                        fontStyle = FontStyle.Italic,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-                                }
-                            }
-                            Column(horizontalAlignment = Alignment.End) {
-                                Text(
-                                    text = sharesFormat.format(item.quantity) + " shares",
-                                    style = MaterialTheme.typography.titleSmall,
-                                    fontWeight = FontWeight.Bold
-                                )
-                                Text(
-                                    text = currencyFormat.format(item.totalGainLoss),
-                                    style = MaterialTheme.typography.titleSmall,
-                                    fontWeight = FontWeight.Bold,
-                                    color = gainColor
-                                )
-                            }
-                        }
-
+                        Text(
+                            text = item.ticker,
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = if (item.name != item.ticker) item.name.uppercase() else "${item.type.name.uppercase()} POSITION",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
                         Spacer(modifier = Modifier.height(4.dp))
-
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(
-                                text = "Price: ${currencyFormat.format(item.currentPrice)}",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                text = priceFormat.format(item.currentPrice),
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Medium
                             )
+                            Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = "Value: ${currencyFormat.format(item.value)}",
+                                text = "${if (dayChange >= 0) "+" else ""}${priceFormat.format(dayChange)} (${if (dayPct >= 0) "+" else ""}${pctFormat.format(dayPct)}%)",
                                 style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Text(
-                                text = "Day: ${currencyFormat.format(item.dayGainLoss)}",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = dayColor
+                                color = gainColor
                             )
                         }
                     }
 
-                    Spacer(modifier = Modifier.width(4.dp))
+                    Column(horizontalAlignment = Alignment.End) {
+                        Text(
+                            text = currencyFormat.format(item.value),
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        val totalGl = item.totalGainLoss
+                        val totalGlColor = if (totalGl >= 0) Color(0xFF2E8540) else Color(0xFFCF2A2A)
+                        val totalGlBg = if (totalGl >= 0) Color(0xFFE6F4EA) else Color(0xFFFDE8E8)
+                        Text(
+                            text = "${if (totalGl >= 0) "+" else ""}${currencyFormat.format(totalGl)}",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = totalGlColor,
+                            modifier = Modifier
+                                .background(totalGlBg, RoundedCornerShape(4.dp))
+                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                        )
+                    }
 
                     if (item.ticker in refreshingTickers) {
+                        Spacer(modifier = Modifier.width(8.dp))
                         CircularProgressIndicator(
                             modifier = Modifier.size(20.dp),
                             strokeWidth = 2.dp
                         )
                     } else {
+                        Spacer(modifier = Modifier.width(4.dp))
                         IconButton(
                             onClick = { onEdit(item) },
-                            modifier = Modifier.size(32.dp)
+                            modifier = Modifier.size(28.dp)
                         ) {
                             Icon(
                                 Icons.Default.Edit,
                                 contentDescription = "Edit",
-                                modifier = Modifier.size(18.dp),
+                                modifier = Modifier.size(16.dp),
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     }
                 }
-                if (index < items.lastIndex) {
-                    HorizontalDivider(
-                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
-                    )
-                }
             }
+            HorizontalDivider(
+                thickness = 0.5.dp,
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
+            )
         }
     }
 }

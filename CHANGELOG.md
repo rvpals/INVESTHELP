@@ -1,5 +1,19 @@
 # Changelog
 
+## v1.10 (Build 11) - 2026-05-12
+
+### Added
+- 6 new themes: Navy Marine, Tropical Mint, Wine Burgundy, Desert Sand, Nordic Pine, Chase (21 total)
+- Chase theme inspired by Chase brokerage app: deep navy blue primary, white surfaces, corporate look
+
+### Changed
+- Items list screen redesigned to brokerage-style layout: individual card rows, ticker + uppercase company name on left, current price with day change/percentage below, total value on right with colored gain/loss badge (green/red chip)
+- Items list: removed alternating row colors in favor of thin dividers between rows
+
+### Fixed
+- Watch List: selecting today's date for reminder notification now works correctly (fixed Material 3 DatePicker UTC timezone conversion issue)
+- Watch List: reminder notifications now properly fire on Android 13+ (added POST_NOTIFICATIONS runtime permission request and canScheduleExactAlarms() check)
+
 ## v1.9 (Build 10) - 2026-05-11
 
 ### Added

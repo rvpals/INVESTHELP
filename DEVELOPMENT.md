@@ -34,8 +34,8 @@ Version is managed via `version.properties` at the project root:
 
 ```properties
 VERSION_MAJOR=1
-VERSION_MINOR=9
-VERSION_CODE=10
+VERSION_MINOR=10
+VERSION_CODE=11
 ```
 
 - **Auto-increment**: Minor version and version code increment by 1 after each `assembleDebug` or `assembleRelease`
