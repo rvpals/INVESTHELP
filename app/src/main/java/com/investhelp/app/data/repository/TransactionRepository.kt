@@ -15,6 +15,7 @@ interface TransactionRepository {
     suspend fun updateTransaction(transaction: InvestmentTransactionEntity)
     suspend fun deleteTransaction(transaction: InvestmentTransactionEntity)
     suspend fun deleteTransactions(transactions: List<InvestmentTransactionEntity>)
+    suspend fun deleteAll()
 }
 
 @Singleton
@@ -45,4 +46,6 @@ class TransactionRepositoryImpl @Inject constructor(
 
     override suspend fun deleteTransactions(transactions: List<InvestmentTransactionEntity>) =
         transactionDao.deleteTransactions(transactions)
+
+    override suspend fun deleteAll() = transactionDao.deleteAll()
 }

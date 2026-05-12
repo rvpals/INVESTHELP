@@ -13,7 +13,7 @@
 - Collapsible "Portfolio Summary" card with pin persistence
 - Total daily value change displayed in 3x larger font (headlineLarge, bold, centered)
 - Day % and All-time % shown below in bodyMedium, centered, color-coded green/red
-- "Refreshed: MMM dd, h:mm a" label showing last price refresh time
+- "Refreshed: MMM dd, h:mm a" label showing last price refresh time (persisted across app restarts)
 - Mini line chart of total_value from change_history (shown when 2+ records)
 - Click mini chart opens full-screen Change History dialog with zoomable multi-series chart (Total/ETF/Stock lines) + grid data table
 
@@ -147,6 +147,7 @@
   - Auto-mapping with brokerage aliases
   - Date format options per column
   - Persistent mappings (csv_import_mappings table)
+  - Clear (x) button per type: erases all entries from the corresponding table with confirmation dialog
 - Backup folder selection (persisted)
 - Export to JSON (v3 format)
 - Restore from JSON (v1/v2/v3 compatible)

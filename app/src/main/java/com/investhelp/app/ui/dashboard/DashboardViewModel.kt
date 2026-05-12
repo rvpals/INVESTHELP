@@ -104,7 +104,13 @@ class DashboardViewModel @Inject constructor(
     private val _isRefreshing = MutableStateFlow(false)
     val isRefreshing: StateFlow<Boolean> = _isRefreshing.asStateFlow()
 
-    private val _lastRefreshedAt = MutableStateFlow<LocalDateTime?>(null)
+    private val _lastRefreshedAt = MutableStateFlow<LocalDateTime?>(
+        prefs.getLong("last_refreshed_at", -1L).let { millis ->
+            if (millis > 0) LocalDateTime.ofInstant(
+                java.time.Instant.ofEpochMilli(millis), java.time.ZoneId.systemDefault()
+            ) else null
+        }
+    )
     val lastRefreshedAt: StateFlow<LocalDateTime?> = _lastRefreshedAt.asStateFlow()
 
     private val _pinStates = MutableStateFlow(
@@ -241,7 +247,11 @@ class DashboardViewModel @Inject constructor(
                 AppLog.log("Portfolio refresh: $successCount tickers ok" +
                         if (failCount > 0) ", $failCount failed" else "")
 
-                _lastRefreshedAt.value = LocalDateTime.now()
+                val now = LocalDateTime.now()
+                _lastRefreshedAt.value = now
+                prefs.edit().putLong("last_refreshed_at",
+                    now.atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli()
+                ).apply()
 
                 if (prefs.getBoolean(SettingsViewModel.KEY_AUTO_UPDATE_CHANGE_HISTORY, false)) {
                     recordChangeHistory()

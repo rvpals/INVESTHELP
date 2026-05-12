@@ -66,6 +66,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
 import com.investhelp.app.model.CsvImportType
 import com.investhelp.app.ui.theme.AppTheme
 
@@ -352,6 +353,7 @@ private fun DataManagementTab(viewModel: SettingsViewModel, uiState: SettingsUiS
     var importAccountExpanded by remember { mutableStateOf(false) }
     var showPositionImportWarning by remember { mutableStateOf(false) }
     var pendingImportUri by remember { mutableStateOf<Uri?>(null) }
+    var clearTableType by remember { mutableStateOf<CsvImportType?>(null) }
 
     val csvMimeTypes = arrayOf("text/csv", "text/comma-separated-values", "*/*")
 
@@ -470,6 +472,34 @@ private fun DataManagementTab(viewModel: SettingsViewModel, uiState: SettingsUiS
         )
     }
 
+    clearTableType?.let { type ->
+        val tableName = when (type) {
+            CsvImportType.Transaction -> "investment_transactions"
+            CsvImportType.Position -> "investment_items"
+            CsvImportType.Performance -> "account_performance"
+        }
+        AlertDialog(
+            onDismissRequest = { clearTableType = null },
+            title = { Text("Clear ${type.label}") },
+            text = {
+                Text("Erase all entries from \"$tableName\"? This action cannot be undone.")
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    viewModel.clearTable(type)
+                    clearTableType = null
+                }) {
+                    Text("Clear", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { clearTableType = null }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
     // Import progress dialog
     uiState.csvImport?.let { csvState ->
         if (csvState.isImporting) {
@@ -567,7 +597,8 @@ private fun DataManagementTab(viewModel: SettingsViewModel, uiState: SettingsUiS
                 onStartImport = {
                     importPickerType = type
                     importCsvPicker.launch(csvMimeTypes)
-                }
+                },
+                onClear = { clearTableType = type }
             )
             Spacer(modifier = Modifier.height(12.dp))
         }
@@ -671,7 +702,8 @@ private fun ImportTypeCard(
     type: CsvImportType,
     enabled: Boolean,
     onDefineMapping: () -> Unit,
-    onStartImport: () -> Unit
+    onStartImport: () -> Unit,
+    onClear: () -> Unit
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -694,7 +726,8 @@ private fun ImportTypeCard(
             Spacer(modifier = Modifier.height(12.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 OutlinedButton(
                     onClick = onDefineMapping,
@@ -708,6 +741,16 @@ private fun ImportTypeCard(
                     enabled = enabled
                 ) {
                     Text("Start Import")
+                }
+                IconButton(
+                    onClick = onClear,
+                    modifier = Modifier.size(36.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = "Clear ${type.label}",
+                        tint = MaterialTheme.colorScheme.error
+                    )
                 }
             }
         }

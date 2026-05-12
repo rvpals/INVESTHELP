@@ -15,6 +15,7 @@ interface AccountPerformanceRepository {
     suspend fun insertRecord(record: AccountPerformanceEntity): Long
     suspend fun updateRecord(record: AccountPerformanceEntity)
     suspend fun deleteRecord(record: AccountPerformanceEntity)
+    suspend fun deleteAll()
 }
 
 @Singleton
@@ -29,4 +30,5 @@ class AccountPerformanceRepositoryImpl @Inject constructor(
     override suspend fun insertRecord(record: AccountPerformanceEntity) = dao.insertRecord(record)
     override suspend fun updateRecord(record: AccountPerformanceEntity) = dao.updateRecord(record)
     override suspend fun deleteRecord(record: AccountPerformanceEntity) = dao.deleteRecord(record)
+    override suspend fun deleteAll() = dao.deleteAll()
 }

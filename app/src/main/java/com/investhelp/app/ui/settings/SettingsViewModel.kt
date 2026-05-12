@@ -212,6 +212,19 @@ class SettingsViewModel @Inject constructor(
         _uiState.value = _uiState.value.copy(message = null)
     }
 
+    fun clearTable(importType: CsvImportType) {
+        viewModelScope.launch {
+            when (importType) {
+                CsvImportType.Transaction -> transactionDao.deleteAll()
+                CsvImportType.Position -> itemDao.deleteAll()
+                CsvImportType.Performance -> accountPerformanceDao.deleteAll()
+            }
+            _uiState.value = _uiState.value.copy(
+                message = "${importType.label} cleared successfully."
+            )
+        }
+    }
+
     fun exportData() {
         val folderUri = _uiState.value.backupFolderUri
         if (folderUri == null) {

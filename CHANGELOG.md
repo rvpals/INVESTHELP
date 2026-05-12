@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.9 (Build 10) - 2026-05-11
+
+### Added
+- Data Management: "Clear" (x) button per CSV import type (Transaction Records, Position Details, Performance Records) to erase all entries from the corresponding table with confirmation dialog showing table name
+- Dashboard Portfolio Summary: last refreshed timestamp now persisted to SharedPreferences (survives app restart)
+
 ## v1.8 (Build 9) - 2026-05-11
 
 ### Fixed

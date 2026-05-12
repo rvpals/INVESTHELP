@@ -131,7 +131,7 @@ Gradient-filled rounded boxes with drop shadow for bottom nav and menu icons.
 
 - **Dates**: `LocalDate` stored as epoch days for simple SQL range queries
 - **DateTimes**: `LocalDateTime` stored as epoch seconds (UTC) via TypeConverter
-- **Preferences**: SharedPreferences for pin states, market index order, filter/sort selections, backup folder URI
+- **Preferences**: SharedPreferences for pin states, market index order, filter/sort selections, backup folder URI, last refreshed timestamp
 - **Backup**: JSON format (v3 current; v1/v2 backward compatible)
 
 ## Navigation
