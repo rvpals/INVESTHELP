@@ -1,5 +1,6 @@
 package com.investhelp.app.data.remote
 
+import com.investhelp.app.AppLog
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
@@ -228,19 +229,26 @@ class StockPriceService @Inject constructor() {
 
     suspend fun fetchLogo(ticker: String): ByteArray? = withContext(Dispatchers.IO) {
         try {
-            val url = URL("https://companiesmarketcap.com/img/company-logos/64/${ticker.lowercase()}.webp")
+            val logoUrl = "https://companiesmarketcap.com/img/company-logos/64/${ticker.lowercase()}.webp"
+            val url = URL(logoUrl)
             val connection = url.openConnection() as HttpURLConnection
             connection.instanceFollowRedirects = true
             connection.setRequestProperty("User-Agent", "Mozilla/5.0")
             connection.connectTimeout = 10_000
             connection.readTimeout = 10_000
             try {
-                if (connection.responseCode != 200) return@withContext null
-                connection.inputStream.readBytes()
+                if (connection.responseCode != 200) {
+                    AppLog.log("Logo fetch $ticker: HTTP ${connection.responseCode}")
+                    return@withContext null
+                }
+                val bytes = connection.inputStream.readBytes()
+                AppLog.log("Logo fetched $ticker: ${bytes.size} bytes")
+                bytes
             } finally {
                 connection.disconnect()
             }
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            AppLog.log("Logo fetch $ticker failed: ${e.message}")
             null
         }
     }

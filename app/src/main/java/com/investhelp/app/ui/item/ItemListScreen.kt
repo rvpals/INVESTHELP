@@ -73,6 +73,7 @@ import com.investhelp.app.ui.components.ConfirmDeleteDialog
 import com.investhelp.app.ui.settings.SettingsViewModel
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import java.nio.ByteBuffer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.HorizontalDivider
@@ -312,7 +313,7 @@ private fun TickerIcon3D(
             fontWeight = FontWeight.Bold,
             color = Color.White
         )
-        val imageData = logo ?: "https://companiesmarketcap.com/img/company-logos/64/${ticker.lowercase()}.webp"
+        val imageData: Any = if (logo != null) ByteBuffer.wrap(logo) else "https://companiesmarketcap.com/img/company-logos/64/${ticker.lowercase()}.webp"
         AsyncImage(
             model = ImageRequest.Builder(context)
                 .data(imageData)

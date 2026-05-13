@@ -57,6 +57,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import java.nio.ByteBuffer
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.investhelp.app.data.remote.AnalysisInfo
 import com.investhelp.app.ui.components.CollapsibleCard
@@ -663,7 +664,7 @@ private fun DetailTickerIcon(
             fontWeight = FontWeight.Bold,
             color = Color.White
         )
-        val imageData = logo ?: "https://companiesmarketcap.com/img/company-logos/64/${ticker.lowercase()}.webp"
+        val imageData: Any = if (logo != null) ByteBuffer.wrap(logo) else "https://companiesmarketcap.com/img/company-logos/64/${ticker.lowercase()}.webp"
         AsyncImage(
             model = ImageRequest.Builder(context)
                 .data(imageData)

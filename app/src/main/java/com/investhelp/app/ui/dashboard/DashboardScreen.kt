@@ -96,6 +96,7 @@ import androidx.compose.ui.zIndex
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import java.nio.ByteBuffer
 import com.investhelp.app.data.local.entity.ChangeHistoryEntity
 import com.investhelp.app.ui.components.CollapsibleCard
 import java.text.DecimalFormat
@@ -793,7 +794,7 @@ private fun DashboardTickerIcon(ticker: String, name: String, logo: ByteArray? =
             fontWeight = FontWeight.Bold,
             color = Color.White
         )
-        val imageData = logo ?: "https://companiesmarketcap.com/img/company-logos/64/${ticker.lowercase()}.webp"
+        val imageData: Any = if (logo != null) ByteBuffer.wrap(logo) else "https://companiesmarketcap.com/img/company-logos/64/${ticker.lowercase()}.webp"
         AsyncImage(
             model = ImageRequest.Builder(context)
                 .data(imageData)
