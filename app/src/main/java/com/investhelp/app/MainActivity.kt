@@ -1,5 +1,6 @@
 package com.investhelp.app
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -47,6 +48,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -73,6 +75,7 @@ import com.investhelp.app.ui.dashboard.DashboardViewModel
 import com.investhelp.app.ui.navigation.AccountListRoute
 import com.investhelp.app.ui.navigation.DashboardRoute
 import com.investhelp.app.ui.navigation.InvestHelpNavHost
+import com.investhelp.app.ui.navigation.ItemDetailRoute
 import com.investhelp.app.ui.navigation.ItemListRoute
 import com.investhelp.app.ui.navigation.AccountPerformanceRoute
 import com.investhelp.app.ui.navigation.SettingsRoute
@@ -106,14 +109,26 @@ val bottomNavItems = listOf(
 @AndroidEntryPoint
 class MainActivity : AppCompatActivity() {
 
+    private var pendingTicker: String? = null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         ThemePreferences.init(this)
+        pendingTicker = intent?.getStringExtra(ReminderReceiver.EXTRA_TICKER)
         setContent {
             InvestHelpTheme {
                 val navController = rememberNavController()
+
+                LaunchedEffect(Unit) {
+                    pendingTicker?.let { ticker ->
+                        navController.navigate(ItemDetailRoute(ticker)) {
+                            launchSingleTop = true
+                        }
+                        pendingTicker = null
+                    }
+                }
 
                 Scaffold(
                     topBar = {
@@ -131,6 +146,11 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
     }
 }
 

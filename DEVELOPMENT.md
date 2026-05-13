@@ -34,8 +34,8 @@ Version is managed via `version.properties` at the project root:
 
 ```properties
 VERSION_MAJOR=1
-VERSION_MINOR=10
-VERSION_CODE=11
+VERSION_MINOR=11
+VERSION_CODE=12
 ```
 
 - **Auto-increment**: Minor version and version code increment by 1 after each `assembleDebug` or `assembleRelease`
@@ -52,7 +52,7 @@ When modifying the Room database schema:
 3. Register the migration in the database builder
 4. Update `CLAUDE.md` and `ISSUES.md` with migration notes
 
-Current version: **19**
+Current version: **20**
 
 ## Key Conventions
 
@@ -76,7 +76,8 @@ Current version: **19**
 
 ### Image Loading
 - Coil 2.7.0 for async image loading
-- Company logos from companiesmarketcap.com CDN
+- Company logos cached as BLOB in `investment_items.logo` column (fetched from companiesmarketcap.com CDN during price refresh, only if null)
+- UI uses stored bytes when available; falls back to network URL
 - White letter fallback when logo unavailable
 
 ## Project Dependencies

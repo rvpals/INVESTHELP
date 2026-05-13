@@ -27,7 +27,7 @@ com.investhelp.app/
 ├── MainActivity.kt              # Single activity, top bar, bottom nav, navigation host
 ├── data/
 │   ├── local/
-│   │   ├── AppDatabase.kt       # Room database (version 19) with all DAOs and migrations
+│   │   ├── AppDatabase.kt       # Room database (version 20) with all DAOs and migrations
 │   │   ├── DatabaseProvider.kt  # Lazy database initialization pattern
 │   │   ├── dao/                 # Room DAO interfaces
 │   │   └── entity/              # Room entity classes
@@ -59,13 +59,13 @@ com.investhelp.app/
 
 ## Database
 
-### Room Database (version 19)
+### Room Database (version 20)
 
 **Entities:**
 | Table | Primary Key | Description |
 |-------|-------------|-------------|
 | `investment_accounts` | `id` (auto) | Brokerage accounts |
-| `investment_items` | `ticker` | Holdings (one per ticker) |
+| `investment_items` | `ticker` | Holdings (one per ticker, with cached logo BLOB) |
 | `investment_transactions` | `id` (auto) | Buy/sell records |
 | `account_performance` | `id` (auto) | Account value snapshots |
 | `watch_lists` | `id` (auto) | Named watch list groups |
@@ -93,6 +93,7 @@ com.investhelp.app/
 - v16->v17: Drop bank_transfers table (feature removed)
 - v17->v18: Create change_history table with unique date index
 - v18->v19: Add reminderDateTime and reminderMessage columns to watch_list_items
+- v19->v20: Add logo BLOB column to investment_items (cached company logo)
 
 ### DatabaseProvider
 Lazy initialization pattern: database opens on first access, not at app startup.
@@ -117,7 +118,7 @@ Reusable composable with:
 ### TickerIcon3D
 Gradient-filled rounded-corner box with shadow:
 - Color derived from ticker hash
-- Company logo overlay via Coil (companiesmarketcap.com CDN)
+- Company logo from cached BLOB in database (fetched during price refresh); falls back to network URL via Coil
 - White letter fallback when logo unavailable
 
 ### Icon3D

@@ -38,6 +38,9 @@ interface InvestmentItemDao {
     @Query("UPDATE investment_items SET currentPrice = :price WHERE ticker = :ticker")
     suspend fun updatePriceByTicker(ticker: String, price: Double)
 
+    @Query("UPDATE investment_items SET logo = :logo WHERE ticker = :ticker")
+    suspend fun updateLogoByTicker(ticker: String, logo: ByteArray)
+
     @Query(
         """
         UPDATE investment_items

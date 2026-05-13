@@ -3,8 +3,10 @@ package com.investhelp.app.ui.item
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -12,8 +14,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
@@ -44,9 +48,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.investhelp.app.data.remote.AnalysisInfo
 import com.investhelp.app.ui.components.CollapsibleCard
@@ -128,13 +138,35 @@ fun ItemDetailScreen(
                         Column(modifier = Modifier.padding(16.dp)) {
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
+                                DetailTickerIcon(ticker = inv.ticker, name = inv.name, logo = inv.logo)
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = inv.ticker,
+                                        style = MaterialTheme.typography.titleLarge,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    if (inv.name != inv.ticker) {
+                                        Text(
+                                            text = inv.name,
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                                        )
+                                    }
+                                }
                                 AssistChip(
                                     onClick = {},
                                     label = { Text(inv.type.name) }
                                 )
+                            }
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.End,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
                                 Text(
                                     text = "Current Price: ${currencyFormat.format(inv.currentPrice)}",
                                     style = MaterialTheme.typography.titleMedium
@@ -587,5 +619,60 @@ private fun StatCard(
                 style = MaterialTheme.typography.titleMedium
             )
         }
+    }
+}
+
+private val detailIconColors = listOf(
+    Color(0xFF4285F4), Color(0xFFEA4335), Color(0xFFFBBC04), Color(0xFF34A853),
+    Color(0xFFFF6D01), Color(0xFF46BDC6), Color(0xFF7B1FA2), Color(0xFFD81B60),
+    Color(0xFF00897B), Color(0xFF5C6BC0), Color(0xFFFFA000), Color(0xFF8D6E63),
+)
+
+@Composable
+private fun DetailTickerIcon(
+    ticker: String,
+    name: String,
+    logo: ByteArray? = null,
+    modifier: Modifier = Modifier
+) {
+    val context = LocalContext.current
+    val hash = ticker.hashCode()
+    val baseColor = detailIconColors[(hash and 0x7FFFFFFF) % detailIconColors.size]
+    val gradient = Brush.linearGradient(
+        colors = listOf(
+            baseColor.copy(alpha = 0.85f),
+            baseColor,
+            baseColor.copy(
+                red = baseColor.red * 0.65f,
+                green = baseColor.green * 0.65f,
+                blue = baseColor.blue * 0.65f
+            )
+        )
+    )
+
+    Box(
+        modifier = modifier
+            .size(48.dp)
+            .shadow(4.dp, RoundedCornerShape(10.dp))
+            .background(gradient, RoundedCornerShape(10.dp)),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = (if (name != ticker) name else ticker).first().uppercase(),
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+            color = Color.White
+        )
+        val imageData = logo ?: "https://companiesmarketcap.com/img/company-logos/64/${ticker.lowercase()}.webp"
+        AsyncImage(
+            model = ImageRequest.Builder(context)
+                .data(imageData)
+                .crossfade(true)
+                .build(),
+            contentDescription = "$ticker logo",
+            modifier = Modifier
+                .size(48.dp)
+                .clip(RoundedCornerShape(10.dp))
+        )
     }
 }

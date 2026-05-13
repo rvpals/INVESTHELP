@@ -17,5 +17,14 @@ data class InvestmentItemEntity(
     val totalGainLoss: Double,
     val value: Double,
     val dayHigh: Double = 0.0,
-    val dayLow: Double = 0.0
-)
+    val dayLow: Double = 0.0,
+    val logo: ByteArray? = null
+) {
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other !is InvestmentItemEntity) return false
+        return ticker == other.ticker
+    }
+
+    override fun hashCode(): Int = ticker.hashCode()
+}

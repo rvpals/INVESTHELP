@@ -281,6 +281,7 @@ fun ItemListScreen(
 private fun TickerIcon3D(
     ticker: String,
     name: String,
+    logo: ByteArray? = null,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -311,9 +312,10 @@ private fun TickerIcon3D(
             fontWeight = FontWeight.Bold,
             color = Color.White
         )
+        val imageData = logo ?: "https://companiesmarketcap.com/img/company-logos/64/${ticker.lowercase()}.webp"
         AsyncImage(
             model = ImageRequest.Builder(context)
-                .data("https://companiesmarketcap.com/img/company-logos/64/${ticker}.webp")
+                .data(imageData)
                 .crossfade(true)
                 .build(),
             contentDescription = "$ticker logo",
@@ -410,7 +412,7 @@ private fun ItemsTable(
                         .padding(horizontal = 16.dp, vertical = 14.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    TickerIcon3D(ticker = item.ticker, name = item.name)
+                    TickerIcon3D(ticker = item.ticker, name = item.name, logo = item.logo)
                     Spacer(modifier = Modifier.width(12.dp))
 
                     Column(modifier = Modifier.weight(1f)) {

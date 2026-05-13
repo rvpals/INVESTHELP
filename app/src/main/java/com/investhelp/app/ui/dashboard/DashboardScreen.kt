@@ -764,7 +764,7 @@ private val tickerIconColors = listOf(
 )
 
 @Composable
-private fun DashboardTickerIcon(ticker: String, name: String) {
+private fun DashboardTickerIcon(ticker: String, name: String, logo: ByteArray? = null) {
     val context = LocalContext.current
     val hash = ticker.hashCode()
     val baseColor = tickerIconColors[(hash and 0x7FFFFFFF) % tickerIconColors.size]
@@ -793,9 +793,10 @@ private fun DashboardTickerIcon(ticker: String, name: String) {
             fontWeight = FontWeight.Bold,
             color = Color.White
         )
+        val imageData = logo ?: "https://companiesmarketcap.com/img/company-logos/64/${ticker.lowercase()}.webp"
         AsyncImage(
             model = ImageRequest.Builder(context)
-                .data("https://companiesmarketcap.com/img/company-logos/64/${ticker}.webp")
+                .data(imageData)
                 .crossfade(true)
                 .build(),
             contentDescription = "$ticker logo",
@@ -1475,7 +1476,7 @@ private fun PositionDetailsContent(
                             modifier = Modifier.width(100.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            DashboardTickerIcon(ticker = detail.ticker, name = detail.name)
+                            DashboardTickerIcon(ticker = detail.ticker, name = detail.name, logo = detail.logo)
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(
                                 text = detail.ticker,

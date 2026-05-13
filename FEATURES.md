@@ -71,7 +71,7 @@
 
 ## Item Detail
 
-- Header: type chip + current price
+- Header: company logo icon (48dp, cached from DB) + ticker (bold) + company name + type chip + current price
 - Card row 1 (large): Total Shares, Total Value, Total Cost, Total G/L
 - Card row 2 (medium): Daily G/L, Daily G/L/Share, Daily Min, Daily Max
 - Collapsible Stats section: average/max/min buy/sell prices with date range filter
@@ -130,6 +130,7 @@
 - Table with gridlines: Ticker, Shares, Price, Added @, Change $, Change %, Date, Delete, Reminder bell
 - Reminder bell icon: highlighted when reminder is active; tap to set/edit/clear reminder
 - Reminders: date/time picker + message; scheduled notification via AlarmManager; fires even in doze mode
+- Notification tap: opens Item Detail screen for the ticker
 - Refresh all tickers in selected list
 
 ## Settings

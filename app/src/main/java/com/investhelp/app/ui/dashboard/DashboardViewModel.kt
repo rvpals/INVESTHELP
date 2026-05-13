@@ -41,8 +41,17 @@ data class PositionDetail(
     val totalCost: Double,
     val totalValue: Double,
     val changeAmount: Double = 0.0,
-    val changePercent: Double = 0.0
-)
+    val changePercent: Double = 0.0,
+    val logo: ByteArray? = null
+) {
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other !is PositionDetail) return false
+        return ticker == other.ticker
+    }
+
+    override fun hashCode(): Int = ticker.hashCode()
+}
 
 data class DailyGlanceItem(
     val ticker: String,
@@ -139,7 +148,8 @@ class DashboardViewModel @Inject constructor(
                         ticker = item.ticker, name = item.name,
                         totalShares = item.quantity, currentPrice = item.currentPrice,
                         totalCost = item.cost, totalValue = item.value,
-                        changeAmount = changeAmt, changePercent = changePct
+                        changeAmount = changeAmt, changePercent = changePct,
+                        logo = item.logo
                     )
                 }
                 .sortedByDescending { it.totalValue }
@@ -238,6 +248,11 @@ class DashboardViewModel @Inject constructor(
                                 totalGainLoss = newValue - item.cost
                             )
                         )
+                        if (item.logo == null) {
+                            stockPriceService.fetchLogo(item.ticker)?.let { logo ->
+                                itemRepository.updateLogoByTicker(item.ticker, logo)
+                            }
+                        }
                         successCount++
                     } catch (e: Exception) {
                         failCount++

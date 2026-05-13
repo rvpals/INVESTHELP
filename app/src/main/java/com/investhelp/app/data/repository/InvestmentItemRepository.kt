@@ -21,6 +21,7 @@ interface InvestmentItemRepository {
     suspend fun upsertItem(item: InvestmentItemEntity)
     suspend fun upsertAll(items: List<InvestmentItemEntity>)
     suspend fun updatePriceByTicker(ticker: String, price: Double)
+    suspend fun updateLogoByTicker(ticker: String, logo: ByteArray)
     suspend fun updateMetadataByTicker(ticker: String, name: String, type: InvestmentType, currentPrice: Double)
     suspend fun deleteByTicker(ticker: String)
     suspend fun deleteAll()
@@ -77,6 +78,9 @@ class InvestmentItemRepositoryImpl @Inject constructor(
 
     override suspend fun updatePriceByTicker(ticker: String, price: Double) =
         itemDao.updatePriceByTicker(ticker, price)
+
+    override suspend fun updateLogoByTicker(ticker: String, logo: ByteArray) =
+        itemDao.updateLogoByTicker(ticker, logo)
 
     override suspend fun updateMetadataByTicker(ticker: String, name: String, type: InvestmentType, currentPrice: Double) =
         itemDao.updateMetadataByTicker(ticker, name, type, currentPrice)

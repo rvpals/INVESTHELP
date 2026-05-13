@@ -226,6 +226,25 @@ class StockPriceService @Inject constructor() {
     private fun JsonObject.rawString(key: String): String? =
         this[key]?.jsonPrimitive?.contentOrNull
 
+    suspend fun fetchLogo(ticker: String): ByteArray? = withContext(Dispatchers.IO) {
+        try {
+            val url = URL("https://companiesmarketcap.com/img/company-logos/64/${ticker.lowercase()}.webp")
+            val connection = url.openConnection() as HttpURLConnection
+            connection.instanceFollowRedirects = true
+            connection.setRequestProperty("User-Agent", "Mozilla/5.0")
+            connection.connectTimeout = 10_000
+            connection.readTimeout = 10_000
+            try {
+                if (connection.responseCode != 200) return@withContext null
+                connection.inputStream.readBytes()
+            } finally {
+                connection.disconnect()
+            }
+        } catch (_: Exception) {
+            null
+        }
+    }
+
     suspend fun fetchQuote(ticker: String): StockQuote = withContext(Dispatchers.IO) {
         val url = URL("https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?range=1d&interval=1d")
         val connection = url.openConnection() as HttpURLConnection

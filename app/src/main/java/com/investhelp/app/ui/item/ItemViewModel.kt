@@ -243,6 +243,11 @@ class ItemViewModel @Inject constructor(
                             dayLow = quote.dayLow
                         )
                     )
+                    if (item.logo == null) {
+                        stockPriceService.fetchLogo(item.ticker)?.let { logo ->
+                            itemRepository.updateLogoByTicker(item.ticker, logo)
+                        }
+                    }
                     successCount++
                 } catch (e: Exception) {
                     failCount++
@@ -288,6 +293,11 @@ class ItemViewModel @Inject constructor(
                             dayLow = quote.dayLow
                         )
                     )
+                    if (item.logo == null) {
+                        stockPriceService.fetchLogo(item.ticker)?.let { logo ->
+                            itemRepository.updateLogoByTicker(item.ticker, logo)
+                        }
+                    }
                     successCount++
                 } catch (e: Exception) {
                     failCount++

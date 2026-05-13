@@ -8,7 +8,7 @@ Android investment tracking app built with Kotlin, Jetpack Compose, and Material
 - **Min SDK:** 29, Target SDK: 35
 - **Architecture:** MVVM + Repository pattern
 - **DI:** Hilt (KSP)
-- **Database:** Room, version 17
+- **Database:** Room, version 20
 - **Navigation:** Compose Navigation (type-safe routes)
 - **Splash:** AndroidX SplashScreen API (core-splashscreen 1.0.1)
 - **Charts:** Custom Canvas-drawn (pie chart, line chart) — no external chart library
@@ -58,7 +58,7 @@ Android investment tracking app built with Kotlin, Jetpack Compose, and Material
 - Item detail: "Analysis Info" collapsible panel (auto-fetches on screen load, displayed inline before Yahoo Finance button)
 - Item detail: collapsible "<TICKER> Stats" section (replaces separate statistics screen)
 - Item detail: collapsible "Transactions" section
-- **Image loading:** Coil 2.7.0 for company logos
+- **Image loading:** Coil 2.7.0 for company logos; logos cached as BLOB in investment_items table, fetched from companiesmarketcap.com CDN during price refresh (only if logo is null), UI falls back to network URL if not cached
 - Item add/edit dialog: type selector dropdown (Stock, ETF, Bond, MutualFund, Crypto, Other); auto-fills type when selecting existing ticker
 - Item detail card row 1 (big font): Total Shares, Total Value, Total Cost, Total G/L
 - Item detail card row 2 (medium font): Daily G/L, Daily G/L/Share, Daily Min Price, Daily Max Price
@@ -118,7 +118,8 @@ Android investment tracking app built with Kotlin, Jetpack Compose, and Material
 - Database migration v16 -> v17: drops bank_transfers table (feature removed)
 - Database migration v17 -> v18: creates change_history table (id, date, etfValue, stockValue, totalValue) with unique index on date
 - Database migration v18 -> v19: adds reminderDateTime and reminderMessage columns to watch_list_items
-- Database version 19
+- Database migration v19 -> v20: adds logo BLOB column to investment_items for cached company logo
+- Database version 20
 - Change History: `change_history` table records daily portfolio values by type (ETF, Stock, Total); one row per day, overwritten on re-refresh
 - Settings: "Auto Update Change History when refresh" toggle (default: off) — when on, automatically records ETF/Stock/Total values to change_history after price refresh; overwrites existing entry for today
 - CSV Import: reusable mapping system for Transaction, Position, Performance imports; mappings persisted in `csv_import_mappings` table; supports date format options per column
