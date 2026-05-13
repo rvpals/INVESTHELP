@@ -1,5 +1,7 @@
 package com.investhelp.app.ui.watchlist
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -13,7 +15,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
@@ -22,6 +23,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.AlertDialog
@@ -29,12 +32,9 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -63,6 +63,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.investhelp.app.data.local.entity.WatchListEntity
 import com.investhelp.app.data.local.entity.WatchListItemEntity
 import com.investhelp.app.ui.components.ConfirmDeleteDialog
 import android.Manifest
@@ -84,12 +85,11 @@ import java.util.Locale
 
 @Composable
 fun WatchListScreen(
-    viewModel: WatchListViewModel
+    viewModel: WatchListViewModel,
+    onNavigateToItem: (String) -> Unit = {}
 ) {
     val watchLists by viewModel.watchLists.collectAsStateWithLifecycle()
-    val selectedId by viewModel.selectedWatchListId.collectAsStateWithLifecycle()
-    val items by viewModel.items.collectAsStateWithLifecycle()
-    val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
+    val itemsByWatchList by viewModel.itemsByWatchList.collectAsStateWithLifecycle()
     val fetchedPrice by viewModel.fetchedPrice.collectAsStateWithLifecycle()
     val currencyFormat = NumberFormat.getCurrencyInstance(Locale.US)
     val sharesFormat = DecimalFormat("#,##0.##")
@@ -97,8 +97,8 @@ fun WatchListScreen(
     val dateFormat = DateTimeFormatter.ofPattern("MM/dd/yy")
 
     var showCreateDialog by rememberSaveable { mutableStateOf(false) }
-    var showAddItemDialog by rememberSaveable { mutableStateOf(false) }
-    var showRenameDialog by rememberSaveable { mutableStateOf(false) }
+    var addItemWatchListId by remember { mutableStateOf<Long?>(null) }
+    var renameWatchList by remember { mutableStateOf<WatchListEntity?>(null) }
     var watchListToDelete by remember { mutableStateOf<Long?>(null) }
     var itemToDelete by remember { mutableStateOf<WatchListItemUi?>(null) }
     var itemForReminder by remember { mutableStateOf<WatchListItemEntity?>(null) }
@@ -115,9 +115,9 @@ fun WatchListScreen(
         ActivityResultContracts.RequestPermission()
     ) { granted -> hasNotificationPermission = granted }
 
-    LaunchedEffect(watchLists, selectedId) {
-        if (selectedId == null && watchLists.isNotEmpty()) {
-            viewModel.selectWatchList(watchLists.first().id)
+    LaunchedEffect(watchLists) {
+        watchLists.forEach { wl ->
+            viewModel.loadItemsForWatchList(wl.id)
         }
     }
 
@@ -129,104 +129,30 @@ fun WatchListScreen(
                 .padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            item(key = "chips") {
+            item(key = "header") {
                 Spacer(modifier = Modifier.height(8.dp))
                 Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    LazyRow(
-                        modifier = Modifier.weight(1f),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        items(watchLists, key = { it.id }) { wl ->
-                            FilterChip(
-                                selected = selectedId == wl.id,
-                                onClick = { viewModel.selectWatchList(wl.id) },
-                                label = { Text(wl.name) },
-                                colors = FilterChipDefaults.filterChipColors(
-                                    selectedContainerColor = MaterialTheme.colorScheme.primaryContainer
-                                )
-                            )
+                    Text(
+                        text = "Watch Lists",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Row {
+                        IconButton(onClick = { viewModel.refreshAllWatchListPrices() }) {
+                            Icon(Icons.Default.Refresh, contentDescription = "Refresh all")
                         }
-                    }
-                    IconButton(onClick = { showCreateDialog = true }) {
-                        Icon(Icons.Default.Add, contentDescription = "New list")
+                        IconButton(onClick = { showCreateDialog = true }) {
+                            Icon(Icons.Default.Add, contentDescription = "New list")
+                        }
                     }
                 }
             }
 
-            val selectedWatchList = watchLists.find { it.id == selectedId }
-
-            if (selectedWatchList != null) {
-                item(key = "actions") {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = selectedWatchList.name,
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.weight(1f)
-                        )
-                        IconButton(onClick = { showRenameDialog = true }) {
-                            Icon(Icons.Default.Edit, contentDescription = "Rename", modifier = Modifier.size(20.dp))
-                        }
-                        IconButton(onClick = { watchListToDelete = selectedWatchList.id }) {
-                            Icon(Icons.Default.Delete, contentDescription = "Delete list", tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(20.dp))
-                        }
-                        IconButton(onClick = { viewModel.refreshPrices() }) {
-                            Icon(Icons.Default.Refresh, contentDescription = "Refresh prices", modifier = Modifier.size(20.dp))
-                        }
-                    }
-                }
-
-                item(key = "add_btn") {
-                    OutlinedButton(
-                        onClick = { showAddItemDialog = true },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("Add Ticker")
-                    }
-                }
-
-                if (isLoading && items.isEmpty()) {
-                    item(key = "loading") {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(24.dp),
-                            horizontalArrangement = Arrangement.Center
-                        ) {
-                            CircularProgressIndicator(modifier = Modifier.size(32.dp))
-                        }
-                    }
-                } else if (items.isNotEmpty()) {
-                    item(key = "table") {
-                        WatchListTable(
-                            items = items,
-                            currencyFormat = currencyFormat,
-                            sharesFormat = sharesFormat,
-                            priceFormat = priceFormat,
-                            dateFormat = dateFormat,
-                            onDelete = { itemToDelete = it },
-                            onReminder = { itemForReminder = it.entity }
-                        )
-                    }
-                } else {
-                    item(key = "empty") {
-                        Text(
-                            text = "No tickers in this watch list. Tap \"Add Ticker\" to get started.",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(vertical = 16.dp)
-                        )
-                    }
-                }
-            } else if (watchLists.isEmpty()) {
+            if (watchLists.isEmpty()) {
                 item(key = "no_lists") {
                     Column(
                         modifier = Modifier
@@ -247,6 +173,24 @@ fun WatchListScreen(
                 }
             }
 
+            items(watchLists, key = { it.id }) { wl ->
+                val wlItems = itemsByWatchList[wl.id] ?: emptyList()
+                WatchListPanel(
+                    watchList = wl,
+                    items = wlItems,
+                    currencyFormat = currencyFormat,
+                    sharesFormat = sharesFormat,
+                    priceFormat = priceFormat,
+                    dateFormat = dateFormat,
+                    onAddTicker = { addItemWatchListId = wl.id },
+                    onRename = { renameWatchList = wl },
+                    onDelete = { watchListToDelete = wl.id },
+                    onDeleteItem = { itemToDelete = it },
+                    onReminder = { itemForReminder = it.entity },
+                    onTickerClick = { onNavigateToItem(it) }
+                )
+            }
+
             item { Spacer(modifier = Modifier.height(16.dp)) }
         }
     }
@@ -263,20 +207,17 @@ fun WatchListScreen(
         )
     }
 
-    if (showRenameDialog) {
-        val wl = watchLists.find { it.id == selectedId }
-        if (wl != null) {
-            TextInputDialog(
-                title = "Rename Watch List",
-                label = "Name",
-                initialValue = wl.name,
-                onConfirm = { name ->
-                    showRenameDialog = false
-                    if (name.isNotBlank()) viewModel.renameWatchList(wl, name)
-                },
-                onDismiss = { showRenameDialog = false }
-            )
-        }
+    renameWatchList?.let { wl ->
+        TextInputDialog(
+            title = "Rename Watch List",
+            label = "Name",
+            initialValue = wl.name,
+            onConfirm = { name ->
+                renameWatchList = null
+                if (name.isNotBlank()) viewModel.renameWatchList(wl, name)
+            },
+            onDismiss = { renameWatchList = null }
+        )
     }
 
     watchListToDelete?.let { id ->
@@ -316,21 +257,21 @@ fun WatchListScreen(
         }
     }
 
-    if (showAddItemDialog && selectedId != null) {
+    addItemWatchListId?.let { wlId ->
         AddTickerDialog(
             fetchedPrice = fetchedPrice,
             onFetchPrice = { viewModel.fetchPrice(it) },
             onConfirm = { ticker, shares, price, reminderDt, reminderMsg ->
-                showAddItemDialog = false
+                addItemWatchListId = null
                 viewModel.clearFetchedPrice()
                 if (reminderDt != null) {
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !hasNotificationPermission) {
                         notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
                     }
                 }
-                viewModel.addItem(selectedId!!, ticker, shares, price, reminderDt, reminderMsg)
+                viewModel.addItem(wlId, ticker, shares, price, reminderDt, reminderMsg)
             },
-            onDismiss = { showAddItemDialog = false; viewModel.clearFetchedPrice() }
+            onDismiss = { addItemWatchListId = null; viewModel.clearFetchedPrice() }
         )
     }
 
@@ -356,6 +297,111 @@ fun WatchListScreen(
 }
 
 @Composable
+private fun WatchListPanel(
+    watchList: WatchListEntity,
+    items: List<WatchListItemUi>,
+    currencyFormat: NumberFormat,
+    sharesFormat: DecimalFormat,
+    priceFormat: DecimalFormat,
+    dateFormat: DateTimeFormatter,
+    onAddTicker: () -> Unit,
+    onRename: () -> Unit,
+    onDelete: () -> Unit,
+    onDeleteItem: (WatchListItemUi) -> Unit,
+    onReminder: (WatchListItemUi) -> Unit,
+    onTickerClick: (String) -> Unit
+) {
+    var expanded by rememberSaveable { mutableStateOf(true) }
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainer
+        )
+    ) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { expanded = !expanded },
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = watchList.name,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.weight(1f)
+                )
+                Text(
+                    text = "${items.size} items",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Icon(
+                    imageVector = if (expanded) Icons.Default.KeyboardArrowUp
+                    else Icons.Default.KeyboardArrowDown,
+                    contentDescription = if (expanded) "Collapse" else "Expand"
+                )
+            }
+
+            AnimatedVisibility(visible = expanded) {
+                Column {
+                    HorizontalDivider(
+                        modifier = Modifier.padding(vertical = 8.dp),
+                        color = MaterialTheme.colorScheme.outlineVariant
+                    )
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        OutlinedButton(
+                            onClick = onAddTicker,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Add Ticker", style = MaterialTheme.typography.labelSmall)
+                        }
+                        IconButton(onClick = onRename, modifier = Modifier.size(32.dp)) {
+                            Icon(Icons.Default.Edit, contentDescription = "Rename", modifier = Modifier.size(18.dp))
+                        }
+                        IconButton(onClick = onDelete, modifier = Modifier.size(32.dp)) {
+                            Icon(Icons.Default.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(18.dp))
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    if (items.isNotEmpty()) {
+                        WatchListTable(
+                            items = items,
+                            currencyFormat = currencyFormat,
+                            sharesFormat = sharesFormat,
+                            priceFormat = priceFormat,
+                            dateFormat = dateFormat,
+                            onDelete = onDeleteItem,
+                            onReminder = onReminder,
+                            onTickerClick = onTickerClick
+                        )
+                    } else {
+                        Text(
+                            text = "No tickers yet. Tap \"Add Ticker\" to get started.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(vertical = 8.dp)
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
 private fun WatchListTable(
     items: List<WatchListItemUi>,
     currencyFormat: NumberFormat,
@@ -363,7 +409,8 @@ private fun WatchListTable(
     priceFormat: DecimalFormat,
     dateFormat: DateTimeFormatter,
     onDelete: (WatchListItemUi) -> Unit,
-    onReminder: (WatchListItemUi) -> Unit
+    onReminder: (WatchListItemUi) -> Unit,
+    onTickerClick: (String) -> Unit
 ) {
     val dividerColor = MaterialTheme.colorScheme.outlineVariant
     val horizontalScroll = rememberScrollState()
@@ -421,7 +468,11 @@ private fun WatchListTable(
                         text = item.entity.ticker,
                         style = MaterialTheme.typography.bodySmall,
                         fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.width(80.dp).padding(start = 4.dp)
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier
+                            .width(80.dp)
+                            .padding(start = 4.dp)
+                            .clickable { onTickerClick(item.entity.ticker) }
                     )
                     VerticalDivider(color = dividerColor)
                     Text(

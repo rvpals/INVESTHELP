@@ -42,7 +42,7 @@ Android investment tracking app built with Kotlin, Jetpack Compose, and Material
 - Dates stored as epoch days for simple SQL range queries
 - Yahoo Finance v8/v10 API for live prices, historical data, and analysis info
 - Global top bar: portfolio value 3D button (refreshes all prices + navigates to Dashboard) + hamburger menu (Accounts, Performance, Watch List, Settings, SQL Explorer, Help, About)
-- Top bar shows spinner while refreshing prices
+- Top bar shows spinner while refreshing prices; refresh status bar below top bar shows "Updating [TICKER]" with price, change $, change % (color-coded, auto-hides on completion)
 - Bottom nav: Dashboard, Items, Performance, Transaction, Simulation (3D gradient icons with shadow)
 - Icon3D composable: renders icons inside gradient-filled rounded boxes with drop shadow; used for bottom nav and hamburger menu icons
 - Simulation time ranges: 1W, 2W, 1M, 3M, 6M, 1Y, 2Y, 5Y, 10Y, MAX (grouped in Week/Month/Year rows)
@@ -55,9 +55,11 @@ Android investment tracking app built with Kotlin, Jetpack Compose, and Material
 - Clicking a price in Analyze Price copies it back to the transaction form Price field
 - Transaction form: "View" button next to Ticker opens item detail; form state preserved via rememberSaveable
 - Transaction form: auto-selects first account for new transactions
-- Item detail: "Analysis Info" collapsible panel (auto-fetches on screen load, displayed inline before Yahoo Finance button)
-- Item detail: collapsible "<TICKER> Stats" section (replaces separate statistics screen)
-- Item detail: collapsible "Transactions" section
+- Item detail: TabRow with "Details" and "Price History" tabs
+- Item detail Details tab: "Analysis Info" collapsible panel (auto-fetches on screen load, displayed inline before Yahoo Finance button)
+- Item detail Details tab: collapsible "<TICKER> Stats" section (replaces separate statistics screen)
+- Item detail Details tab: collapsible "Transactions" section
+- Item detail Price History tab: radio button timeframe selector (Hourly, Daily, Monthly, Yearly); Hourly = today's market hours (1h interval), Daily = last 60 days, Monthly = last 13 months, Yearly = last 15 years; summary cards (Average, Max, Min) above grid table of prices
 - **Image loading:** Coil 2.7.0 for company logos; logos cached as BLOB in investment_items table, fetched from companiesmarketcap.com CDN during price refresh (only if logo is null), UI falls back to network URL if not cached
 - Item add/edit dialog: type selector dropdown (Stock, ETF, Bond, MutualFund, Crypto, Other); auto-fills type when selecting existing ticker
 - Item detail card row 1 (big font): Total Shares, Total Value, Total Cost, Total G/L
@@ -75,7 +77,7 @@ Android investment tracking app built with Kotlin, Jetpack Compose, and Material
 - Settings: "Warn before delete" toggle (default: on) — when off, skips confirmation dialogs for delete actions
 - Settings: "Dashboard Market Indices" section with toggles for 8 indices (NASDAQ, S&P 500, Dow, Gold, Russell 2K, Silver, Oil, Bitcoin); default: first 4 enabled; up/down arrow buttons to reorder indices; order persisted via `market_indices_order` SharedPreferences key
 - Dashboard Market Indices: long-press drag-and-drop reorder on index cards; swaps on half-slot-width threshold; persists order to SharedPreferences; syncs with Settings arrow reorder
-- Settings: Preferences tab scrollable to accommodate all content
+- Settings: Preferences tab scrollable to accommodate all content; "Themes" and "Dashboard Market Indices" sections in collapsible panels (default collapsed)
 - Transaction form: "Simulate" button calculates days since transaction date and opens simulation with custom range
 - Simulation: supports custom day ranges from transaction simulation (auto-runs on navigation)
 - SQL Explorer: accessible from hamburger menu, runs raw SQL via Room's SupportSQLiteDatabase
@@ -104,7 +106,7 @@ Android investment tracking app built with Kotlin, Jetpack Compose, and Material
 - Account Performance chart: double-tap inline chart opens full-screen dialog (Dialog with usePlatformDefaultWidth=false, Scaffold with close button); full-screen chart supports zoom/pan/tap-to-select; double-tap in full-screen resets zoom
 - Account Performance chart: data points with notes rendered bold (white outer circle radius 9 + colored inner circle radius 7); normal points use radius 4
 - Account Performance chart: tapping a noted data point shows two-line tooltip — value/date on line 1, note text in bold on line 2; tooltip auto-sizes for both lines
-- Watch List: accessible from hamburger menu; multiple named watch lists via FilterChip selector; add/rename/delete watch lists
+- Watch List: accessible from hamburger menu; each watch list displayed as its own collapsible panel (all visible simultaneously); add/rename/delete watch lists; ticker text clickable to navigate to Item Detail
 - Watch List: add ticker with shares count and price-when-added; "Fetch" button fetches current price from Yahoo Finance
 - Watch List: table shows ticker, shares, current price, added price, change $ (currentValue - costBasis), change %, added date, delete button
 - Watch List: `watch_lists` table (id, name) and `watch_list_items` table (id, watchListId, ticker, shares, priceWhenAdded, addedDate, reminderDateTime, reminderMessage) with CASCADE delete

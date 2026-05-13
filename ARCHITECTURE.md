@@ -101,10 +101,11 @@ Lazy initialization pattern: database opens on first access, not at app startup.
 ## Remote Data
 
 ### Yahoo Finance Integration (StockPriceService)
-- **v8 Chart API**: Live prices, historical data, day high/low
+- **v8 Chart API**: Live prices, historical data, day high/low, price history (flexible range/interval)
 - **v10 QuoteSummary API**: Sector, industry, P/E, EPS, 52-week range, business summary
 - No API key required (undocumented public endpoints)
-- Historical data uses weekly interval for 5Y+ ranges
+- `fetchPriceHistory(ticker, range, interval)`: flexible chart queries (e.g., "1d"/"1h" for hourly, "60d"/"1d" for daily, "13mo"/"1mo" for monthly, "15y"/"1mo" for yearly)
+- Historical data uses weekly interval for 5Y+ ranges in simulation
 
 ## UI Components
 

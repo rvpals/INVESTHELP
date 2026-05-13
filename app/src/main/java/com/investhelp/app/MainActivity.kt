@@ -160,6 +160,7 @@ fun GlobalTopBar(navController: NavHostController) {
     val dashboardViewModel: DashboardViewModel = hiltViewModel()
     val uiState by dashboardViewModel.uiState.collectAsStateWithLifecycle()
     val isRefreshing by dashboardViewModel.isRefreshing.collectAsStateWithLifecycle()
+    val refreshStatus by dashboardViewModel.refreshStatus.collectAsStateWithLifecycle()
     val currencyFormat = NumberFormat.getCurrencyInstance(Locale.US)
     var menuExpanded by remember { mutableStateOf(false) }
     var showAbout by remember { mutableStateOf(false) }
@@ -240,6 +241,7 @@ fun GlobalTopBar(navController: NavHostController) {
         )
     }
 
+    Column {
     TopAppBar(
         title = {
             Card(
@@ -376,6 +378,33 @@ fun GlobalTopBar(navController: NavHostController) {
             }
         }
     )
+
+    if (isRefreshing && refreshStatus != null) {
+        val status = refreshStatus!!
+        val sign = if (status.changeAmount >= 0) "+" else ""
+        val changeColor = if (status.changeAmount >= 0)
+            Color(0xFF2E7D32) else Color(0xFFC62828)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                .padding(horizontal = 16.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                text = "Updating ${status.ticker}",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Text(
+                text = "${currencyFormat.format(status.price)}/share (${sign}${currencyFormat.format(status.changeAmount)}; ${sign}${"%.2f".format(status.changePercent)}%)",
+                style = MaterialTheme.typography.labelMedium,
+                color = changeColor
+            )
+        }
+    }
+    } // Column
 }
 
 @Composable

@@ -7,6 +7,7 @@
 - Second row shows Day % and All-time % gain/loss (color-coded)
 - Tapping refreshes all prices and navigates to Dashboard
 - Spinner shown during price refresh
+- Refresh status bar: temporary bar below top bar showing "Updating [TICKER]" with price/share, change $ and change % (color-coded green/red); auto-hides when complete
 - Hamburger menu: Accounts, Watch List, Settings, SQL Explorer, Help, About
 
 ### Dashboard Portfolio Summary
@@ -71,6 +72,9 @@
 
 ## Item Detail
 
+Two tabs: **Details** and **Price History**
+
+### Details Tab
 - Header: company logo icon (48dp, cached from DB) + ticker (bold) + company name + type chip + current price
 - Card row 1 (large): Total Shares, Total Value, Total Cost, Total G/L
 - Card row 2 (medium): Daily G/L, Daily G/L/Share, Daily Min, Daily Max
@@ -79,6 +83,15 @@
 - Collapsible "Analysis Info" panel: auto-fetches Yahoo Finance quoteSummary (sector, P/E, EPS, 52-week range, profit margins, business summary) on screen load; displayed inline
 - Yahoo Finance link: opens ticker page in browser (full-width button)
 - Simulate button: opens simulation with ticker and shares
+
+### Price History Tab
+- Timeframe radio buttons: Hourly, Daily, Monthly, Yearly
+- Hourly: market hours for today (1h interval)
+- Daily: last 60 days (1d interval)
+- Monthly: last 13 months (1mo interval)
+- Yearly: last 15 years (1mo interval)
+- Summary cards: Average, Max, Min of the result prices
+- Grid table: row number, date/time, closing price with horizontal and vertical gridlines
 
 ## Transactions
 
@@ -124,23 +137,23 @@
 
 ## Watch List
 
-- Multiple named watch lists via FilterChip selector
+- Each watch list displayed as its own collapsible panel (all visible simultaneously)
 - Create, rename, delete watch lists (CASCADE)
 - Add ticker: shares, price-when-added, "Fetch" button for current price, optional reminder
-- Table with gridlines: Ticker, Shares, Price, Added @, Change $, Change %, Date, Delete, Reminder bell
+- Table with gridlines: Ticker (clickable, navigates to Item Detail), Shares, Price, Added @, Change $, Change %, Date, Delete, Reminder bell
 - Reminder bell icon: highlighted when reminder is active; tap to set/edit/clear reminder
 - Reminders: date/time picker + message; scheduled notification via AlarmManager; fires even in doze mode
 - Notification tap: opens Item Detail screen for the ticker
-- Refresh all tickers in selected list
+- Refresh All button in header refreshes prices across all watch lists
 
 ## Settings
 
 ### Preferences
-- **Theme**: 21 selectable color themes (Default Green, Ocean Blue, Sunset Orange, Midnight Purple, Forest Moss, Ruby Red, Arctic Ice, Gold Rush, Sakura Pink, Charcoal Dark, Lavender Fields, Copper Bronze, Emerald Gem, Slate Blue, Mocha Coffee, Navy Marine, Tropical Mint, Wine Burgundy, Desert Sand, Nordic Pine, Chase); each theme defines full light and dark color schemes; selection persisted to SharedPreferences; instant apply without restart
+- **Themes** (collapsible panel): 21 selectable color themes (Default Green, Ocean Blue, Sunset Orange, Midnight Purple, Forest Moss, Ruby Red, Arctic Ice, Gold Rush, Sakura Pink, Charcoal Dark, Lavender Fields, Copper Bronze, Emerald Gem, Slate Blue, Mocha Coffee, Navy Marine, Tropical Mint, Wine Burgundy, Desert Sand, Nordic Pine, Chase); each theme defines full light and dark color schemes; selection persisted to SharedPreferences; instant apply without restart
 - **Auto Update Change History when refresh**: toggle (default: off); when on, records ETF/Stock/Total values to change_history table after price refresh
 - Auto-update position shares toggle
 - Warn before delete toggle (default: on)
-- Dashboard Market Indices: toggles for 8 indices, up/down arrow reorder
+- **Dashboard Market Indices** (collapsible panel): toggles for 8 indices, up/down arrow reorder
 
 ### Data Management
 - CSV Import: 3 types (Transaction, Position, Performance)

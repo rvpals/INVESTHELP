@@ -111,6 +111,36 @@ class StockPriceService @Inject constructor() {
 
     suspend fun fetchPrice(ticker: String): Double = fetchQuote(ticker).price
 
+    suspend fun fetchPriceHistory(ticker: String, range: String, interval: String): List<HistoricalPrice> =
+        withContext(Dispatchers.IO) {
+            val url = URL("https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?range=${range}&interval=${interval}")
+            val connection = url.openConnection() as HttpURLConnection
+            connection.instanceFollowRedirects = true
+            connection.setRequestProperty("User-Agent", "Mozilla/5.0")
+            connection.connectTimeout = 15_000
+            connection.readTimeout = 30_000
+
+            try {
+                if (connection.responseCode != 200) {
+                    throw Exception("Yahoo Finance returned ${connection.responseCode}")
+                }
+
+                val body = connection.inputStream.bufferedReader().readText()
+                val root = json.parseToJsonElement(body) as JsonObject
+                val result = root["chart"]!!.jsonObject["result"]!!.jsonArray[0].jsonObject
+                val timestamps = result["timestamp"]!!.jsonArray.map { it.jsonPrimitive.long }
+                val closes = result["indicators"]!!.jsonObject["quote"]!!.jsonArray[0]
+                    .jsonObject["close"]!!.jsonArray
+
+                timestamps.mapIndexedNotNull { i, ts ->
+                    val close = closes[i].jsonPrimitive.doubleOrNull ?: return@mapIndexedNotNull null
+                    HistoricalPrice(timestamp = ts, close = close)
+                }
+            } finally {
+                connection.disconnect()
+            }
+        }
+
     suspend fun fetchHistoricalPrices(ticker: String, rangeDays: Int = 14): List<HistoricalPrice> =
         withContext(Dispatchers.IO) {
             val rangeParam = if (rangeDays == Int.MAX_VALUE) "max" else "${rangeDays}d"

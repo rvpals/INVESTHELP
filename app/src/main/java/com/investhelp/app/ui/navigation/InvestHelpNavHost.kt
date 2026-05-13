@@ -225,7 +225,12 @@ fun InvestHelpNavHost(
 
         composable<WatchListRoute> {
             val viewModel: WatchListViewModel = hiltViewModel()
-            WatchListScreen(viewModel = viewModel)
+            WatchListScreen(
+                viewModel = viewModel,
+                onNavigateToItem = { ticker ->
+                    navController.navigate(ItemDetailRoute(ticker))
+                }
+            )
         }
 
         composable<HelpRoute> {

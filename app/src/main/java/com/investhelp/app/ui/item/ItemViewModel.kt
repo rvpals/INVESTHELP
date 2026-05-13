@@ -8,6 +8,7 @@ import com.investhelp.app.data.local.entity.InvestmentAccountEntity
 import com.investhelp.app.data.local.entity.InvestmentItemEntity
 import com.investhelp.app.data.local.entity.InvestmentTransactionEntity
 import com.investhelp.app.data.remote.AnalysisInfo
+import com.investhelp.app.data.remote.HistoricalPrice
 import com.investhelp.app.data.remote.StockPriceService
 import com.investhelp.app.data.repository.InvestmentItemRepository
 import com.investhelp.app.data.repository.TransactionRepository
@@ -106,6 +107,38 @@ class ItemViewModel @Inject constructor(
     fun clearAnalysisInfo() {
         _analysisInfo.value = null
         _analysisError.value = null
+    }
+
+    // --- Price History ---
+    private val _priceHistory = MutableStateFlow<List<HistoricalPrice>>(emptyList())
+    val priceHistory: StateFlow<List<HistoricalPrice>> = _priceHistory.asStateFlow()
+
+    private val _isLoadingPriceHistory = MutableStateFlow(false)
+    val isLoadingPriceHistory: StateFlow<Boolean> = _isLoadingPriceHistory.asStateFlow()
+
+    private val _priceHistoryError = MutableStateFlow<String?>(null)
+    val priceHistoryError: StateFlow<String?> = _priceHistoryError.asStateFlow()
+
+    fun loadPriceHistory(ticker: String, timeframe: String) {
+        val (range, interval) = when (timeframe) {
+            "Hourly" -> "1d" to "1h"
+            "Daily" -> "60d" to "1d"
+            "Monthly" -> "13mo" to "1mo"
+            "Yearly" -> "15y" to "1mo"
+            else -> "60d" to "1d"
+        }
+        viewModelScope.launch {
+            _isLoadingPriceHistory.value = true
+            _priceHistoryError.value = null
+            try {
+                _priceHistory.value = stockPriceService.fetchPriceHistory(ticker, range, interval)
+            } catch (e: Exception) {
+                _priceHistoryError.value = "Failed to fetch price history: ${e.message}"
+                _priceHistory.value = emptyList()
+            } finally {
+                _isLoadingPriceHistory.value = false
+            }
+        }
     }
 
     // --- Load item by ticker (for detail screen) ---

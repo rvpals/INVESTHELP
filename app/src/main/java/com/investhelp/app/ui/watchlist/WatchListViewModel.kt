@@ -56,6 +56,9 @@ class WatchListViewModel @Inject constructor(
     private val _items = MutableStateFlow<List<WatchListItemUi>>(emptyList())
     val items: StateFlow<List<WatchListItemUi>> = _items.asStateFlow()
 
+    private val _itemsByWatchList = MutableStateFlow<Map<Long, List<WatchListItemUi>>>(emptyMap())
+    val itemsByWatchList: StateFlow<Map<Long, List<WatchListItemUi>>> = _itemsByWatchList.asStateFlow()
+
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
@@ -63,6 +66,7 @@ class WatchListViewModel @Inject constructor(
     val fetchedPrice: StateFlow<Double?> = _fetchedPrice.asStateFlow()
 
     private var itemsJob: Job? = null
+    private val watchListJobs = mutableMapOf<Long, Job>()
 
     fun warnBeforeDelete(): Boolean =
         prefs.getBoolean(SettingsViewModel.KEY_WARN_BEFORE_DELETE, true)
@@ -70,6 +74,40 @@ class WatchListViewModel @Inject constructor(
     fun selectWatchList(id: Long) {
         _selectedWatchListId.value = id
         loadItems(id)
+    }
+
+    fun loadItemsForWatchList(watchListId: Long) {
+        if (watchListJobs.containsKey(watchListId)) return
+        watchListJobs[watchListId] = viewModelScope.launch {
+            repository.getItemsByWatchList(watchListId).collect { entities ->
+                val uiItems = entities.map { entity -> WatchListItemUi(entity = entity) }
+                _itemsByWatchList.value = _itemsByWatchList.value + (watchListId to uiItems)
+                refreshPricesForWatchList(watchListId)
+            }
+        }
+    }
+
+    private suspend fun refreshPricesForWatchList(watchListId: Long) {
+        val currentItems = _itemsByWatchList.value[watchListId] ?: return
+        val updated = currentItems.map { item ->
+            try {
+                val quote = stockPriceService.fetchQuote(item.entity.ticker)
+                val currentPrice = quote.price
+                val costBasis = item.entity.priceWhenAdded * item.entity.shares
+                val currentValue = currentPrice * item.entity.shares
+                val changeAmt = currentValue - costBasis
+                val changePct = if (costBasis != 0.0) changeAmt / costBasis * 100.0 else 0.0
+                item.copy(
+                    currentPrice = currentPrice,
+                    changeAmount = changeAmt,
+                    changePercent = changePct
+                )
+            } catch (e: Exception) {
+                AppLog.log("WatchList price fetch ${item.entity.ticker} failed: ${e.message}")
+                item
+            }
+        }
+        _itemsByWatchList.value = _itemsByWatchList.value + (watchListId to updated)
     }
 
     private fun loadItems(watchListId: Long) {
@@ -110,11 +148,22 @@ class WatchListViewModel @Inject constructor(
         }
     }
 
+    fun refreshAllWatchListPrices() {
+        viewModelScope.launch {
+            _isLoading.value = true
+            val allEntries = _itemsByWatchList.value.toMap()
+            for ((wlId, _) in allEntries) {
+                refreshPricesForWatchList(wlId)
+            }
+            _isLoading.value = false
+        }
+    }
+
     fun createWatchList(name: String) {
         viewModelScope.launch {
             val id = repository.insertWatchList(WatchListEntity(name = name))
             _selectedWatchListId.value = id
-            loadItems(id)
+            loadItemsForWatchList(id)
         }
     }
 
@@ -127,6 +176,9 @@ class WatchListViewModel @Inject constructor(
     fun deleteWatchList(watchList: WatchListEntity) {
         viewModelScope.launch {
             repository.deleteWatchList(watchList)
+            watchListJobs[watchList.id]?.cancel()
+            watchListJobs.remove(watchList.id)
+            _itemsByWatchList.value = _itemsByWatchList.value - watchList.id
             if (_selectedWatchListId.value == watchList.id) {
                 _selectedWatchListId.value = null
                 _items.value = emptyList()

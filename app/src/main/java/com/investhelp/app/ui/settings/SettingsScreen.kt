@@ -60,6 +60,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -118,70 +119,70 @@ private fun PreferencesTab(viewModel: SettingsViewModel, uiState: SettingsUiStat
             .verticalScroll(rememberScrollState())
             .padding(24.dp)
     ) {
-        Text("Theme", style = MaterialTheme.typography.titleMedium)
+        SettingsCollapsibleSection(title = "Themes", defaultExpanded = false) {
+            Spacer(modifier = Modifier.height(4.dp))
 
-        Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                "Choose a color theme for the app",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
 
-        Text(
-            "Choose a color theme for the app",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
+            Spacer(modifier = Modifier.height(12.dp))
 
-        Spacer(modifier = Modifier.height(12.dp))
-
-        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            AppTheme.entries.forEach { theme ->
-                val isSelected = uiState.selectedTheme == theme
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .then(
-                            if (isSelected) Modifier.border(
-                                2.dp,
-                                MaterialTheme.colorScheme.primary,
-                                MaterialTheme.shapes.medium
-                            ) else Modifier
-                        )
-                        .clickable { viewModel.setTheme(theme) },
-                    colors = CardDefaults.cardColors(
-                        containerColor = if (isSelected)
-                            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
-                        else
-                            MaterialTheme.colorScheme.surfaceContainerLow
-                    )
-                ) {
-                    Row(
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                AppTheme.entries.forEach { theme ->
+                    val isSelected = uiState.selectedTheme == theme
+                    Card(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 12.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                            .then(
+                                if (isSelected) Modifier.border(
+                                    2.dp,
+                                    MaterialTheme.colorScheme.primary,
+                                    MaterialTheme.shapes.medium
+                                ) else Modifier
+                            )
+                            .clickable { viewModel.setTheme(theme) },
+                        colors = CardDefaults.cardColors(
+                            containerColor = if (isSelected)
+                                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+                            else
+                                MaterialTheme.colorScheme.surfaceContainerLow
+                        )
                     ) {
                         Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 12.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(24.dp)
-                                    .background(
-                                        theme.lightScheme.primary,
-                                        RoundedCornerShape(6.dp)
-                                    )
-                            )
-                            Text(
-                                theme.label,
-                                style = MaterialTheme.typography.bodyLarge
-                            )
-                        }
-                        if (isSelected) {
-                            Icon(
-                                Icons.Default.Check,
-                                contentDescription = "Selected",
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(20.dp)
-                            )
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(24.dp)
+                                        .background(
+                                            theme.lightScheme.primary,
+                                            RoundedCornerShape(6.dp)
+                                        )
+                                )
+                                Text(
+                                    theme.label,
+                                    style = MaterialTheme.typography.bodyLarge
+                                )
+                            }
+                            if (isSelected) {
+                                Icon(
+                                    Icons.Default.Check,
+                                    contentDescription = "Selected",
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
                         }
                     }
                 }
@@ -274,67 +275,67 @@ private fun PreferencesTab(viewModel: SettingsViewModel, uiState: SettingsUiStat
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        Text("Dashboard Market Indices", style = MaterialTheme.typography.titleMedium)
+        SettingsCollapsibleSection(title = "Dashboard Market Indices", defaultExpanded = false) {
+            Spacer(modifier = Modifier.height(4.dp))
 
-        Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                "Choose which market indices to show on the dashboard",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
 
-        Text(
-            "Choose which market indices to show on the dashboard",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
+            Spacer(modifier = Modifier.height(12.dp))
 
-        Spacer(modifier = Modifier.height(12.dp))
+            val orderedIndices = remember(uiState.marketIndicesOrder) {
+                val orderMap = uiState.marketIndicesOrder.withIndex().associate { it.value to it.index }
+                SettingsViewModel.AVAILABLE_MARKET_INDICES.sortedBy { orderMap[it.symbol] ?: Int.MAX_VALUE }
+            }
 
-        val orderedIndices = remember(uiState.marketIndicesOrder) {
-            val orderMap = uiState.marketIndicesOrder.withIndex().associate { it.value to it.index }
-            SettingsViewModel.AVAILABLE_MARKET_INDICES.sortedBy { orderMap[it.symbol] ?: Int.MAX_VALUE }
-        }
-
-        orderedIndices.forEachIndexed { displayIndex, index ->
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
+            orderedIndices.forEachIndexed { displayIndex, index ->
                 Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Column {
-                        IconButton(
-                            onClick = { viewModel.moveMarketIndex(index.symbol, -1) },
-                            enabled = displayIndex > 0,
-                            modifier = Modifier.size(24.dp)
-                        ) {
-                            Icon(
-                                Icons.Default.KeyboardArrowUp,
-                                contentDescription = "Move up",
-                                modifier = Modifier.size(18.dp)
-                            )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Column {
+                            IconButton(
+                                onClick = { viewModel.moveMarketIndex(index.symbol, -1) },
+                                enabled = displayIndex > 0,
+                                modifier = Modifier.size(24.dp)
+                            ) {
+                                Icon(
+                                    Icons.Default.KeyboardArrowUp,
+                                    contentDescription = "Move up",
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                            IconButton(
+                                onClick = { viewModel.moveMarketIndex(index.symbol, 1) },
+                                enabled = displayIndex < orderedIndices.lastIndex,
+                                modifier = Modifier.size(24.dp)
+                            ) {
+                                Icon(
+                                    Icons.Default.KeyboardArrowDown,
+                                    contentDescription = "Move down",
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
                         }
-                        IconButton(
-                            onClick = { viewModel.moveMarketIndex(index.symbol, 1) },
-                            enabled = displayIndex < orderedIndices.lastIndex,
-                            modifier = Modifier.size(24.dp)
-                        ) {
-                            Icon(
-                                Icons.Default.KeyboardArrowDown,
-                                contentDescription = "Move down",
-                                modifier = Modifier.size(18.dp)
-                            )
-                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            "${index.label} (${index.symbol})",
+                            style = MaterialTheme.typography.bodyLarge
+                        )
                     }
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        "${index.label} (${index.symbol})",
-                        style = MaterialTheme.typography.bodyLarge
+                    Switch(
+                        checked = uiState.enabledMarketIndices.contains(index.symbol),
+                        onCheckedChange = { viewModel.toggleMarketIndex(index.symbol, it) }
                     )
                 }
-                Switch(
-                    checked = uiState.enabledMarketIndices.contains(index.symbol),
-                    onCheckedChange = { viewModel.toggleMarketIndex(index.symbol, it) }
-                )
             }
         }
     }
@@ -922,6 +923,38 @@ private fun CsvFieldDropdown(
                         expanded = false
                     }
                 )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SettingsCollapsibleSection(
+    title: String,
+    defaultExpanded: Boolean = false,
+    content: @Composable () -> Unit
+) {
+    var expanded by remember { mutableStateOf(defaultExpanded) }
+
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { expanded = !expanded },
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(title, style = MaterialTheme.typography.titleMedium)
+            Icon(
+                imageVector = if (expanded) Icons.Default.KeyboardArrowUp
+                else Icons.Default.KeyboardArrowDown,
+                contentDescription = if (expanded) "Collapse" else "Expand"
+            )
+        }
+
+        AnimatedVisibility(visible = expanded) {
+            Column {
+                content()
             }
         }
     }

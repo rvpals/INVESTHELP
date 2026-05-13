@@ -1,5 +1,23 @@
 # Changelog
 
+## v1.14 (Build 15) - 2026-05-13
+
+### Added
+- Settings: collapsible panels — "Themes" and "Dashboard Market Indices" sections now collapse/expand with animated arrow toggle (default collapsed)
+- Refresh status bar: temporary status bar below top bar during price refresh showing "Updating [TICKER]" with current price, change amount, and change percent (color-coded green/red); auto-hides when refresh completes
+- Watch List: clicking a ticker in the table navigates to Item Detail screen (ticker text colored as link)
+- Watch List: each watch list displayed as its own collapsible panel (replacing chip-selector approach); all lists visible simultaneously with expand/collapse per list
+- Watch List: "Refresh All" button in header refreshes prices across all watch lists
+- Item Detail: new "Price History" tab with radio button timeframe selector (Hourly, Daily, Monthly, Yearly)
+- Item Detail Price History: fetches data from Yahoo Finance — Hourly shows market hours for today, Daily shows last 60 days, Monthly shows last 13 months, Yearly shows last 15 years
+- Item Detail Price History: summary cards (Average, Max, Min) above the price table
+- Item Detail Price History: grid table with row number, date/time, and closing price with gridlines
+- StockPriceService: new `fetchPriceHistory(ticker, range, interval)` method for flexible Yahoo Finance chart queries
+
+### Changed
+- Watch List screen: replaced FilterChip selector with collapsible panels showing all watch lists at once; each panel has Add Ticker, Rename, Delete actions inline
+- Item Detail screen: restructured with TabRow (Details, Price History) tabs; existing content moved to Details tab
+
 ## v1.13 (Build 14) - 2026-05-12
 
 ### Added

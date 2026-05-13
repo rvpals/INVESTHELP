@@ -113,6 +113,16 @@ class DashboardViewModel @Inject constructor(
     private val _isRefreshing = MutableStateFlow(false)
     val isRefreshing: StateFlow<Boolean> = _isRefreshing.asStateFlow()
 
+    data class RefreshStatus(
+        val ticker: String = "",
+        val price: Double = 0.0,
+        val changeAmount: Double = 0.0,
+        val changePercent: Double = 0.0
+    )
+
+    private val _refreshStatus = MutableStateFlow<RefreshStatus?>(null)
+    val refreshStatus: StateFlow<RefreshStatus?> = _refreshStatus.asStateFlow()
+
     private val _lastRefreshedAt = MutableStateFlow<LocalDateTime?>(
         prefs.getLong("last_refreshed_at", -1L).let { millis ->
             if (millis > 0) LocalDateTime.ofInstant(
@@ -239,6 +249,15 @@ class DashboardViewModel @Inject constructor(
                         val resolvedName = quote.shortName ?: item.name
                         val newValue = quote.price * item.quantity
                         val dayChange = (quote.price - quote.previousClose) * item.quantity
+                        val priceChange = quote.price - quote.previousClose
+                        val priceChangePct = if (quote.previousClose != 0.0)
+                            priceChange / quote.previousClose * 100.0 else 0.0
+                        _refreshStatus.value = RefreshStatus(
+                            ticker = item.ticker,
+                            price = quote.price,
+                            changeAmount = priceChange,
+                            changePercent = priceChangePct
+                        )
                         itemRepository.upsertItem(
                             item.copy(
                                 name = resolvedName,
@@ -273,6 +292,7 @@ class DashboardViewModel @Inject constructor(
                 }
             } finally {
                 _isRefreshing.value = false
+                _refreshStatus.value = null
             }
         }
     }
