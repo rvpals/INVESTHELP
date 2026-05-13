@@ -1,15 +1,17 @@
 # Changelog
 
-## v1.11 (Build 12) - 2026-05-12
+## v1.13 (Build 14) - 2026-05-12
 
 ### Added
 - Watch List notification tap: clicking a reminder notification now opens the Item Detail screen for the ticker
 - Company logo stored in database: `logo` BLOB column on `investment_items` table; fetched from companiesmarketcap.com CDN during price refresh and cached locally
 - Item Detail: company logo icon (48dp) in header card with ticker name and company name
 - Database migration v19→v20: adds `logo` column to investment_items
+- Logo fetch logging in AppLog for debugging CDN responses
 
 ### Fixed
 - Company logo URLs: fixed 404 errors by lowercasing ticker in CDN URL (companiesmarketcap.com uses lowercase filenames)
+- Logo display: use ByteBuffer.wrap() for Coil 2.x compatibility (raw ByteArray not supported)
 - All ticker icon composables (Items list, Dashboard, Item Detail) now use stored logo bytes when available, falling back to network URL
 
 ## v1.10 (Build 11) - 2026-05-12
