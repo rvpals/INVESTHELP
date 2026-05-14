@@ -2,6 +2,7 @@ package com.investhelp.app.ui.sqlexplorer
 
 import android.content.Intent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.verticalScroll
@@ -46,6 +47,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -244,9 +246,14 @@ private fun ResultTable(result: QueryResult, onRowClick: (Int) -> Unit) {
             }
 
             itemsIndexed(result.rows, key = { index, _ -> index }) { index, row ->
+                val rowBg = if (index % 2 == 1)
+                    MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.4f)
+                else
+                    Color.Transparent
                 Row(
                     modifier = Modifier
                         .height(IntrinsicSize.Min)
+                        .background(rowBg)
                         .clickable { onRowClick(index) }
                 ) {
                     row.forEachIndexed { i, cell ->

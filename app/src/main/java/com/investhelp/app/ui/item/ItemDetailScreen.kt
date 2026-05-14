@@ -673,6 +673,18 @@ private fun PriceHistoryTab(
                     }
                 }
             }
+            Text(
+                text = when (selectedTimeframe) {
+                    "Hourly" -> "Today's market hours (1h interval)"
+                    "Daily" -> "Last 60 days (1d interval)"
+                    "Monthly" -> "Last 13 months (1mo interval)"
+                    "Yearly" -> "Last 15 years (1mo interval)"
+                    else -> ""
+                },
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(start = 8.dp, top = 4.dp)
+            )
         }
 
         if (isLoading) {

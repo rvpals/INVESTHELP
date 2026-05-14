@@ -1,5 +1,16 @@
 # Changelog
 
+## v1.16 (Build 17) - 2026-05-13
+
+### Added
+- Item Detail Price History: hint text below timeframe selector showing what each option means (e.g., "Last 60 days (1d interval)")
+- Item List: auto-fetches missing company logos in background on screen load
+- Logo fetching: tries 3 CDN sources (companiesmarketcap.com, parqet.com, iexcloud) for better coverage
+- SQL Explorer: alternating row colors in result grid for improved readability
+
+### Changed
+- SQL Explorer result grid: already had gridlines; added alternating row background color (every other row highlighted)
+
 ## v1.15 (Build 16) - 2026-05-13
 
 ### Added

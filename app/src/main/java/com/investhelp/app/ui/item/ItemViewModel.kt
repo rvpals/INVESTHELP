@@ -217,6 +217,20 @@ class ItemViewModel @Inject constructor(
         }
     }
 
+    // --- Fetch missing logos in background ---
+    fun fetchMissingLogos() {
+        viewModelScope.launch {
+            val items = itemRepository.getAllItems().first()
+            for (item in items) {
+                if (item.logo == null) {
+                    stockPriceService.fetchLogo(item.ticker)?.let { logo ->
+                        itemRepository.updateLogoByTicker(item.ticker, logo)
+                    }
+                }
+            }
+        }
+    }
+
     // --- Delete item ---
     fun deleteItem(ticker: String) {
         viewModelScope.launch {

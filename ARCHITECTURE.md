@@ -120,7 +120,7 @@ Reusable composable with:
 ### TickerIcon3D
 Gradient-filled rounded-corner box with shadow:
 - Color derived from ticker hash
-- Company logo from cached BLOB in database (fetched during price refresh); falls back to network URL via Coil
+- Company logo from cached BLOB in database (fetched from multiple CDN sources during refresh or on items screen load); falls back to network URL via Coil
 - White letter fallback when logo unavailable
 
 ### Icon3D

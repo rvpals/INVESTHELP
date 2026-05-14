@@ -86,6 +86,7 @@ Two tabs: **Details** and **Price History**
 
 ### Price History Tab
 - Timeframe radio buttons: Hourly, Daily, Monthly, Yearly
+- Hint text below selector showing what each timeframe means (e.g., "Today's market hours (1h interval)")
 - Hourly: market hours for today (1h interval)
 - Daily: last 60 days (1d interval)
 - Monthly: last 13 months (1mo interval)
@@ -176,7 +177,7 @@ Two tabs: **Details** and **Price History**
 
 - Raw SQL query execution against Room database
 - Auto-detects query type (SELECT/PRAGMA vs DML/DDL)
-- Result table with horizontal and vertical gridlines
+- Result table with horizontal and vertical gridlines and alternating row colors
 - CSV export via share intent
 - Table browser: list tables, expand column details, Open/Erase buttons
 - Row detail dialog for untruncated field values

@@ -59,8 +59,8 @@ Android investment tracking app built with Kotlin, Jetpack Compose, and Material
 - Item detail Details tab: "Analysis Info" collapsible panel (auto-fetches on screen load, displayed inline before Yahoo Finance button)
 - Item detail Details tab: collapsible "<TICKER> Stats" section (replaces separate statistics screen)
 - Item detail Details tab: collapsible "Transactions" section
-- Item detail Price History tab: radio button timeframe selector (Hourly, Daily, Monthly, Yearly); Hourly = today's market hours (1h interval), Daily = last 60 days, Monthly = last 13 months, Yearly = last 15 years; summary cards (Average, Max, Min) above grid table of prices
-- **Image loading:** Coil 2.7.0 for company logos; logos cached as BLOB in investment_items table, fetched from companiesmarketcap.com CDN during price refresh (only if logo is null), UI falls back to network URL if not cached
+- Item detail Price History tab: radio button timeframe selector (Hourly, Daily, Monthly, Yearly) with hint text below showing meaning; Hourly = today's market hours (1h interval), Daily = last 60 days, Monthly = last 13 months, Yearly = last 15 years; line chart with pinch-to-zoom/pan/tap-to-select; summary cards (Average, Max, Min) above grid table of prices
+- **Image loading:** Coil 2.7.0 for company logos; logos cached as BLOB in investment_items table, fetched from multiple CDN sources (companiesmarketcap.com, parqet.com, iexcloud) during price refresh or on items screen load (if logo is null), UI falls back to network URL if not cached
 - Item add/edit dialog: type selector dropdown (Stock, ETF, Bond, MutualFund, Crypto, Other); auto-fills type when selecting existing ticker
 - Item detail card row 1 (big font): Total Shares, Total Value, Total Cost, Total G/L
 - Item detail card row 2 (medium font): Daily G/L, Daily G/L/Share, Daily Min Price, Daily Max Price
@@ -84,7 +84,7 @@ Android investment tracking app built with Kotlin, Jetpack Compose, and Material
 - SQL Explorer: detects SELECT/PRAGMA/EXPLAIN queries vs DML/DDL statements
 - SQL Explorer: CSV export via FileProvider + share intent
 - SQL Explorer: table browser lists all database tables with expandable column details (name, type, PK/NN indicators)
-- SQL Explorer: result grid has both horizontal and vertical gridlines (VerticalDivider between columns, HorizontalDivider between rows)
+- SQL Explorer: result grid has both horizontal and vertical gridlines (VerticalDivider between columns, HorizontalDivider between rows) with alternating row colors
 - SQL Explorer: clicking a result row opens record detail dialog showing all field values untruncated
 - SQL Explorer: "Open" button on each table row runs `SELECT * FROM <table>` and shows results in grid
 - Settings: backup folder URI persisted to SharedPreferences; restored on ViewModel init
