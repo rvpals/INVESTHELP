@@ -4,8 +4,23 @@ echo  Building Invest Help - Release APK
 echo ============================================
 echo.
 
-call gradlew.bat assembleRelease
+set JAVA_HOME=E:/Prog/Java/jdk-17
 
+echo Using JAVA_HOME: %JAVA_HOME%
+echo.
+
+echo Running clean...
+call gradlew.bat clean
+if %ERRORLEVEL% NEQ 0 (
+    echo.
+    echo [ERROR] Clean failed!
+    pause
+    exit /b 1
+)
+
+echo.
+echo Running assembleRelease...
+call gradlew.bat assembleRelease
 if %ERRORLEVEL% NEQ 0 (
     echo.
     echo [ERROR] Build failed!
