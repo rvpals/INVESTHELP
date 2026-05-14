@@ -779,7 +779,7 @@ private fun PriceHistoryTab(
 ) {
     val timeframes = listOf("Hourly", "Daily", "Monthly", "Yearly")
     var selectedTimeframe by rememberSaveable { mutableStateOf("Daily") }
-    val hourlyIntervals = listOf("Every Hour" to "1h", "30 Minutes" to "30m", "10 Minutes" to "10m", "5 Minutes" to "5m")
+    val hourlyIntervals = listOf("Every Hour" to "1h", "30 Minutes" to "30m", "15 Minutes" to "15m", "5 Minutes" to "5m", "1 Minute" to "1m")
     var selectedHourlyInterval by rememberSaveable { mutableStateOf("1h") }
     val priceFormat = remember { NumberFormat.getCurrencyInstance(Locale.US) }
 
@@ -833,7 +833,24 @@ private fun PriceHistoryTab(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
-                        hourlyIntervals.forEach { (label, value) ->
+                        hourlyIntervals.take(3).forEach { (label, value) ->
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.clickable { selectedHourlyInterval = value }
+                            ) {
+                                RadioButton(
+                                    selected = selectedHourlyInterval == value,
+                                    onClick = { selectedHourlyInterval = value }
+                                )
+                                Text(label, style = MaterialTheme.typography.bodySmall)
+                            }
+                        }
+                    }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        hourlyIntervals.drop(3).forEach { (label, value) ->
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
                                 modifier = Modifier.clickable { selectedHourlyInterval = value }

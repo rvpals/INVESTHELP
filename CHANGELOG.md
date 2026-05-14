@@ -1,5 +1,18 @@
 # Changelog
 
+## v1.17 (Build 18) - 2026-05-14
+
+### Added
+- Item Detail Price History: "1 Minute" interval option for Hourly timeframe
+- Build: new `build_apk.bat` script with JAVA_HOME and clean step (replaces `build_apk_release.bat`)
+
+### Fixed
+- Item Detail Price History: "10 Minutes" interval replaced with "15 Minutes" — Yahoo Finance does not support 10m interval (caused HTTP 400 error)
+- Item Detail Price History: interval radio buttons split into two rows so all labels are fully visible (previously "5 Minutes" label was cut off)
+
+### Changed
+- Hourly intervals now: Every Hour (1h), 30 Minutes (30m), 15 Minutes (15m), 5 Minutes (5m), 1 Minute (1m)
+
 ## v1.16 (Build 17) - 2026-05-13
 
 ### Added

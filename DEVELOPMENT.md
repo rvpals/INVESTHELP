@@ -22,7 +22,10 @@
 ./gradlew assembleDebug
 
 # Release build (clean)
-./gradlew clean assembleRelease
+JAVA_HOME="E:/Prog/Java/jdk-17" ./gradlew clean assembleRelease
+
+# Release build via batch file (Windows)
+build_apk.bat
 
 # APK output location
 app/build/outputs/apk/release/app-release.apk
@@ -34,8 +37,8 @@ Version is managed via `version.properties` at the project root:
 
 ```properties
 VERSION_MAJOR=1
-VERSION_MINOR=16
-VERSION_CODE=17
+VERSION_MINOR=18
+VERSION_CODE=19
 ```
 
 - **Auto-increment**: Minor version and version code increment by 1 after each `assembleDebug` or `assembleRelease`

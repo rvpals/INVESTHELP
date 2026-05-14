@@ -86,8 +86,10 @@ Two tabs: **Details** and **Price History**
 
 ### Price History Tab
 - Timeframe radio buttons: Hourly, Daily, Monthly, Yearly
-- Hint text below selector showing what each timeframe means (e.g., "Today's market hours (1h interval)")
-- Hourly: market hours for today (1h interval)
+- Hint text below selector showing what each timeframe means (e.g., "Today's market hours (Every Hour)")
+- Interval radio buttons displayed in two rows for full visibility
+- Hourly intervals: Every Hour (1h), 30 Minutes (30m), 15 Minutes (15m), 5 Minutes (5m), 1 Minute (1m)
+- Hourly: market hours for today (user-selected interval)
 - Daily: last 60 days (1d interval)
 - Monthly: last 13 months (1mo interval)
 - Yearly: last 15 years (1mo interval)
