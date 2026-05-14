@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.19 (Build 20) - 2026-05-14
+
+### Fixed
+- Item Detail: Yahoo Finance, Simulate, and Add to Watch List buttons now visible even when ticker doesn't exist in the database yet
+- Transaction form: ticker field now editable (allows typing new tickers) with filtered dropdown suggestions; previously was dropdown-only, blocking new ticker entry
+
 ## v1.17 (Build 18) - 2026-05-14
 
 ### Added

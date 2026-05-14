@@ -104,7 +104,7 @@ Two tabs: **Details** and **Price History**
 ## Transactions
 
 ### Transaction Form
-- Fields: date, time (optional), action (Buy/Sell), ticker (dropdown from existing items), shares, price, total, note
+- Fields: date, time (optional), action (Buy/Sell), ticker (editable with filtered dropdown suggestions), shares, price, total, note
 - Transactions are not tied to accounts (account-independent)
 - Analyze Price button: current price, avg/max/min, historic high/low (week/month/year/max)
 - View button: opens item detail for the ticker

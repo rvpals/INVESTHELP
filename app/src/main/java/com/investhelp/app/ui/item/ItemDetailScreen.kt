@@ -554,54 +554,52 @@ private fun ItemDetailContent(
 
         // Yahoo Finance + Simulate buttons
         item {
-            item?.let { inv ->
-                Spacer(modifier = Modifier.height(4.dp))
+            Spacer(modifier = Modifier.height(4.dp))
 
-                val context = LocalContext.current
-                OutlinedButton(
-                    onClick = {
-                        val intent = Intent(
-                            Intent.ACTION_VIEW,
-                            Uri.parse("https://finance.yahoo.com/quote/$ticker")
-                        )
-                        context.startActivity(intent)
-                    },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Icon(
-                        Icons.Default.OpenInNew,
-                        contentDescription = null,
-                        modifier = Modifier.padding(end = 8.dp)
+            val context = LocalContext.current
+            OutlinedButton(
+                onClick = {
+                    val intent = Intent(
+                        Intent.ACTION_VIEW,
+                        Uri.parse("https://finance.yahoo.com/quote/$ticker")
                     )
-                    Text("Yahoo Finance")
-                }
+                    context.startActivity(intent)
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(
+                    Icons.Default.OpenInNew,
+                    contentDescription = null,
+                    modifier = Modifier.padding(end = 8.dp)
+                )
+                Text("Yahoo Finance")
+            }
 
-                Button(
-                    onClick = { onSimulate(ticker, inv.quantity) },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.tertiary
-                    )
-                ) {
-                    Icon(
-                        Icons.AutoMirrored.Filled.TrendingUp,
-                        contentDescription = null,
-                        modifier = Modifier.padding(end = 8.dp)
-                    )
-                    Text("Simulate")
-                }
+            Button(
+                onClick = { onSimulate(ticker, item?.quantity ?: 0.0) },
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.tertiary
+                )
+            ) {
+                Icon(
+                    Icons.AutoMirrored.Filled.TrendingUp,
+                    contentDescription = null,
+                    modifier = Modifier.padding(end = 8.dp)
+                )
+                Text("Simulate")
+            }
 
-                OutlinedButton(
-                    onClick = onAddToWatchList,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Icon(
-                        Icons.Default.PlaylistAdd,
-                        contentDescription = null,
-                        modifier = Modifier.padding(end = 8.dp)
-                    )
-                    Text("Add to Watch List")
-                }
+            OutlinedButton(
+                onClick = onAddToWatchList,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(
+                    Icons.Default.PlaylistAdd,
+                    contentDescription = null,
+                    modifier = Modifier.padding(end = 8.dp)
+                )
+                Text("Add to Watch List")
             }
         }
 

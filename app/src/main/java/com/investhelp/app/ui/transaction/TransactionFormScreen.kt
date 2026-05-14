@@ -295,27 +295,29 @@ fun TransactionFormScreen(
                 ) {
                     OutlinedTextField(
                         value = ticker,
-                        onValueChange = {},
-                        readOnly = true,
+                        onValueChange = { ticker = it.uppercase() },
                         label = { Text("Ticker") },
                         singleLine = true,
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = tickerExpanded) },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .menuAnchor(MenuAnchorType.PrimaryNotEditable)
+                            .menuAnchor(MenuAnchorType.PrimaryEditable)
                     )
-                    ExposedDropdownMenu(
-                        expanded = tickerExpanded,
-                        onDismissRequest = { tickerExpanded = false }
-                    ) {
-                        allTickers.forEach { t ->
-                            DropdownMenuItem(
-                                text = { Text(t) },
-                                onClick = {
-                                    ticker = t
-                                    tickerExpanded = false
-                                }
-                            )
+                    val filteredTickers = allTickers.filter { it.contains(ticker.uppercase(), ignoreCase = true) }
+                    if (filteredTickers.isNotEmpty()) {
+                        ExposedDropdownMenu(
+                            expanded = tickerExpanded,
+                            onDismissRequest = { tickerExpanded = false }
+                        ) {
+                            filteredTickers.forEach { t ->
+                                DropdownMenuItem(
+                                    text = { Text(t) },
+                                    onClick = {
+                                        ticker = t
+                                        tickerExpanded = false
+                                    }
+                                )
+                            }
                         }
                     }
                 }
