@@ -8,7 +8,7 @@ Android investment tracking app built with Kotlin, Jetpack Compose, and Material
 - **Min SDK:** 29, Target SDK: 35
 - **Architecture:** MVVM + Repository pattern
 - **DI:** Hilt (KSP)
-- **Database:** Room, version 20
+- **Database:** Room, version 21
 - **Navigation:** Compose Navigation (type-safe routes)
 - **Splash:** AndroidX SplashScreen API (core-splashscreen 1.0.1)
 - **Charts:** Custom Canvas-drawn (pie chart, line chart) — no external chart library
@@ -27,11 +27,11 @@ Android investment tracking app built with Kotlin, Jetpack Compose, and Material
 - InvestmentItem is a unique entity with `ticker` as sole primary key (no accountId); one record per ticker
 - Metadata (name, type, currentPrice) stored per ticker; `updatePriceByTicker` DAO query updates the single row
 - Account current value: no longer per-account (items are not tied to accounts); portfolio value is sum of all items
-- Transaction table references ticker directly (not FK) — simpler model
+- Transaction table references ticker directly (no FK, no accountId) — simpler model
 - Transaction time is optional (nullable), totalAmount for verification, note field
 - Navigation routes use ticker strings (not Long IDs) for item detail, form, and statistics
 - DatabaseProvider pattern: DB opens lazily on first access
-- CASCADE deletes: removing account removes associated transactions (items are not tied to accounts)
+- CASCADE deletes: removing account removes associated performance records (transactions and items are not tied to accounts)
 - Items screen combines pie chart + STOCK/ETF tabs with Refresh All toolbar action
 - Items screen: sort-by dropdown (Ticker, Total Value, Current Price) above items list; defaults to Total Value descending
 - Items screen: brokerage-style card rows with thin dividers; each row shows TickerIcon3D + ticker (bold) + uppercase company name on left, current price with day change $ and % below, total position value on right with colored gain/loss badge (green/red chip)
@@ -54,13 +54,13 @@ Android investment tracking app built with Kotlin, Jetpack Compose, and Material
 - Analyze Price screen: current price, transaction avg/max/min, historic high/low (week/month/year/max) with grid-line table (horizontal and vertical dividers) for historic prices
 - Clicking a price in Analyze Price copies it back to the transaction form Price field
 - Transaction form: "View" button next to Ticker opens item detail; form state preserved via rememberSaveable
-- Transaction form: auto-selects first account for new transactions
+- Transaction form: no account field (transactions are not tied to accounts)
 - Item detail: TabRow with "Details" and "Price History" tabs
 - Item detail Details tab: "Analysis Info" collapsible panel (auto-fetches on screen load, displayed inline before Yahoo Finance button)
 - Item detail Details tab: collapsible "<TICKER> Stats" section (replaces separate statistics screen)
 - Item detail Details tab: collapsible "Transactions" section
-- Item detail Price History tab: radio button timeframe selector (Hourly, Daily, Monthly, Yearly); Hourly = today's market hours (1h interval), Daily = last 60 days, Monthly = last 13 months, Yearly = last 15 years; summary cards (Average, Max, Min) above grid table of prices
-- **Image loading:** Coil 2.7.0 for company logos; logos cached as BLOB in investment_items table, fetched from companiesmarketcap.com CDN during price refresh (only if logo is null), UI falls back to network URL if not cached
+- Item detail Price History tab: radio button timeframe selector (Hourly, Daily, Monthly, Yearly) with hint text below showing meaning; Hourly = today's market hours (1h interval), Daily = last 60 days, Monthly = last 13 months, Yearly = last 15 years; line chart with pinch-to-zoom/pan/tap-to-select; summary cards (Average, Max, Min) above grid table of prices
+- **Image loading:** Coil 2.7.0 for company logos; logos cached as BLOB in investment_items table, fetched from multiple CDN sources (companiesmarketcap.com, parqet.com, iexcloud) during price refresh or on items screen load (if logo is null), UI falls back to network URL if not cached
 - Item add/edit dialog: type selector dropdown (Stock, ETF, Bond, MutualFund, Crypto, Other); auto-fills type when selecting existing ticker
 - Item detail card row 1 (big font): Total Shares, Total Value, Total Cost, Total G/L
 - Item detail card row 2 (medium font): Daily G/L, Daily G/L/Share, Daily Min Price, Daily Max Price
@@ -84,7 +84,7 @@ Android investment tracking app built with Kotlin, Jetpack Compose, and Material
 - SQL Explorer: detects SELECT/PRAGMA/EXPLAIN queries vs DML/DDL statements
 - SQL Explorer: CSV export via FileProvider + share intent
 - SQL Explorer: table browser lists all database tables with expandable column details (name, type, PK/NN indicators)
-- SQL Explorer: result grid has both horizontal and vertical gridlines (VerticalDivider between columns, HorizontalDivider between rows)
+- SQL Explorer: result grid has both horizontal and vertical gridlines (VerticalDivider between columns, HorizontalDivider between rows) with alternating row colors
 - SQL Explorer: clicking a result row opens record detail dialog showing all field values untruncated
 - SQL Explorer: "Open" button on each table row runs `SELECT * FROM <table>` and shows results in grid
 - Settings: backup folder URI persisted to SharedPreferences; restored on ViewModel init
@@ -121,13 +121,14 @@ Android investment tracking app built with Kotlin, Jetpack Compose, and Material
 - Database migration v17 -> v18: creates change_history table (id, date, etfValue, stockValue, totalValue) with unique index on date
 - Database migration v18 -> v19: adds reminderDateTime and reminderMessage columns to watch_list_items
 - Database migration v19 -> v20: adds logo BLOB column to investment_items for cached company logo
-- Database version 20
+- Database migration v20 -> v21: removes accountId from investment_transactions (recreates table without FK/index)
+- Database version 21
 - Change History: `change_history` table records daily portfolio values by type (ETF, Stock, Total); one row per day, overwritten on re-refresh
 - Settings: "Auto Update Change History when refresh" toggle (default: off) — when on, automatically records ETF/Stock/Total values to change_history after price refresh; overwrites existing entry for today
 - CSV Import: reusable mapping system for Transaction, Position, Performance imports; mappings persisted in `csv_import_mappings` table; supports date format options per column
 - CSV Transaction Import: does NOT auto-update share counts on items; only creates item stub if ticker doesn't exist
 - Settings Data Management: 3 import types (Transaction Records, Position Details, Performance Records) each with "Define Mapping" and "Start Import" buttons; shared account selector
-- Transaction list: multi-select mode via long-press; contextual top bar with selection count, Select All, and Delete; bulk delete respects "Warn before delete" setting; account filter works with select-all
+- Transaction list: multi-select mode via long-press; contextual top bar with selection count, Select All, and Delete; bulk delete respects "Warn before delete" setting
 - LocalDateTime stored as epoch seconds (UTC) via TypeConverter; LocalDate stored as epoch days
 - Help screen: accessible from hamburger menu; loads `assets/help.html` via WebView; styled HTML with dark/light theme support; covers all features with navigation overview grid, per-section guides, and tips
 - About dialog: version displayed dynamically from BuildConfig (versionName + versionCode)

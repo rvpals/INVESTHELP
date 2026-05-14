@@ -258,29 +258,33 @@ class StockPriceService @Inject constructor() {
         this[key]?.jsonPrimitive?.contentOrNull
 
     suspend fun fetchLogo(ticker: String): ByteArray? = withContext(Dispatchers.IO) {
-        try {
-            val logoUrl = "https://companiesmarketcap.com/img/company-logos/64/${ticker.lowercase()}.webp"
-            val url = URL(logoUrl)
-            val connection = url.openConnection() as HttpURLConnection
-            connection.instanceFollowRedirects = true
-            connection.setRequestProperty("User-Agent", "Mozilla/5.0")
-            connection.connectTimeout = 10_000
-            connection.readTimeout = 10_000
+        val urls = listOf(
+            "https://companiesmarketcap.com/img/company-logos/64/${ticker.lowercase()}.webp",
+            "https://assets.parqet.com/logos/symbol/${ticker.uppercase()}?format=jpg",
+            "https://storage.googleapis.com/iexcloud-hl37opg/api/logos/${ticker.uppercase()}.png"
+        )
+        for (logoUrl in urls) {
             try {
-                if (connection.responseCode != 200) {
-                    AppLog.log("Logo fetch $ticker: HTTP ${connection.responseCode}")
-                    return@withContext null
+                val url = URL(logoUrl)
+                val connection = url.openConnection() as HttpURLConnection
+                connection.instanceFollowRedirects = true
+                connection.setRequestProperty("User-Agent", "Mozilla/5.0")
+                connection.connectTimeout = 5_000
+                connection.readTimeout = 5_000
+                try {
+                    if (connection.responseCode != 200) continue
+                    val bytes = connection.inputStream.readBytes()
+                    if (bytes.size > 100) {
+                        AppLog.log("Logo fetched $ticker: ${bytes.size} bytes from $logoUrl")
+                        return@withContext bytes
+                    }
+                } finally {
+                    connection.disconnect()
                 }
-                val bytes = connection.inputStream.readBytes()
-                AppLog.log("Logo fetched $ticker: ${bytes.size} bytes")
-                bytes
-            } finally {
-                connection.disconnect()
-            }
-        } catch (e: Exception) {
-            AppLog.log("Logo fetch $ticker failed: ${e.message}")
-            null
+            } catch (_: Exception) { }
         }
+        AppLog.log("Logo fetch $ticker: no source available")
+        null
     }
 
     suspend fun fetchQuote(ticker: String): StockQuote = withContext(Dispatchers.IO) {

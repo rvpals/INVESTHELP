@@ -1,5 +1,31 @@
 # Changelog
 
+## v1.16 (Build 17) - 2026-05-13
+
+### Added
+- Item Detail Price History: hint text below timeframe selector showing what each option means (e.g., "Last 60 days (1d interval)")
+- Item List: auto-fetches missing company logos in background on screen load
+- Logo fetching: tries 3 CDN sources (companiesmarketcap.com, parqet.com, iexcloud) for better coverage
+- SQL Explorer: alternating row colors in result grid for improved readability
+
+### Changed
+- SQL Explorer result grid: already had gridlines; added alternating row background color (every other row highlighted)
+
+## v1.15 (Build 16) - 2026-05-13
+
+### Added
+- Item Detail: delete button (trash icon, red) in top app bar; respects "Warn before delete" setting with confirmation dialog
+- Item Detail Price History: line chart above the data table plotting all price points; supports pinch-to-zoom (1x–5x), pan when zoomed, tap-to-select with tooltip (price + date), double-tap to reset; filled area under curve; Y-axis price labels and X-axis date labels
+
+### Changed
+- Transaction table: removed `accountId` column entirely — transactions are no longer tied to accounts
+- Transaction form: removed account dropdown selector
+- Transaction list: removed account filter dropdown and account name display
+- Account Detail screen: removed transactions section (accounts no longer have associated transactions)
+- Database version bumped to 21 (migration v20→v21 recreates transactions table without accountId/FK)
+- Backup format bumped to v4 (transactions no longer export accountId; v3 backups still restore correctly)
+- CSV Transaction Import: no longer maps accountId field
+
 ## v1.14 (Build 15) - 2026-05-13
 
 ### Added

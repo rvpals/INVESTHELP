@@ -134,6 +134,10 @@ fun ItemListScreen(
         .map { it.ticker to it.value }
         .sortedByDescending { it.second }
 
+    LaunchedEffect(Unit) {
+        viewModel.fetchMissingLogos()
+    }
+
     LaunchedEffect(priceMessage) {
         priceMessage?.let {
             snackbarHostState.showSnackbar(it)

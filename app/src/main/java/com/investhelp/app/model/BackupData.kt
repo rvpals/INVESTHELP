@@ -4,7 +4,7 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class BackupData(
-    val version: Int = 3,
+    val version: Int = 4,
     val accounts: List<BackupAccount>,
     val items: List<BackupItem>,
     val transactions: List<BackupTransaction>,
@@ -44,7 +44,7 @@ data class BackupTransaction(
     val dateEpochDay: Long,
     val timeSecondOfDay: Int? = null,
     val action: String,
-    val accountId: Long,
+    val accountId: Long = 0,
     val ticker: String,
     val numberOfShares: Double,
     val pricePerShare: Double,
