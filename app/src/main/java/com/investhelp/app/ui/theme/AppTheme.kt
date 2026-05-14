@@ -810,6 +810,58 @@ enum class AppTheme(
         )
     ),
 
+    BMS(
+        label = "BMS",
+        lightScheme = lightColorScheme(
+            primary = Color(0xFFBE2BBB),
+            onPrimary = Color.White,
+            primaryContainer = Color(0xFFF5D9F4),
+            onPrimaryContainer = Color(0xFF4A0E49),
+            secondary = Color(0xFF595454),
+            onSecondary = Color.White,
+            secondaryContainer = Color(0xFFEEE7E7),
+            onSecondaryContainer = Color(0xFF1C1919),
+            tertiary = Color(0xFF009FBA),
+            onTertiary = Color.White,
+            tertiaryContainer = Color(0xFFC0F2FB),
+            onTertiaryContainer = Color(0xFF097789),
+            background = Color.White,
+            onBackground = Color(0xFF595454),
+            surface = Color.White,
+            onSurface = Color(0xFF595454),
+            surfaceVariant = Color(0xFFEEE7E7),
+            onSurfaceVariant = Color(0xFF6B6565),
+            error = Color(0xFFBA1A1A),
+            onError = Color.White,
+            errorContainer = Color(0xFFFFDAD6),
+            onErrorContainer = Color(0xFF410002)
+        ),
+        darkScheme = darkColorScheme(
+            primary = Color(0xFFE08CDE),
+            onPrimary = Color(0xFF520E50),
+            primaryContainer = Color(0xFF7B1A78),
+            onPrimaryContainer = Color(0xFFF9D8F8),
+            secondary = Color(0xFFCFC8C8),
+            onSecondary = Color(0xFF353030),
+            secondaryContainer = Color(0xFF4D4747),
+            onSecondaryContainer = Color(0xFFEEE7E7),
+            tertiary = Color(0xFF33D6F1),
+            onTertiary = Color(0xFF003539),
+            tertiaryContainer = Color(0xFF097789),
+            onTertiaryContainer = Color(0xFFC0F2FB),
+            background = Color(0xFF1C1B1B),
+            onBackground = Color(0xFFEEE7E7),
+            surface = Color(0xFF1C1B1B),
+            onSurface = Color(0xFFEEE7E7),
+            surfaceVariant = Color(0xFF3B3636),
+            onSurfaceVariant = Color(0xFFA69F9F),
+            error = Color(0xFFFFB4AB),
+            onError = Color(0xFF690005),
+            errorContainer = Color(0xFF93000A),
+            onErrorContainer = Color(0xFFFFDAD6)
+        )
+    ),
+
     Chase(
         label = "Chase",
         lightScheme = lightColorScheme(
