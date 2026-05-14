@@ -3,8 +3,11 @@ package com.investhelp.app.ui.item
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -25,6 +28,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
@@ -60,8 +64,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.clipRect
+import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.platform.LocalContext
@@ -73,7 +83,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.investhelp.app.data.remote.AnalysisInfo
 import com.investhelp.app.data.remote.HistoricalPrice
 import com.investhelp.app.ui.components.CollapsibleCard
+import com.investhelp.app.ui.components.ConfirmDeleteDialog
 import com.investhelp.app.ui.components.DateRangeSelector
+import com.investhelp.app.ui.settings.SettingsViewModel
 import java.text.NumberFormat
 import java.time.Instant
 import java.time.LocalDate
@@ -107,6 +119,13 @@ fun ItemDetailScreen(
     val currencyFormat = NumberFormat.getCurrencyInstance(Locale.US)
     val dateFormatter = DateTimeFormatter.ofPattern("MMM dd, yyyy")
 
+    val context = LocalContext.current
+    val warnBeforeDelete = remember {
+        context.getSharedPreferences(SettingsViewModel.PREFS_NAME, android.content.Context.MODE_PRIVATE)
+            .getBoolean(SettingsViewModel.KEY_WARN_BEFORE_DELETE, true)
+    }
+    var showDeleteConfirm by remember { mutableStateOf(false) }
+
     var selectedTab by rememberSaveable { mutableIntStateOf(0) }
     var statsExpanded by remember { mutableStateOf(false) }
     var transactionsExpanded by remember { mutableStateOf(false) }
@@ -121,6 +140,19 @@ fun ItemDetailScreen(
         viewModel.loadStatistics(ticker, statsStartDate, statsEndDate)
     }
 
+    if (showDeleteConfirm) {
+        ConfirmDeleteDialog(
+            title = "Delete $ticker",
+            message = "Are you sure you want to delete $ticker and all its data? This action cannot be undone.",
+            onConfirm = {
+                showDeleteConfirm = false
+                viewModel.deleteItem(ticker)
+                onBack()
+            },
+            onDismiss = { showDeleteConfirm = false }
+        )
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -133,6 +165,20 @@ fun ItemDetailScreen(
                 actions = {
                     IconButton(onClick = onEditItem) {
                         Icon(Icons.Default.Edit, contentDescription = "Edit")
+                    }
+                    IconButton(onClick = {
+                        if (warnBeforeDelete) {
+                            showDeleteConfirm = true
+                        } else {
+                            viewModel.deleteItem(ticker)
+                            onBack()
+                        }
+                    }) {
+                        Icon(
+                            Icons.Default.Delete,
+                            contentDescription = "Delete",
+                            tint = MaterialTheme.colorScheme.error
+                        )
                     }
                 }
             )
@@ -679,6 +725,16 @@ private fun PriceHistoryTab(
                 }
             }
 
+            // Line chart
+            item {
+                Spacer(modifier = Modifier.height(8.dp))
+                PriceLineChart(
+                    priceHistory = priceHistory,
+                    selectedTimeframe = selectedTimeframe,
+                    currencyFormat = currencyFormat
+                )
+            }
+
             item {
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
@@ -783,6 +839,180 @@ private fun PriceHistoryTab(
         }
 
         item { Spacer(modifier = Modifier.height(16.dp)) }
+    }
+}
+
+@Composable
+private fun PriceLineChart(
+    priceHistory: List<HistoricalPrice>,
+    selectedTimeframe: String,
+    currencyFormat: NumberFormat
+) {
+    if (priceHistory.size < 2) return
+
+    val lineColor = MaterialTheme.colorScheme.primary
+    val gridColor = MaterialTheme.colorScheme.outlineVariant
+    val labelColor = MaterialTheme.colorScheme.onSurfaceVariant
+    val tooltipBg = MaterialTheme.colorScheme.inverseSurface
+    val tooltipText = MaterialTheme.colorScheme.inverseOnSurface
+
+    var zoom by remember { mutableStateOf(1f) }
+    var scrollOffset by remember { mutableStateOf(0f) }
+    var selectedIdx by remember { mutableStateOf<Int?>(null) }
+    var chartWidthPx by remember { mutableStateOf(0f) }
+
+    val dateTimeFormat = remember(selectedTimeframe) {
+        when (selectedTimeframe) {
+            "Hourly" -> DateTimeFormatter.ofPattern("HH:mm")
+            "Daily" -> DateTimeFormatter.ofPattern("MMM dd")
+            "Monthly" -> DateTimeFormatter.ofPattern("MMM yy")
+            "Yearly" -> DateTimeFormatter.ofPattern("MMM yy")
+            else -> DateTimeFormatter.ofPattern("MMM dd")
+        }
+    }
+
+    val prices = remember(priceHistory) { priceHistory.map { it.close } }
+    val minPrice = remember(prices) { prices.min() }
+    val maxPrice = remember(prices) { prices.max() }
+    val priceRange = remember(minPrice, maxPrice) {
+        (maxPrice - minPrice).coerceAtLeast(0.01)
+    }
+
+    Card(
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+        ),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(200.dp)
+                .padding(start = 48.dp, end = 8.dp, top = 8.dp, bottom = 24.dp)
+                .pointerInput(priceHistory) {
+                    detectTransformGestures { _, pan, gestureZoom, _ ->
+                        zoom = (zoom * gestureZoom).coerceIn(1f, 5f)
+                        val maxScroll = chartWidthPx * (zoom - 1f)
+                        scrollOffset = (scrollOffset - pan.x).coerceIn(0f, maxScroll)
+                        selectedIdx = null
+                    }
+                }
+                .pointerInput(priceHistory) {
+                    detectTapGestures(
+                        onTap = { offset ->
+                            val virtualWidth = chartWidthPx * zoom
+                            val virtualX = offset.x + scrollOffset
+                            val pointCount = priceHistory.size
+                            val spacing = virtualWidth / (pointCount - 1).coerceAtLeast(1)
+                            val idx = ((virtualX + spacing / 2) / spacing).toInt()
+                                .coerceIn(0, pointCount - 1)
+                            selectedIdx = if (selectedIdx == idx) null else idx
+                        },
+                        onDoubleTap = {
+                            zoom = 1f
+                            scrollOffset = 0f
+                            selectedIdx = null
+                        }
+                    )
+                }
+        ) {
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                val chartWidth = size.width
+                val chartHeight = size.height
+                chartWidthPx = chartWidth
+                val virtualWidth = chartWidth * zoom
+                val pointCount = priceHistory.size
+                val spacing = virtualWidth / (pointCount - 1).coerceAtLeast(1)
+
+                // Y-axis grid lines and labels
+                for (i in 0..3) {
+                    val y = chartHeight * i / 3f
+                    drawLine(gridColor, Offset(0f, y), Offset(chartWidth, y), 1f)
+                    val price = maxPrice - (priceRange * i / 3)
+                    drawContext.canvas.nativeCanvas.drawText(
+                        currencyFormat.format(price),
+                        -44.dp.toPx(),
+                        y + 4.dp.toPx(),
+                        android.graphics.Paint().apply {
+                            color = labelColor.hashCode()
+                            textSize = 9.dp.toPx()
+                            textAlign = android.graphics.Paint.Align.LEFT
+                        }
+                    )
+                }
+
+                clipRect(0f, 0f, chartWidth, chartHeight) {
+                    // Draw line path
+                    val path = Path()
+                    for (i in priceHistory.indices) {
+                        val x = i * spacing - scrollOffset
+                        val y = chartHeight * (1f - ((prices[i] - minPrice) / priceRange).toFloat())
+                        if (i == 0) path.moveTo(x, y) else path.lineTo(x, y)
+                    }
+                    drawPath(path, lineColor, style = Stroke(2.dp.toPx()))
+
+                    // Fill under curve
+                    val fillPath = Path().apply {
+                        addPath(path)
+                        lineTo((pointCount - 1) * spacing - scrollOffset, chartHeight)
+                        lineTo(0f * spacing - scrollOffset, chartHeight)
+                        close()
+                    }
+                    drawPath(fillPath, lineColor.copy(alpha = 0.1f))
+
+                    // Selected point
+                    selectedIdx?.let { idx ->
+                        val x = idx * spacing - scrollOffset
+                        val y = chartHeight * (1f - ((prices[idx] - minPrice) / priceRange).toFloat())
+                        if (x in 0f..chartWidth) {
+                            drawCircle(lineColor, 5.dp.toPx(), Offset(x, y))
+                            drawLine(gridColor, Offset(x, 0f), Offset(x, chartHeight), 1f)
+                        }
+                    }
+                }
+
+                // X-axis labels
+                val labelCount = 4
+                for (i in 0 until labelCount) {
+                    val dataIdx = (i * (pointCount - 1) / (labelCount - 1).coerceAtLeast(1))
+                        .coerceIn(0, pointCount - 1)
+                    val x = dataIdx * spacing - scrollOffset
+                    if (x in 0f..chartWidth) {
+                        val dt = Instant.ofEpochSecond(priceHistory[dataIdx].timestamp)
+                            .atZone(ZoneId.systemDefault()).toLocalDateTime()
+                        drawContext.canvas.nativeCanvas.drawText(
+                            dt.format(dateTimeFormat),
+                            x,
+                            chartHeight + 14.dp.toPx(),
+                            android.graphics.Paint().apply {
+                                color = labelColor.hashCode()
+                                textSize = 9.dp.toPx()
+                                textAlign = android.graphics.Paint.Align.CENTER
+                            }
+                        )
+                    }
+                }
+            }
+
+            // Tooltip
+            selectedIdx?.let { idx ->
+                val dt = Instant.ofEpochSecond(priceHistory[idx].timestamp)
+                    .atZone(ZoneId.systemDefault()).toLocalDateTime()
+                val tooltipLabel = "${currencyFormat.format(prices[idx])} — ${dt.format(dateTimeFormat)}"
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .background(tooltipBg, RoundedCornerShape(4.dp))
+                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                ) {
+                    Text(
+                        text = tooltipLabel,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = tooltipText
+                    )
+                }
+            }
+        }
     }
 }
 

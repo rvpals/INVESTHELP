@@ -78,12 +78,6 @@ fun InvestHelpNavHost(
                 onEditAccount = {
                     navController.navigate(AccountFormRoute(route.accountId))
                 },
-                onNavigateToTransaction = { transactionId ->
-                    navController.navigate(TransactionFormRoute(transactionId))
-                },
-                onNavigateToItem = { ticker ->
-                    navController.navigate(ItemDetailRoute(ticker))
-                },
                 onBack = { navController.popBackStack() }
             )
         }

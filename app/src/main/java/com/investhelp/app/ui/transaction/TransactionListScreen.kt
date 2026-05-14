@@ -20,25 +20,18 @@ import androidx.compose.material.icons.filled.SelectAll
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.MenuAnchorType
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -60,7 +53,6 @@ fun TransactionListScreen(
     onEditTransaction: (Long) -> Unit
 ) {
     val transactions by viewModel.allTransactions.collectAsStateWithLifecycle()
-    val accounts by viewModel.allAccounts.collectAsStateWithLifecycle()
     val currentPrices by viewModel.currentPrices.collectAsStateWithLifecycle()
     val currencyFormat = NumberFormat.getCurrencyInstance(Locale.US)
     val dateFormatter = DateTimeFormatter.ofPattern("MMM dd, yyyy")
@@ -71,22 +63,14 @@ fun TransactionListScreen(
             .getBoolean(SettingsViewModel.KEY_WARN_BEFORE_DELETE, true)
     }
     var transactionToDelete by remember { mutableStateOf<Long?>(null) }
-    var selectedAccountId by rememberSaveable { mutableLongStateOf(-1L) }
-    var accountDropdownExpanded by remember { mutableStateOf(false) }
 
     // Multi-select state
     var selectedIds by remember { mutableStateOf(setOf<Long>()) }
     val inSelectionMode = selectedIds.isNotEmpty()
     var showBulkDeleteConfirm by remember { mutableStateOf(false) }
 
-    val filteredTransactions = if (selectedAccountId == -1L) {
-        transactions
-    } else {
-        transactions.filter { it.accountId == selectedAccountId }
-    }
-
-    val allFilteredSelected = filteredTransactions.isNotEmpty() &&
-            filteredTransactions.all { it.id in selectedIds }
+    val allSelected = transactions.isNotEmpty() &&
+            transactions.all { it.id in selectedIds }
 
     // Single delete confirm
     val deleteTarget = transactionToDelete?.let { id -> transactions.find { it.id == id } }
@@ -130,10 +114,10 @@ fun TransactionListScreen(
                     },
                     actions = {
                         IconButton(onClick = {
-                            selectedIds = if (allFilteredSelected) {
+                            selectedIds = if (allSelected) {
                                 emptySet()
                             } else {
-                                filteredTransactions.map { it.id }.toSet()
+                                transactions.map { it.id }.toSet()
                             }
                         }) {
                             Icon(Icons.Default.SelectAll, contentDescription = "Select all")
@@ -177,49 +161,7 @@ fun TransactionListScreen(
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            // Account filter
-            ExposedDropdownMenuBox(
-                expanded = accountDropdownExpanded,
-                onExpandedChange = { accountDropdownExpanded = it },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp)
-            ) {
-                OutlinedTextField(
-                    value = if (selectedAccountId == -1L) "All Accounts"
-                    else accounts.find { it.id == selectedAccountId }?.name ?: "All Accounts",
-                    onValueChange = {},
-                    readOnly = true,
-                    label = { Text("Filter by Account") },
-                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = accountDropdownExpanded) },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .menuAnchor(MenuAnchorType.PrimaryNotEditable)
-                )
-                ExposedDropdownMenu(
-                    expanded = accountDropdownExpanded,
-                    onDismissRequest = { accountDropdownExpanded = false }
-                ) {
-                    DropdownMenuItem(
-                        text = { Text("All Accounts") },
-                        onClick = {
-                            selectedAccountId = -1L
-                            accountDropdownExpanded = false
-                        }
-                    )
-                    accounts.forEach { account ->
-                        DropdownMenuItem(
-                            text = { Text(account.name) },
-                            onClick = {
-                                selectedAccountId = account.id
-                                accountDropdownExpanded = false
-                            }
-                        )
-                    }
-                }
-            }
-
-            if (filteredTransactions.isEmpty()) {
+            if (transactions.isEmpty()) {
                 Column(
                     modifier = Modifier.fillMaxSize(),
                     horizontalAlignment = Alignment.CenterHorizontally,
@@ -235,8 +177,7 @@ fun TransactionListScreen(
                         .padding(horizontal = 16.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    items(filteredTransactions, key = { it.id }) { transaction ->
-                        val accountName = accounts.find { it.id == transaction.accountId }?.name ?: "Unknown"
+                    items(transactions, key = { it.id }) { transaction ->
                         val timeStr = transaction.time?.format(timeFormatter)?.let { " $it" } ?: ""
                         val isSelected = transaction.id in selectedIds
 
@@ -309,7 +250,7 @@ fun TransactionListScreen(
                                         )
                                     }
                                     Text(
-                                        text = "$accountName | ${transaction.date.format(dateFormatter)}$timeStr",
+                                        text = "${transaction.date.format(dateFormatter)}$timeStr",
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )

@@ -21,9 +21,6 @@ interface InvestmentTransactionDao {
     @Query("DELETE FROM investment_transactions")
     suspend fun deleteAll()
 
-    @Query("SELECT * FROM investment_transactions WHERE accountId = :accountId ORDER BY date DESC, time DESC")
-    fun getTransactionsByAccount(accountId: Long): Flow<List<InvestmentTransactionEntity>>
-
     @Query("SELECT * FROM investment_transactions WHERE ticker = :ticker ORDER BY date DESC, time DESC")
     fun getTransactionsByTicker(ticker: String): Flow<List<InvestmentTransactionEntity>>
 

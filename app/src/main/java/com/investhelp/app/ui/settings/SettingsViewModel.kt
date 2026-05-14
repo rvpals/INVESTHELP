@@ -262,9 +262,10 @@ class SettingsViewModel @Inject constructor(
                     transactions = transactions.map {
                         BackupTransaction(
                             it.id, it.date.toEpochDay(), it.time?.toSecondOfDay(),
-                            it.action.name, it.accountId, it.ticker,
-                            it.numberOfShares, it.pricePerShare,
-                            it.totalAmount, it.note
+                            it.action.name, ticker = it.ticker,
+                            numberOfShares = it.numberOfShares,
+                            pricePerShare = it.pricePerShare,
+                            totalAmount = it.totalAmount, note = it.note
                         )
                     }
                 )
@@ -363,7 +364,7 @@ class SettingsViewModel @Inject constructor(
                             LocalDate.ofEpochDay(t.dateEpochDay),
                             t.timeSecondOfDay?.let { LocalTime.ofSecondOfDay(it.toLong()) },
                             TransactionAction.valueOf(t.action),
-                            t.accountId, t.ticker,
+                            t.ticker,
                             t.numberOfShares, t.pricePerShare,
                             t.totalAmount, t.note
                         )
@@ -630,7 +631,7 @@ class SettingsViewModel @Inject constructor(
 
                     try {
                         when (importType) {
-                            CsvImportType.Transaction -> importTransactionRow(fieldValues, fieldDateFormats, accountId)
+                            CsvImportType.Transaction -> importTransactionRow(fieldValues, fieldDateFormats)
                             CsvImportType.Position -> importPositionRow(fieldValues, accountId)
                             CsvImportType.Performance -> importPerformanceRow(fieldValues, fieldDateFormats, accountId)
                         }
@@ -667,8 +668,7 @@ class SettingsViewModel @Inject constructor(
 
     private suspend fun importTransactionRow(
         fields: Map<String, String>,
-        dateFormats: Map<String, String>,
-        defaultAccountId: Long
+        dateFormats: Map<String, String>
     ) {
         val rawTicker = fields["ticker"]?.trim()?.uppercase()
         val ticker = rawTicker?.split("\\s+-\\s+".toRegex())?.firstOrNull()?.trim()
@@ -696,19 +696,12 @@ class SettingsViewModel @Inject constructor(
             try { LocalTime.parse(it.trim(), timeFmt) } catch (_: Exception) { null }
         }
 
-        val accountName = fields["accountName"]?.trim()
-        val accountId = if (!accountName.isNullOrBlank()) {
-            accountDao.getAllAccountsSnapshot().find {
-                it.name.equals(accountName, ignoreCase = true)
-            }?.id ?: defaultAccountId
-        } else defaultAccountId
-
         val totalAmount = parseNumeric(fields["totalAmount"]) ?: 0.0
         val note = fields["note"]?.trim() ?: ""
 
         transactionDao.insertTransaction(
             InvestmentTransactionEntity(
-                date = date, time = time, action = action, accountId = accountId,
+                date = date, time = time, action = action,
                 ticker = ticker, numberOfShares = shares, pricePerShare = price,
                 totalAmount = totalAmount, note = note
             )

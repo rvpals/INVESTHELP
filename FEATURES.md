@@ -91,22 +91,28 @@ Two tabs: **Details** and **Price History**
 - Monthly: last 13 months (1mo interval)
 - Yearly: last 15 years (1mo interval)
 - Summary cards: Average, Max, Min of the result prices
+- Line chart: Canvas-drawn with all data points; pinch-to-zoom (1x–5x) with pan; tap-to-select with tooltip (price + date); double-tap to reset; filled area under curve; Y-axis price labels, X-axis date labels
 - Grid table: row number, date/time, closing price with horizontal and vertical gridlines
+
+### Delete Item
+- Delete button (trash icon, red tint) in top app bar
+- Respects "Warn before delete" setting (shows confirmation dialog when enabled)
 
 ## Transactions
 
 ### Transaction Form
-- Fields: date, time (optional), account, action (Buy/Sell), ticker (dropdown from existing items), shares, price, total, note
+- Fields: date, time (optional), action (Buy/Sell), ticker (dropdown from existing items), shares, price, total, note
+- Transactions are not tied to accounts (account-independent)
 - Analyze Price button: current price, avg/max/min, historic high/low (week/month/year/max)
 - View button: opens item detail for the ticker
 - Update/Create and Simulate buttons fixed at bottom of screen (not scrollable)
 - Simulate button: opens simulation from transaction date to today
-- Auto-selects first account; form state preserved via rememberSaveable
+- Form state preserved via rememberSaveable
 
 ### Transaction List
 - Each card shows G/L: (currentPrice - pricePerShare) * shares (color-coded)
 - Multi-select mode: long-press to enter, checkboxes, select all, bulk delete
-- Account filter; bulk delete respects "Warn before delete" setting
+- Bulk delete respects "Warn before delete" setting
 
 ## Simulation
 
@@ -163,8 +169,8 @@ Two tabs: **Details** and **Price History**
   - Persistent mappings (csv_import_mappings table)
   - Clear (x) button per type: erases all entries from the corresponding table with confirmation dialog
 - Backup folder selection (persisted)
-- Export to JSON (v3 format)
-- Restore from JSON (v1/v2/v3 compatible)
+- Export to JSON (v4 format)
+- Restore from JSON (v1/v2/v3/v4 compatible)
 
 ## SQL Explorer
 

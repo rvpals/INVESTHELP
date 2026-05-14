@@ -3,9 +3,7 @@ package com.investhelp.app.ui.account
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.investhelp.app.data.local.entity.InvestmentAccountEntity
-import com.investhelp.app.data.local.entity.InvestmentTransactionEntity
 import com.investhelp.app.data.repository.AccountRepository
-import com.investhelp.app.data.repository.TransactionRepository
 import com.investhelp.app.model.AccountWithValue
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -18,8 +16,7 @@ import javax.inject.Inject
 
 @HiltViewModel
 class AccountViewModel @Inject constructor(
-    private val accountRepository: AccountRepository,
-    private val transactionRepository: TransactionRepository
+    private val accountRepository: AccountRepository
 ) : ViewModel() {
 
     val accountsWithValues: StateFlow<List<AccountWithValue>> =
@@ -29,18 +26,10 @@ class AccountViewModel @Inject constructor(
     private val _selectedAccount = MutableStateFlow<InvestmentAccountEntity?>(null)
     val selectedAccount: StateFlow<InvestmentAccountEntity?> = _selectedAccount.asStateFlow()
 
-    private val _accountTransactions = MutableStateFlow<List<InvestmentTransactionEntity>>(emptyList())
-    val accountTransactions: StateFlow<List<InvestmentTransactionEntity>> = _accountTransactions.asStateFlow()
-
     fun loadAccount(accountId: Long) {
         viewModelScope.launch {
             accountRepository.getAccountById(accountId).collect { account ->
                 _selectedAccount.value = account
-            }
-        }
-        viewModelScope.launch {
-            transactionRepository.getTransactionsByAccount(accountId).collect { transactions ->
-                _accountTransactions.value = transactions
             }
         }
     }

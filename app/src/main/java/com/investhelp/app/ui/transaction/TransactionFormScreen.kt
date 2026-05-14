@@ -75,7 +75,6 @@ fun TransactionFormScreen(
     onBack: () -> Unit
 ) {
     val isEditing = transactionId != null
-    val accounts by viewModel.allAccounts.collectAsStateWithLifecycle()
     val existingTransaction by viewModel.selectedTransaction.collectAsStateWithLifecycle()
     val allTickers by viewModel.allTickers.collectAsStateWithLifecycle()
 
@@ -97,10 +96,6 @@ fun TransactionFormScreen(
         save = { it.name },
         restore = { TransactionAction.valueOf(it) }
     )) { mutableStateOf(TransactionAction.Buy) }
-    var selectedAccountId by rememberSaveable(stateSaver = Saver<Long?, Long>(
-        save = { it ?: -1L },
-        restore = { if (it == -1L) null else it }
-    )) { mutableStateOf<Long?>(null) }
     var ticker by rememberSaveable { mutableStateOf("") }
     var numberOfShares by rememberSaveable { mutableStateOf("") }
     var pricePerShare by rememberSaveable { mutableStateOf("") }
@@ -109,7 +104,6 @@ fun TransactionFormScreen(
 
     var showDatePicker by remember { mutableStateOf(false) }
     var showTimePicker by remember { mutableStateOf(false) }
-    var accountExpanded by remember { mutableStateOf(false) }
     var tickerExpanded by remember { mutableStateOf(false) }
     var initialized by rememberSaveable { mutableStateOf(false) }
 
@@ -122,19 +116,11 @@ fun TransactionFormScreen(
     val price = pricePerShare.toDoubleOrNull() ?: 0.0
     val computedTotal = shares * price
 
-    // Auto-select first account for new transactions
-    LaunchedEffect(accounts) {
-        if (!isEditing && selectedAccountId == null && accounts.isNotEmpty()) {
-            selectedAccountId = accounts.first().id
-        }
-    }
-
     LaunchedEffect(existingTransaction) {
         if (isEditing && existingTransaction != null && !initialized) {
             date = existingTransaction!!.date
             time = existingTransaction!!.time
             action = existingTransaction!!.action
-            selectedAccountId = existingTransaction!!.accountId
             ticker = existingTransaction!!.ticker
             numberOfShares = existingTransaction!!.numberOfShares.toString()
             pricePerShare = existingTransaction!!.pricePerShare.toString()
@@ -177,12 +163,11 @@ fun TransactionFormScreen(
                         val sharesVal = numberOfShares.toDoubleOrNull() ?: 0.0
                         val priceVal = pricePerShare.toDoubleOrNull() ?: 0.0
                         val totalVal = totalAmount.toDoubleOrNull() ?: 0.0
-                        if (selectedAccountId != null && ticker.isNotBlank()) {
+                        if (ticker.isNotBlank()) {
                             viewModel.saveTransaction(
                                 date = date,
                                 time = time,
                                 action = action,
-                                accountId = selectedAccountId!!,
                                 ticker = ticker.trim(),
                                 numberOfShares = sharesVal,
                                 pricePerShare = priceVal,
@@ -194,7 +179,7 @@ fun TransactionFormScreen(
                         }
                     },
                     modifier = Modifier.weight(1f),
-                    enabled = selectedAccountId != null && ticker.isNotBlank() &&
+                    enabled = ticker.isNotBlank() &&
                             numberOfShares.toDoubleOrNull() != null && pricePerShare.toDoubleOrNull() != null
                 ) {
                     Text(if (isEditing) "Update" else "Create")
@@ -278,39 +263,6 @@ fun TransactionFormScreen(
                     Spacer(modifier = Modifier.width(4.dp))
                     OutlinedButton(onClick = { time = null }) {
                         Text("Clear")
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // Account dropdown
-            ExposedDropdownMenuBox(
-                expanded = accountExpanded,
-                onExpandedChange = { accountExpanded = it }
-            ) {
-                OutlinedTextField(
-                    value = accounts.find { it.id == selectedAccountId }?.name ?: "",
-                    onValueChange = {},
-                    readOnly = true,
-                    label = { Text("Account") },
-                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = accountExpanded) },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .menuAnchor(MenuAnchorType.PrimaryNotEditable)
-                )
-                ExposedDropdownMenu(
-                    expanded = accountExpanded,
-                    onDismissRequest = { accountExpanded = false }
-                ) {
-                    accounts.forEach { account ->
-                        DropdownMenuItem(
-                            text = { Text(account.name) },
-                            onClick = {
-                                selectedAccountId = account.id
-                                accountExpanded = false
-                            }
-                        )
                     }
                 }
             }

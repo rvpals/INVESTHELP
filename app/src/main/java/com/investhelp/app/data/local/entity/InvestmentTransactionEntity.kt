@@ -1,7 +1,6 @@
 package com.investhelp.app.data.local.entity
 
 import androidx.room.Entity
-import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
 import com.investhelp.app.model.TransactionAction
@@ -10,16 +9,7 @@ import java.time.LocalTime
 
 @Entity(
     tableName = "investment_transactions",
-    foreignKeys = [
-        ForeignKey(
-            entity = InvestmentAccountEntity::class,
-            parentColumns = ["id"],
-            childColumns = ["accountId"],
-            onDelete = ForeignKey.CASCADE
-        )
-    ],
     indices = [
-        Index("accountId"),
         Index("ticker")
     ]
 )
@@ -28,7 +18,6 @@ data class InvestmentTransactionEntity(
     val date: LocalDate,
     val time: LocalTime? = null,
     val action: TransactionAction,
-    val accountId: Long,
     val ticker: String,
     val numberOfShares: Double,
     val pricePerShare: Double,

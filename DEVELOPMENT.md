@@ -34,8 +34,8 @@ Version is managed via `version.properties` at the project root:
 
 ```properties
 VERSION_MAJOR=1
-VERSION_MINOR=14
-VERSION_CODE=15
+VERSION_MINOR=15
+VERSION_CODE=16
 ```
 
 - **Auto-increment**: Minor version and version code increment by 1 after each `assembleDebug` or `assembleRelease`
@@ -52,14 +52,14 @@ When modifying the Room database schema:
 3. Register the migration in the database builder
 4. Update `CLAUDE.md` and `ISSUES.md` with migration notes
 
-Current version: **20**
+Current version: **21**
 
 ## Key Conventions
 
 ### Entity Design
 - `InvestmentItem` uses `ticker` as sole primary key (one record per ticker)
-- Transactions reference tickers directly (not via FK)
-- CASCADE deletes on account-dependent tables (transactions, performance)
+- Transactions reference tickers directly (no FK, account-independent)
+- CASCADE deletes on account-dependent tables (performance)
 
 ### UI Patterns
 - All dashboard sections use `CollapsibleCard` with per-card pin persistence

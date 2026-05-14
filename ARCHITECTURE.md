@@ -27,7 +27,7 @@ com.investhelp.app/
 ├── MainActivity.kt              # Single activity, top bar, bottom nav, navigation host
 ├── data/
 │   ├── local/
-│   │   ├── AppDatabase.kt       # Room database (version 20) with all DAOs and migrations
+│   │   ├── AppDatabase.kt       # Room database (version 21) with all DAOs and migrations
 │   │   ├── DatabaseProvider.kt  # Lazy database initialization pattern
 │   │   ├── dao/                 # Room DAO interfaces
 │   │   └── entity/              # Room entity classes
@@ -59,7 +59,7 @@ com.investhelp.app/
 
 ## Database
 
-### Room Database (version 20)
+### Room Database (version 21)
 
 **Entities:**
 | Table | Primary Key | Description |
@@ -74,7 +74,7 @@ com.investhelp.app/
 | `change_history` | `id` (auto) | Daily portfolio value snapshots (ETF/Stock/Total) |
 
 **Key Relationships:**
-- Transactions reference accounts by FK (CASCADE delete)
+- Transactions reference tickers directly (no FK, account-independent)
 - Account performance references accounts by FK (CASCADE delete), unique (accountId, date)
 - Watch list items reference watch lists by FK (CASCADE delete)
 - Investment items are independent (ticker-only PK, not tied to accounts)
@@ -94,6 +94,7 @@ com.investhelp.app/
 - v17->v18: Create change_history table with unique date index
 - v18->v19: Add reminderDateTime and reminderMessage columns to watch_list_items
 - v19->v20: Add logo BLOB column to investment_items (cached company logo)
+- v20->v21: Remove accountId from transactions (recreate table without FK/index)
 
 ### DatabaseProvider
 Lazy initialization pattern: database opens on first access, not at app startup.
@@ -128,13 +129,14 @@ Gradient-filled rounded boxes with drop shadow for bottom nav and menu icons.
 ### Charts (Custom Canvas)
 - **Pie chart**: Dashboard positions allocation with labels inside slices
 - **Line chart**: Account performance with multi-account overlay, zoom, pan, tooltips
+- **Price history line chart**: Item detail price history with zoom, pan, tap-to-select tooltips
 
 ## Data Storage Patterns
 
 - **Dates**: `LocalDate` stored as epoch days for simple SQL range queries
 - **DateTimes**: `LocalDateTime` stored as epoch seconds (UTC) via TypeConverter
 - **Preferences**: SharedPreferences for pin states, market index order, filter/sort selections, backup folder URI, last refreshed timestamp
-- **Backup**: JSON format (v3 current; v1/v2 backward compatible)
+- **Backup**: JSON format (v4 current; v1/v2/v3 backward compatible)
 
 ## Navigation
 

@@ -4,10 +4,8 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.investhelp.app.data.local.dao.InvestmentItemDao
-import com.investhelp.app.data.local.entity.InvestmentAccountEntity
 import com.investhelp.app.data.local.entity.InvestmentItemEntity
 import com.investhelp.app.data.local.entity.InvestmentTransactionEntity
-import com.investhelp.app.data.repository.AccountRepository
 import com.investhelp.app.data.repository.TransactionRepository
 import com.investhelp.app.model.InvestmentType
 import com.investhelp.app.model.TransactionAction
@@ -29,16 +27,11 @@ import javax.inject.Inject
 class TransactionViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     private val transactionRepository: TransactionRepository,
-    private val itemDao: InvestmentItemDao,
-    accountRepository: AccountRepository
+    private val itemDao: InvestmentItemDao
 ) : ViewModel() {
 
     val allTransactions: StateFlow<List<InvestmentTransactionEntity>> =
         transactionRepository.getAllTransactions()
-            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-
-    val allAccounts: StateFlow<List<InvestmentAccountEntity>> =
-        accountRepository.getAllAccounts()
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val currentPrices: StateFlow<Map<String, Double>> =
@@ -72,7 +65,6 @@ class TransactionViewModel @Inject constructor(
         date: LocalDate,
         time: LocalTime?,
         action: TransactionAction,
-        accountId: Long,
         ticker: String,
         numberOfShares: Double,
         pricePerShare: Double,
@@ -86,7 +78,6 @@ class TransactionViewModel @Inject constructor(
                 date = date,
                 time = time,
                 action = action,
-                accountId = accountId,
                 ticker = ticker,
                 numberOfShares = numberOfShares,
                 pricePerShare = pricePerShare,
