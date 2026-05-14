@@ -70,10 +70,18 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import java.nio.ByteBuffer
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.PlaylistAdd
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.TextButton
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.investhelp.app.data.remote.AnalysisInfo
 import com.investhelp.app.data.remote.HistoricalPrice
 import com.investhelp.app.ui.components.CollapsibleCard
 import com.investhelp.app.ui.components.DateRangeSelector
+import com.investhelp.app.ui.watchlist.WatchListViewModel
 import java.text.NumberFormat
 import java.time.Instant
 import java.time.LocalDate
@@ -107,6 +115,12 @@ fun ItemDetailScreen(
     val currencyFormat = NumberFormat.getCurrencyInstance(Locale.US)
     val dateFormatter = DateTimeFormatter.ofPattern("MMM dd, yyyy")
 
+    val watchListViewModel: WatchListViewModel = hiltViewModel()
+    val watchLists by watchListViewModel.watchLists.collectAsStateWithLifecycle()
+    var showAddToWatchList by remember { mutableStateOf(false) }
+    var showCreateWatchList by remember { mutableStateOf(false) }
+    var newWatchListName by remember { mutableStateOf("") }
+
     var selectedTab by rememberSaveable { mutableIntStateOf(0) }
     var statsExpanded by remember { mutableStateOf(false) }
     var transactionsExpanded by remember { mutableStateOf(false) }
@@ -119,6 +133,127 @@ fun ItemDetailScreen(
 
     LaunchedEffect(ticker, statsStartDate, statsEndDate) {
         viewModel.loadStatistics(ticker, statsStartDate, statsEndDate)
+    }
+
+    if (showAddToWatchList) {
+        AlertDialog(
+            onDismissRequest = { showAddToWatchList = false },
+            title = { Text("Add $ticker to Watch List") },
+            text = {
+                Column {
+                    if (watchLists.isEmpty()) {
+                        Text(
+                            "No watch lists yet. Create one to get started.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        )
+                    } else {
+                        watchLists.forEach { wl ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        val price = item?.currentPrice ?: 0.0
+                                        val shares = item?.quantity ?: 0.0
+                                        watchListViewModel.addItem(
+                                            watchListId = wl.id,
+                                            ticker = ticker,
+                                            shares = shares,
+                                            priceWhenAdded = price
+                                        )
+                                        showAddToWatchList = false
+                                    }
+                                    .padding(vertical = 10.dp, horizontal = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    Icons.Default.Star,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Text(wl.name, style = MaterialTheme.typography.bodyLarge)
+                            }
+                            HorizontalDivider()
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                showAddToWatchList = false
+                                showCreateWatchList = true
+                            }
+                            .padding(vertical = 10.dp, horizontal = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            Icons.Default.Add,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.tertiary,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            "Create New Watch List",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.tertiary
+                        )
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(onClick = { showAddToWatchList = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
+    if (showCreateWatchList) {
+        AlertDialog(
+            onDismissRequest = {
+                showCreateWatchList = false
+                newWatchListName = ""
+            },
+            title = { Text("New Watch List") },
+            text = {
+                OutlinedTextField(
+                    value = newWatchListName,
+                    onValueChange = { newWatchListName = it },
+                    label = { Text("Name") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val name = newWatchListName.trim()
+                        if (name.isNotEmpty()) {
+                            watchListViewModel.createWatchList(name)
+                            showCreateWatchList = false
+                            newWatchListName = ""
+                            showAddToWatchList = true
+                        }
+                    },
+                    enabled = newWatchListName.trim().isNotEmpty()
+                ) {
+                    Text("Create")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    showCreateWatchList = false
+                    newWatchListName = ""
+                }) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 
     Scaffold(
@@ -171,7 +306,8 @@ fun ItemDetailScreen(
                     onStatsStartDateChange = { statsStartDate = it },
                     statsEndDate = statsEndDate,
                     onStatsEndDateChange = { statsEndDate = it },
-                    onSimulate = onSimulate
+                    onSimulate = onSimulate,
+                    onAddToWatchList = { showAddToWatchList = true }
                 )
                 1 -> PriceHistoryTab(
                     ticker = ticker,
@@ -205,7 +341,8 @@ private fun ItemDetailContent(
     onStatsStartDateChange: (LocalDate) -> Unit,
     statsEndDate: LocalDate,
     onStatsEndDateChange: (LocalDate) -> Unit,
-    onSimulate: (ticker: String, shares: Double) -> Unit
+    onSimulate: (ticker: String, shares: Double) -> Unit,
+    onAddToWatchList: () -> Unit = {}
 ) {
     LazyColumn(
         modifier = Modifier
@@ -407,6 +544,18 @@ private fun ItemDetailContent(
                     )
                     Text("Simulate")
                 }
+
+                OutlinedButton(
+                    onClick = onAddToWatchList,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(
+                        Icons.Default.PlaylistAdd,
+                        contentDescription = null,
+                        modifier = Modifier.padding(end = 8.dp)
+                    )
+                    Text("Add to Watch List")
+                }
             }
         }
 
@@ -584,10 +733,12 @@ private fun PriceHistoryTab(
 ) {
     val timeframes = listOf("Hourly", "Daily", "Monthly", "Yearly")
     var selectedTimeframe by rememberSaveable { mutableStateOf("Daily") }
+    val hourlyIntervals = listOf("Every Hour" to "1h", "30 Minutes" to "30m", "10 Minutes" to "10m", "5 Minutes" to "5m")
+    var selectedHourlyInterval by rememberSaveable { mutableStateOf("1h") }
     val priceFormat = remember { NumberFormat.getCurrencyInstance(Locale.US) }
 
-    LaunchedEffect(ticker, selectedTimeframe) {
-        viewModel.loadPriceHistory(ticker, selectedTimeframe)
+    LaunchedEffect(ticker, selectedTimeframe, selectedHourlyInterval) {
+        viewModel.loadPriceHistory(ticker, selectedTimeframe, selectedHourlyInterval)
     }
 
     val dateTimeFormat = remember(selectedTimeframe) {
@@ -624,6 +775,30 @@ private fun PriceHistoryTab(
                             onClick = { selectedTimeframe = tf }
                         )
                         Text(tf, style = MaterialTheme.typography.bodyMedium)
+                    }
+                }
+            }
+            androidx.compose.animation.AnimatedVisibility(visible = selectedTimeframe == "Hourly") {
+                Column {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text("Interval", style = MaterialTheme.typography.titleSmall)
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        hourlyIntervals.forEach { (label, value) ->
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.clickable { selectedHourlyInterval = value }
+                            ) {
+                                RadioButton(
+                                    selected = selectedHourlyInterval == value,
+                                    onClick = { selectedHourlyInterval = value }
+                                )
+                                Text(label, style = MaterialTheme.typography.bodySmall)
+                            }
+                        }
                     }
                 }
             }

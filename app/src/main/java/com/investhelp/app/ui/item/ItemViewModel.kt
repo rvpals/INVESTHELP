@@ -119,9 +119,9 @@ class ItemViewModel @Inject constructor(
     private val _priceHistoryError = MutableStateFlow<String?>(null)
     val priceHistoryError: StateFlow<String?> = _priceHistoryError.asStateFlow()
 
-    fun loadPriceHistory(ticker: String, timeframe: String) {
+    fun loadPriceHistory(ticker: String, timeframe: String, hourlyInterval: String = "1h") {
         val (range, interval) = when (timeframe) {
-            "Hourly" -> "1d" to "1h"
+            "Hourly" -> "1d" to hourlyInterval
             "Daily" -> "60d" to "1d"
             "Monthly" -> "13mo" to "1mo"
             "Yearly" -> "15y" to "1mo"

@@ -25,6 +25,7 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.PieChart
 import androidx.compose.material.icons.filled.Receipt
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.ShowChart
 import androidx.compose.material.icons.filled.Star
@@ -165,6 +166,8 @@ fun GlobalTopBar(navController: NavHostController) {
     var menuExpanded by remember { mutableStateOf(false) }
     var showAbout by remember { mutableStateOf(false) }
     var showLog by remember { mutableStateOf(false) }
+    var showSearchDialog by remember { mutableStateOf(false) }
+    var searchTicker by remember { mutableStateOf("") }
 
     if (showAbout) {
         AlertDialog(
@@ -241,8 +244,62 @@ fun GlobalTopBar(navController: NavHostController) {
         )
     }
 
+    if (showSearchDialog) {
+        AlertDialog(
+            onDismissRequest = {
+                showSearchDialog = false
+                searchTicker = ""
+            },
+            title = { Text("Search Ticker") },
+            text = {
+                androidx.compose.material3.OutlinedTextField(
+                    value = searchTicker,
+                    onValueChange = { searchTicker = it.uppercase() },
+                    label = { Text("Ticker") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val t = searchTicker.trim()
+                        if (t.isNotEmpty()) {
+                            showSearchDialog = false
+                            searchTicker = ""
+                            navController.navigate(ItemDetailRoute(t))
+                        }
+                    },
+                    enabled = searchTicker.trim().isNotEmpty()
+                ) {
+                    Text("Go")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    showSearchDialog = false
+                    searchTicker = ""
+                }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
     Column {
     TopAppBar(
+        navigationIcon = {
+            IconButton(
+                onClick = { showSearchDialog = true },
+                modifier = Modifier.size(36.dp)
+            ) {
+                Icon(
+                    Icons.Default.Search,
+                    contentDescription = "Search Ticker",
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+        },
         title = {
             Card(
                 onClick = {
