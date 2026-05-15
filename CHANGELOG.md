@@ -1,5 +1,15 @@
 # Changelog
 
+## v1.20 (Build 21) - 2026-05-14
+
+### Added
+- Change History: daily change value columns (dailyChangeEtf, dailyChangeStock, dailyChangeTotal) — automatically populated during price refresh
+- Change History dialog: "Change Value This Week So Far" summary card above data table showing sum of daily changes for ETF, Stock, and Total since Monday (color-coded green/red)
+- Change History data table: 3 new columns (Δ ETF, Δ Stock, Δ Total) with color-coded values; table is now horizontally scrollable
+
+### Changed
+- Database version bumped to 22 (migration v21→v22 adds daily change columns to change_history table)
+
 ## v1.19 (Build 20) - 2026-05-14
 
 ### Fixed

@@ -1036,12 +1036,78 @@ private fun ChangeHistoryFullScreenDialog(
                     Spacer(modifier = Modifier.height(16.dp))
                 }
 
+                // Weekly change summary
+                val today = LocalDate.now()
+                val startOfWeek = today.with(java.time.DayOfWeek.MONDAY)
+                val weekRecords = remember(records) {
+                    records.filter { it.date >= startOfWeek && it.date <= today }
+                }
+                val weeklyEtfChange = weekRecords.sumOf { it.dailyChangeEtf }
+                val weeklyStockChange = weekRecords.sumOf { it.dailyChangeStock }
+                val weeklyTotalChange = weekRecords.sumOf { it.dailyChangeTotal }
+                val changeFormat = remember {
+                    NumberFormat.getCurrencyInstance(Locale.US).apply {
+                        minimumFractionDigits = 2
+                        maximumFractionDigits = 2
+                    }
+                }
+
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                    )
+                ) {
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Text(
+                            "Change Value This Week So Far:",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
+                                Text("ETF", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+                                Text(
+                                    (if (weeklyEtfChange >= 0) "+" else "") + changeFormat.format(weeklyEtfChange),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = if (weeklyEtfChange >= 0) Color(0xFF4CAF50) else Color(0xFFF44336)
+                                )
+                            }
+                            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
+                                Text("Stock", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+                                Text(
+                                    (if (weeklyStockChange >= 0) "+" else "") + changeFormat.format(weeklyStockChange),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = if (weeklyStockChange >= 0) Color(0xFF4CAF50) else Color(0xFFF44336)
+                                )
+                            }
+                            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
+                                Text("Total", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+                                Text(
+                                    (if (weeklyTotalChange >= 0) "+" else "") + changeFormat.format(weeklyTotalChange),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (weeklyTotalChange >= 0) Color(0xFF4CAF50) else Color(0xFFF44336)
+                                )
+                            }
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.height(16.dp))
+
                 // Data table
                 HorizontalDivider(color = dividerColor)
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(IntrinsicSize.Min)
+                        .horizontalScroll(rememberScrollState())
                         .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f))
                         .padding(vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically
@@ -1050,14 +1116,14 @@ private fun ChangeHistoryFullScreenDialog(
                         "Date",
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.Bold,
-                        modifier = Modifier.weight(1.2f).padding(horizontal = 6.dp)
+                        modifier = Modifier.width(90.dp).padding(horizontal = 6.dp)
                     )
                     VerticalDivider()
                     Text(
                         "ETF",
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.Bold,
-                        modifier = Modifier.weight(1f).padding(horizontal = 6.dp),
+                        modifier = Modifier.width(80.dp).padding(horizontal = 6.dp),
                         textAlign = TextAlign.End
                     )
                     VerticalDivider()
@@ -1065,7 +1131,7 @@ private fun ChangeHistoryFullScreenDialog(
                         "Stock",
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.Bold,
-                        modifier = Modifier.weight(1f).padding(horizontal = 6.dp),
+                        modifier = Modifier.width(80.dp).padding(horizontal = 6.dp),
                         textAlign = TextAlign.End
                     )
                     VerticalDivider()
@@ -1073,7 +1139,31 @@ private fun ChangeHistoryFullScreenDialog(
                         "Total",
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.Bold,
-                        modifier = Modifier.weight(1f).padding(horizontal = 6.dp),
+                        modifier = Modifier.width(80.dp).padding(horizontal = 6.dp),
+                        textAlign = TextAlign.End
+                    )
+                    VerticalDivider()
+                    Text(
+                        "Δ ETF",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.width(75.dp).padding(horizontal = 6.dp),
+                        textAlign = TextAlign.End
+                    )
+                    VerticalDivider()
+                    Text(
+                        "Δ Stock",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.width(75.dp).padding(horizontal = 6.dp),
+                        textAlign = TextAlign.End
+                    )
+                    VerticalDivider()
+                    Text(
+                        "Δ Total",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.width(75.dp).padding(horizontal = 6.dp),
                         textAlign = TextAlign.End
                     )
                 }
@@ -1086,6 +1176,7 @@ private fun ChangeHistoryFullScreenDialog(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(IntrinsicSize.Min)
+                            .horizontalScroll(rememberScrollState())
                             .background(if (index % 2 == 1) altColor else Color.Transparent)
                             .padding(vertical = 6.dp),
                         verticalAlignment = Alignment.CenterVertically
@@ -1093,20 +1184,20 @@ private fun ChangeHistoryFullScreenDialog(
                         Text(
                             record.date.format(dateFormatter),
                             style = MaterialTheme.typography.bodySmall,
-                            modifier = Modifier.weight(1.2f).padding(horizontal = 6.dp)
+                            modifier = Modifier.width(90.dp).padding(horizontal = 6.dp)
                         )
                         VerticalDivider()
                         Text(
                             currencyFormat.format(record.etfValue),
                             style = MaterialTheme.typography.bodySmall,
-                            modifier = Modifier.weight(1f).padding(horizontal = 6.dp),
+                            modifier = Modifier.width(80.dp).padding(horizontal = 6.dp),
                             textAlign = TextAlign.End
                         )
                         VerticalDivider()
                         Text(
                             currencyFormat.format(record.stockValue),
                             style = MaterialTheme.typography.bodySmall,
-                            modifier = Modifier.weight(1f).padding(horizontal = 6.dp),
+                            modifier = Modifier.width(80.dp).padding(horizontal = 6.dp),
                             textAlign = TextAlign.End
                         )
                         VerticalDivider()
@@ -1114,7 +1205,32 @@ private fun ChangeHistoryFullScreenDialog(
                             currencyFormat.format(record.totalValue),
                             style = MaterialTheme.typography.bodySmall,
                             fontWeight = FontWeight.SemiBold,
-                            modifier = Modifier.weight(1f).padding(horizontal = 6.dp),
+                            modifier = Modifier.width(80.dp).padding(horizontal = 6.dp),
+                            textAlign = TextAlign.End
+                        )
+                        VerticalDivider()
+                        Text(
+                            (if (record.dailyChangeEtf >= 0) "+" else "") + currencyFormat.format(record.dailyChangeEtf),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = if (record.dailyChangeEtf >= 0) Color(0xFF4CAF50) else Color(0xFFF44336),
+                            modifier = Modifier.width(75.dp).padding(horizontal = 6.dp),
+                            textAlign = TextAlign.End
+                        )
+                        VerticalDivider()
+                        Text(
+                            (if (record.dailyChangeStock >= 0) "+" else "") + currencyFormat.format(record.dailyChangeStock),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = if (record.dailyChangeStock >= 0) Color(0xFF4CAF50) else Color(0xFFF44336),
+                            modifier = Modifier.width(75.dp).padding(horizontal = 6.dp),
+                            textAlign = TextAlign.End
+                        )
+                        VerticalDivider()
+                        Text(
+                            (if (record.dailyChangeTotal >= 0) "+" else "") + currencyFormat.format(record.dailyChangeTotal),
+                            style = MaterialTheme.typography.bodySmall,
+                            fontWeight = FontWeight.SemiBold,
+                            color = if (record.dailyChangeTotal >= 0) Color(0xFF4CAF50) else Color(0xFFF44336),
+                            modifier = Modifier.width(75.dp).padding(horizontal = 6.dp),
                             textAlign = TextAlign.End
                         )
                     }

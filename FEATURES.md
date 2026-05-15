@@ -16,7 +16,7 @@
 - Day % and All-time % shown below in bodyMedium, centered, color-coded green/red
 - "Refreshed: MMM dd, h:mm a" label showing last price refresh time (persisted across app restarts)
 - Mini line chart of total_value from change_history (shown when 2+ records)
-- Click mini chart opens full-screen Change History dialog with zoomable multi-series chart (Total/ETF/Stock lines) + grid data table
+- Click mini chart opens full-screen Change History dialog with zoomable multi-series chart (Total/ETF/Stock lines) + "Change Value This Week So Far" summary + grid data table with daily change columns
 
 ### Bottom Navigation
 - 5 tabs: Dashboard, Items, Performance, Transaction, Simulation
@@ -159,7 +159,7 @@ Two tabs: **Details** and **Price History**
 
 ### Preferences
 - **Themes** (collapsible panel): 21 selectable color themes (Default Green, Ocean Blue, Sunset Orange, Midnight Purple, Forest Moss, Ruby Red, Arctic Ice, Gold Rush, Sakura Pink, Charcoal Dark, Lavender Fields, Copper Bronze, Emerald Gem, Slate Blue, Mocha Coffee, Navy Marine, Tropical Mint, Wine Burgundy, Desert Sand, Nordic Pine, Chase); each theme defines full light and dark color schemes; selection persisted to SharedPreferences; instant apply without restart
-- **Auto Update Change History when refresh**: toggle (default: off); when on, records ETF/Stock/Total values to change_history table after price refresh
+- **Auto Update Change History when refresh**: toggle (default: off); when on, records ETF/Stock/Total values and daily change values to change_history table after price refresh
 - Auto-update position shares toggle
 - Warn before delete toggle (default: on)
 - **Dashboard Market Indices** (collapsible panel): toggles for 8 indices, up/down arrow reorder

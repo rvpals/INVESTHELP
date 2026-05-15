@@ -16,5 +16,8 @@ data class ChangeHistoryEntity(
     val date: LocalDate,
     val etfValue: Double,
     val stockValue: Double,
-    val totalValue: Double
+    val totalValue: Double,
+    val dailyChangeEtf: Double = 0.0,
+    val dailyChangeStock: Double = 0.0,
+    val dailyChangeTotal: Double = 0.0
 )

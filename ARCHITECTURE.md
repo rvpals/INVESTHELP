@@ -59,7 +59,7 @@ com.investhelp.app/
 
 ## Database
 
-### Room Database (version 21)
+### Room Database (version 22)
 
 **Entities:**
 | Table | Primary Key | Description |
@@ -71,7 +71,7 @@ com.investhelp.app/
 | `watch_lists` | `id` (auto) | Named watch list groups |
 | `watch_list_items` | `id` (auto) | Watch list ticker entries (with optional reminder) |
 | `csv_import_mappings` | `importType` | Persistent CSV column maps |
-| `change_history` | `id` (auto) | Daily portfolio value snapshots (ETF/Stock/Total) |
+| `change_history` | `id` (auto) | Daily portfolio value snapshots (ETF/Stock/Total) + daily change values |
 
 **Key Relationships:**
 - Transactions reference tickers directly (no FK, account-independent)
@@ -95,6 +95,7 @@ com.investhelp.app/
 - v18->v19: Add reminderDateTime and reminderMessage columns to watch_list_items
 - v19->v20: Add logo BLOB column to investment_items (cached company logo)
 - v20->v21: Remove accountId from transactions (recreate table without FK/index)
+- v21->v22: Add dailyChangeEtf, dailyChangeStock, dailyChangeTotal columns to change_history
 
 ### DatabaseProvider
 Lazy initialization pattern: database opens on first access, not at app startup.

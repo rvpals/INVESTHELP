@@ -307,6 +307,13 @@ class DashboardViewModel @Inject constructor(
                 .filter { it.type == InvestmentType.Stock }
                 .sumOf { it.value }
             val totalValue = allItems.sumOf { it.value }
+            val dailyChangeEtf = allItems
+                .filter { it.type == InvestmentType.ETF }
+                .sumOf { it.dayGainLoss }
+            val dailyChangeStock = allItems
+                .filter { it.type == InvestmentType.Stock }
+                .sumOf { it.dayGainLoss }
+            val dailyChangeTotal = allItems.sumOf { it.dayGainLoss }
             val today = LocalDate.now()
 
             val existing = changeHistoryRepository.getRecordByDate(today)
@@ -316,10 +323,13 @@ class DashboardViewModel @Inject constructor(
                     date = today,
                     etfValue = etfValue,
                     stockValue = stockValue,
-                    totalValue = totalValue
+                    totalValue = totalValue,
+                    dailyChangeEtf = dailyChangeEtf,
+                    dailyChangeStock = dailyChangeStock,
+                    dailyChangeTotal = dailyChangeTotal
                 )
             )
-            AppLog.log("Change history recorded: ETF=${"%.2f".format(etfValue)}, Stock=${"%.2f".format(stockValue)}, Total=${"%.2f".format(totalValue)}")
+            AppLog.log("Change history recorded: ETF=${"%.2f".format(etfValue)}, Stock=${"%.2f".format(stockValue)}, Total=${"%.2f".format(totalValue)}, DailyΔ ETF=${"%.2f".format(dailyChangeEtf)}, Stock=${"%.2f".format(dailyChangeStock)}, Total=${"%.2f".format(dailyChangeTotal)}")
         } catch (e: Exception) {
             AppLog.log("Change history record failed: ${e.message}")
         }
