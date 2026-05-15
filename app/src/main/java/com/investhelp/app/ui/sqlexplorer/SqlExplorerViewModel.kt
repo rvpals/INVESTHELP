@@ -138,8 +138,11 @@ class SqlExplorerViewModel @Inject constructor(
                             val rows = mutableListOf<List<String>>()
                             while (cursor.moveToNext()) {
                                 val row = (0 until cursor.columnCount).map { i ->
-                                    if (cursor.isNull(i)) "NULL"
-                                    else cursor.getString(i) ?: "NULL"
+                                    when {
+                                        cursor.isNull(i) -> "NULL"
+                                        cursor.getType(i) == Cursor.FIELD_TYPE_BLOB -> "*BLOB*"
+                                        else -> cursor.getString(i) ?: "NULL"
+                                    }
                                 }
                                 rows.add(row)
                             }
