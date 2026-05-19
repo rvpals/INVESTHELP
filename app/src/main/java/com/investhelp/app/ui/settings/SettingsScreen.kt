@@ -276,6 +276,38 @@ private fun PreferencesTab(viewModel: SettingsViewModel, uiState: SettingsUiStat
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
+                    "Auto Refresh All",
+                    style = MaterialTheme.typography.bodyLarge
+                )
+                Text(
+                    "Automatically refresh all prices in the background at a set interval",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Switch(
+                checked = uiState.autoRefreshEnabled,
+                onCheckedChange = { viewModel.setAutoRefreshEnabled(it) }
+            )
+        }
+
+        if (uiState.autoRefreshEnabled) {
+            Spacer(modifier = Modifier.height(8.dp))
+            AutoRefreshIntervalSelector(
+                selected = uiState.autoRefreshInterval,
+                onSelected = { viewModel.setAutoRefreshInterval(it) }
+            )
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
                     "Warn before delete",
                     style = MaterialTheme.typography.bodyLarge
                 )
@@ -984,6 +1016,60 @@ private fun CsvFieldDropdown(
                         expanded = false
                     }
                 )
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun AutoRefreshIntervalSelector(
+    selected: String,
+    onSelected: (String) -> Unit
+) {
+    val options = listOf(
+        "5m" to "5 min",
+        "30m" to "30 min",
+        "1h" to "1 hr",
+        "5h" to "5 hr",
+        "market_close" to "Market close daily"
+    )
+    var expanded by remember { mutableStateOf(false) }
+
+    Column(modifier = Modifier.padding(start = 16.dp)) {
+        Text(
+            "Auto Refresh Interval",
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        ExposedDropdownMenuBox(
+            expanded = expanded,
+            onExpandedChange = { expanded = it }
+        ) {
+            OutlinedTextField(
+                value = options.find { it.first == selected }?.second ?: selected,
+                onValueChange = {},
+                readOnly = true,
+                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .menuAnchor(MenuAnchorType.PrimaryNotEditable),
+                singleLine = true
+            )
+            ExposedDropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { expanded = false }
+            ) {
+                options.forEach { (value, label) ->
+                    DropdownMenuItem(
+                        text = { Text(label) },
+                        onClick = {
+                            onSelected(value)
+                            expanded = false
+                        }
+                    )
+                }
             }
         }
     }

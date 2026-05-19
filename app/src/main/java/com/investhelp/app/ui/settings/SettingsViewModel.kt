@@ -25,6 +25,12 @@ import com.investhelp.app.ui.theme.AppTheme
 import com.investhelp.app.ui.theme.ThemePreferences
 import com.investhelp.app.model.InvestmentType
 import com.investhelp.app.model.TransactionAction
+import androidx.work.Constraints
+import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.NetworkType
+import androidx.work.PeriodicWorkRequestBuilder
+import androidx.work.WorkManager
+import com.investhelp.app.AutoRefreshWorker
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
@@ -96,6 +102,8 @@ data class SettingsUiState(
     val isRestoring: Boolean = false,
     val autoUpdateShares: Boolean = false,
     val autoUpdateChangeHistory: Boolean = false,
+    val autoRefreshEnabled: Boolean = false,
+    val autoRefreshInterval: String = "30m",
     val warnBeforeDelete: Boolean = true,
     val selectedTheme: AppTheme = AppTheme.Default,
     val enabledMarketIndices: Set<String> = SettingsViewModel.DEFAULT_MARKET_INDICES,
@@ -129,6 +137,8 @@ class SettingsViewModel @Inject constructor(
         const val KEY_AUTO_UPDATE_CHANGE_HISTORY = "auto_update_change_history"
         const val KEY_BACKUP_FOLDER_URI = "backup_folder_uri"
         const val KEY_THEME = "app_theme"
+        const val KEY_AUTO_REFRESH_ENABLED = "auto_refresh_enabled"
+        const val KEY_AUTO_REFRESH_INTERVAL = "auto_refresh_interval"
 
         data class MarketIndexConfig(
             val symbol: String,
@@ -168,6 +178,8 @@ class SettingsViewModel @Inject constructor(
         SettingsUiState(
             autoUpdateShares = prefs.getBoolean(KEY_AUTO_UPDATE_SHARES, false),
             autoUpdateChangeHistory = prefs.getBoolean(KEY_AUTO_UPDATE_CHANGE_HISTORY, false),
+            autoRefreshEnabled = prefs.getBoolean(KEY_AUTO_REFRESH_ENABLED, false),
+            autoRefreshInterval = prefs.getString(KEY_AUTO_REFRESH_INTERVAL, "30m") ?: "30m",
             warnBeforeDelete = prefs.getBoolean(KEY_WARN_BEFORE_DELETE, true),
             selectedTheme = AppTheme.fromName(prefs.getString(KEY_THEME, AppTheme.Default.name) ?: AppTheme.Default.name),
             enabledMarketIndices = prefs.getStringSet(KEY_MARKET_INDICES, null)
@@ -198,6 +210,56 @@ class SettingsViewModel @Inject constructor(
     fun setAutoUpdateChangeHistory(enabled: Boolean) {
         prefs.edit().putBoolean(KEY_AUTO_UPDATE_CHANGE_HISTORY, enabled).apply()
         _uiState.value = _uiState.value.copy(autoUpdateChangeHistory = enabled)
+    }
+
+    fun setAutoRefreshEnabled(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_AUTO_REFRESH_ENABLED, enabled).apply()
+        _uiState.value = _uiState.value.copy(autoRefreshEnabled = enabled)
+        if (enabled) {
+            scheduleAutoRefresh(_uiState.value.autoRefreshInterval)
+        } else {
+            cancelAutoRefresh()
+        }
+    }
+
+    fun setAutoRefreshInterval(interval: String) {
+        prefs.edit().putString(KEY_AUTO_REFRESH_INTERVAL, interval).apply()
+        _uiState.value = _uiState.value.copy(autoRefreshInterval = interval)
+        if (_uiState.value.autoRefreshEnabled) {
+            scheduleAutoRefresh(interval)
+        }
+    }
+
+    private fun scheduleAutoRefresh(interval: String) {
+        val (repeatMinutes, flexMinutes) = when (interval) {
+            "5m" -> 15L to 5L
+            "30m" -> 30L to 10L
+            "1h" -> 60L to 15L
+            "5h" -> 300L to 30L
+            "market_close" -> 1440L to 60L
+            else -> 30L to 10L
+        }
+
+        val constraints = Constraints.Builder()
+            .setRequiredNetworkType(NetworkType.CONNECTED)
+            .build()
+
+        val workRequest = PeriodicWorkRequestBuilder<AutoRefreshWorker>(
+            repeatMinutes, java.util.concurrent.TimeUnit.MINUTES,
+            flexMinutes, java.util.concurrent.TimeUnit.MINUTES
+        )
+            .setConstraints(constraints)
+            .build()
+
+        WorkManager.getInstance(context).enqueueUniquePeriodicWork(
+            AutoRefreshWorker.WORK_NAME,
+            ExistingPeriodicWorkPolicy.UPDATE,
+            workRequest
+        )
+    }
+
+    private fun cancelAutoRefresh() {
+        WorkManager.getInstance(context).cancelUniqueWork(AutoRefreshWorker.WORK_NAME)
     }
 
     fun setWarnBeforeDelete(enabled: Boolean) {

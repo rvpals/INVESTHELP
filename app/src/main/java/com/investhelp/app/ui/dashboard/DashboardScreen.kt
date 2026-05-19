@@ -834,70 +834,94 @@ private fun PortfolioSummaryRow(
     val sign = { v: Double -> if (v > 0) "+" else "" }
 
     Column(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
+        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
     ) {
-        if (uiState.totalDayGainLoss != 0.0) {
-            val dayChangeColor = if (uiState.totalDayGainLoss > 0) Color(0xFF2E7D32) else Color(0xFFC62828)
-            val dayChangeSign = if (uiState.totalDayGainLoss > 0) "+" else ""
+        // Total portfolio value - large bold
+        Text(
+            text = currencyFormat.format(uiState.totalPortfolioValue),
+            style = MaterialTheme.typography.headlineLarge,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+
+        Spacer(modifier = Modifier.height(4.dp))
+
+        // Today's gain/loss line
+        Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
-                text = "${dayChangeSign}${currencyFormat.format(uiState.totalDayGainLoss)}",
-                style = MaterialTheme.typography.headlineLarge,
-                fontWeight = FontWeight.Bold,
-                color = dayChangeColor
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-        }
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = "Day: ",
+                text = "${sign(uiState.totalDayGainLoss)}${currencyFormat.format(uiState.totalDayGainLoss)} (${sign(dailyPct)}${"%.2f".format(dailyPct)}%)",
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Text(
-                text = "${sign(dailyPct)}${"%.2f".format(dailyPct)}%",
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Bold,
                 color = dailyColor
             )
             Text(
-                text = "    All: ",
-                style = MaterialTheme.typography.bodyMedium,
+                text = "  Today's gain/loss",
+                style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Text(
-                text = "${sign(allTimePct)}${"%.2f".format(allTimePct)}%",
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Bold,
-                color = allTimeColor
             )
         }
 
+        // Mini chart
+        val sortedHistory = remember(changeHistory) {
+            changeHistory.sortedBy { it.date }
+        }
+        if (sortedHistory.size >= 2) {
+            Spacer(modifier = Modifier.height(16.dp))
+            ChangeHistoryMiniChart(
+                records = sortedHistory,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(140.dp)
+                    .clickable { onChartClick() }
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // All-time percentage below chart
+            Text(
+                text = "${sign(allTimePct)}${"%.2f".format(allTimePct)}% all time",
+                style = MaterialTheme.typography.bodyMedium,
+                color = allTimeColor,
+                modifier = Modifier.align(Alignment.CenterHorizontally)
+            )
+        } else {
+            Spacer(modifier = Modifier.height(12.dp))
+            // Show Day/All percentages inline if no chart
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Start,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Day: ",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    text = "${sign(dailyPct)}${"%.2f".format(dailyPct)}%",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = dailyColor
+                )
+                Text(
+                    text = "    All: ",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    text = "${sign(allTimePct)}${"%.2f".format(allTimePct)}%",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = allTimeColor
+                )
+            }
+        }
+
         lastRefreshedAt?.let {
-            Spacer(modifier = Modifier.height(6.dp))
+            Spacer(modifier = Modifier.height(8.dp))
             val refreshFormatter = DateTimeFormatter.ofPattern("MMM dd, h:mm a")
             Text(
                 text = "Refreshed: ${it.format(refreshFormatter)}",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-
-        val sortedHistory = remember(changeHistory) {
-            changeHistory.sortedBy { it.date }
-        }
-        if (sortedHistory.size >= 2) {
-            Spacer(modifier = Modifier.height(12.dp))
-            ChangeHistoryMiniChart(
-                records = sortedHistory,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(100.dp)
-                    .clickable { onChartClick() }
             )
         }
     }
@@ -909,32 +933,62 @@ private fun ChangeHistoryMiniChart(
     modifier: Modifier = Modifier
 ) {
     val lineColor = Color(0xFF4285F4)
-    val gridColor = MaterialTheme.colorScheme.outlineVariant
+    val gridColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
     val labelColor = MaterialTheme.colorScheme.onSurfaceVariant
-    val dateFormatter = DateTimeFormatter.ofPattern("MM/dd")
-    val currencyFormat = NumberFormat.getCurrencyInstance(Locale.US)
+    val dateFormatter = DateTimeFormatter.ofPattern("MMM dd, yyyy")
 
     val values = records.map { it.totalValue }
-    val minVal = values.min() * 0.998
-    val maxVal = values.max() * 1.002
+    val minVal = values.min() * 0.995
+    val maxVal = values.max() * 1.005
     val valRange = (maxVal - minVal).let { if (it < 0.01) 1.0 else it }
     val minEpoch = records.first().date.toEpochDay()
     val maxEpoch = records.last().date.toEpochDay()
     val timeRange = (maxEpoch - minEpoch).let { if (it < 1L) 1L else it }
 
-    Card(
-        modifier = modifier,
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-        )
-    ) {
+    val formatYLabel = { v: Double ->
+        when {
+            v >= 1_000_000 -> "$${"%,.1f".format(v / 1_000_000)}M"
+            v >= 1_000 -> "$${"%,.1f".format(v / 1_000)}K"
+            else -> "$${"%,.0f".format(v)}"
+        }
+    }
+
+    Column(modifier = modifier) {
         Canvas(
             modifier = Modifier
-                .fillMaxSize()
-                .padding(top = 8.dp, bottom = 16.dp, start = 4.dp, end = 4.dp)
+                .fillMaxWidth()
+                .weight(1f)
+                .padding(end = 56.dp)
         ) {
             val chartWidth = size.width
             val chartHeight = size.height
+            val dashedEffect = PathEffect.dashPathEffect(floatArrayOf(8f, 6f), 0f)
+
+            // Y-axis grid lines (3 levels: top, mid, bottom)
+            val yLevels = listOf(maxVal, (maxVal + minVal) / 2, minVal)
+            val paint = android.graphics.Paint().apply {
+                color = labelColor.hashCode()
+                textSize = 10.dp.toPx()
+                isAntiAlias = true
+                textAlign = android.graphics.Paint.Align.LEFT
+            }
+
+            yLevels.forEach { yVal ->
+                val screenY = ((maxVal - yVal) / valRange * chartHeight).toFloat()
+                drawLine(
+                    color = gridColor,
+                    start = Offset(0f, screenY),
+                    end = Offset(chartWidth, screenY),
+                    pathEffect = dashedEffect,
+                    strokeWidth = 1f
+                )
+                drawContext.canvas.nativeCanvas.drawText(
+                    formatYLabel(yVal),
+                    chartWidth + 8.dp.toPx(),
+                    screenY + 4.dp.toPx(),
+                    paint
+                )
+            }
 
             // Draw line
             val path = Path()
@@ -958,34 +1012,25 @@ private fun ChangeHistoryMiniChart(
             )
             fillPath.close()
 
-            drawPath(fillPath, color = lineColor.copy(alpha = 0.1f))
+            drawPath(fillPath, color = lineColor.copy(alpha = 0.08f))
             drawPath(path, color = lineColor, style = Stroke(width = 2.5f, cap = StrokeCap.Round))
+        }
 
-            // Data points
-            records.forEach { record ->
-                val normX = (record.date.toEpochDay() - minEpoch).toFloat() / timeRange
-                val screenX = normX * chartWidth
-                val screenY = ((maxVal - record.totalValue) / valRange * chartHeight).toFloat()
-                drawCircle(color = lineColor, radius = 3f, center = Offset(screenX, screenY))
-            }
-
-            // X-axis labels (start and end)
-            val paint = android.graphics.Paint().apply {
-                color = labelColor.hashCode()
-                textSize = 8.dp.toPx()
-                isAntiAlias = true
-            }
-            drawContext.canvas.nativeCanvas.drawText(
-                records.first().date.format(dateFormatter),
-                0f,
-                chartHeight + 12.dp.toPx(),
-                paint.apply { textAlign = android.graphics.Paint.Align.LEFT }
+        // X-axis date labels
+        Spacer(modifier = Modifier.height(4.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(end = 56.dp),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                text = records.first().date.format(dateFormatter),
+                style = MaterialTheme.typography.labelSmall,
+                color = labelColor
             )
-            drawContext.canvas.nativeCanvas.drawText(
-                records.last().date.format(dateFormatter),
-                chartWidth,
-                chartHeight + 12.dp.toPx(),
-                paint.apply { textAlign = android.graphics.Paint.Align.RIGHT }
+            Text(
+                text = records.last().date.format(dateFormatter),
+                style = MaterialTheme.typography.labelSmall,
+                color = labelColor
             )
         }
     }

@@ -120,6 +120,11 @@ dependencies {
 
     // Image loading
     implementation(libs.coil.compose)
+
+    // WorkManager
+    implementation(libs.work.runtime.ktx)
+    implementation(libs.hilt.work)
+    ksp(libs.hilt.work.compiler)
 }
 
 tasks.configureEach {

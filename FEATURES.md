@@ -12,11 +12,13 @@
 
 ### Dashboard Portfolio Summary
 - Collapsible "Portfolio Summary" card with pin persistence
-- Total daily value change displayed in 3x larger font (headlineLarge, bold, centered)
-- Day % and All-time % shown below in bodyMedium, centered, color-coded green/red
+- Total portfolio value displayed in headlineLarge bold (left-aligned)
+- Today's gain/loss: amount + percentage + "Today's gain/loss" label (color-coded green/red)
+- Mini line chart (140dp) with dashed horizontal grid lines and right-side Y-axis labels ($XXK format)
+- Date range labels below chart (full date format: "MMM dd, yyyy")
+- All-time percentage centered below chart (e.g., "+19.00% all time")
 - "Refreshed: MMM dd, h:mm a" label showing last price refresh time (persisted across app restarts)
-- Mini line chart of total_value from change_history (shown when 2+ records)
-- Click mini chart opens full-screen Change History dialog with zoomable multi-series chart (Total/ETF/Stock lines) + "Change Value This Week So Far" summary + grid data table with daily change columns
+- Click chart opens full-screen Change History dialog with zoomable multi-series chart (Total/ETF/Stock lines) + "Change Value This Week So Far" summary + grid data table with daily change columns
 
 ### Bottom Navigation
 - 5 tabs: Dashboard, Items, Performance, Transaction, Simulation
@@ -158,8 +160,14 @@ Two tabs: **Details** and **Price History**
 ## Settings
 
 ### Preferences
-- **Themes** (collapsible panel): 21 selectable color themes (Default Green, Ocean Blue, Sunset Orange, Midnight Purple, Forest Moss, Ruby Red, Arctic Ice, Gold Rush, Sakura Pink, Charcoal Dark, Lavender Fields, Copper Bronze, Emerald Gem, Slate Blue, Mocha Coffee, Navy Marine, Tropical Mint, Wine Burgundy, Desert Sand, Nordic Pine, Chase); each theme defines full light and dark color schemes; selection persisted to SharedPreferences; instant apply without restart
+- **Themes** (collapsible panel): 22 selectable color themes (Default Green, Ocean Blue, Sunset Orange, Midnight Purple, Forest Moss, Ruby Red, Arctic Ice, Gold Rush, Sakura Pink, Charcoal Dark, Lavender Fields, Copper Bronze, Emerald Gem, Slate Blue, Mocha Coffee, Navy Marine, Tropical Mint, Wine Burgundy, Desert Sand, Nordic Pine, Fidelity, Chase); each theme defines full light and dark color schemes; selection persisted to SharedPreferences; instant apply without restart
 - **Auto Update Change History when refresh**: toggle (default: off); when on, records ETF/Stock/Total values and daily change values to change_history table after price refresh
+- **Auto Refresh All**: toggle (default: off); when on, shows interval selector
+  - Interval options: 5 min, 30 min, 1 hr, 5 hr, Market close daily
+  - Uses WorkManager for reliable periodic background refresh
+  - Foreground notification shown during refresh ("Refreshing prices...")
+  - Completion notification shows ticker count and failures
+  - Respects "Auto Update Change History" setting
 - Auto-update position shares toggle
 - Warn before delete toggle (default: on)
 - **Dashboard Market Indices** (collapsible panel): toggles for 8 indices, up/down arrow reorder

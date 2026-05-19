@@ -862,6 +862,58 @@ enum class AppTheme(
         )
     ),
 
+    Fidelity(
+        label = "Fidelity",
+        lightScheme = lightColorScheme(
+            primary = Color(0xFF4C8C2B),
+            onPrimary = Color.White,
+            primaryContainer = Color(0xFFCCEAB8),
+            onPrimaryContainer = Color(0xFF1A3D08),
+            secondary = Color(0xFF546250),
+            onSecondary = Color.White,
+            secondaryContainer = Color(0xFFD7E8CE),
+            onSecondaryContainer = Color(0xFF121F0E),
+            tertiary = Color(0xFF2E6B30),
+            onTertiary = Color.White,
+            tertiaryContainer = Color(0xFFB6F2AE),
+            onTertiaryContainer = Color(0xFF002204),
+            background = Color(0xFFF8FAF6),
+            onBackground = Color(0xFF1A1C19),
+            surface = Color.White,
+            onSurface = Color(0xFF1A1C19),
+            surfaceVariant = Color(0xFFEDF2E8),
+            onSurfaceVariant = Color(0xFF44483F),
+            error = Color(0xFFBA1A1A),
+            onError = Color.White,
+            errorContainer = Color(0xFFFFDAD6),
+            onErrorContainer = Color(0xFF410002)
+        ),
+        darkScheme = darkColorScheme(
+            primary = Color(0xFFA8D98D),
+            onPrimary = Color(0xFF1A3D08),
+            primaryContainer = Color(0xFF2D6413),
+            onPrimaryContainer = Color(0xFFCCEAB8),
+            secondary = Color(0xFFBBCBB3),
+            onSecondary = Color(0xFF273422),
+            secondaryContainer = Color(0xFF3D4B38),
+            onSecondaryContainer = Color(0xFFD7E8CE),
+            tertiary = Color(0xFF9BD694),
+            onTertiary = Color(0xFF003A08),
+            tertiaryContainer = Color(0xFF0F5219),
+            onTertiaryContainer = Color(0xFFB6F2AE),
+            background = Color(0xFF12150F),
+            onBackground = Color(0xFFE2E3DC),
+            surface = Color(0xFF12150F),
+            onSurface = Color(0xFFE2E3DC),
+            surfaceVariant = Color(0xFF2C3228),
+            onSurfaceVariant = Color(0xFFC3C8BB),
+            error = Color(0xFFFFB4AB),
+            onError = Color(0xFF690005),
+            errorContainer = Color(0xFF93000A),
+            onErrorContainer = Color(0xFFFFDAD6)
+        )
+    ),
+
     Chase(
         label = "Chase",
         lightScheme = lightColorScheme(

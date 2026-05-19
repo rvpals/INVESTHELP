@@ -93,6 +93,7 @@ Current version: **23**
 | Room | Local database (SQLite) |
 | Compose Navigation | Screen navigation |
 | Coil 2.7.0 | Image loading |
+| WorkManager + hilt-work | Background periodic refresh |
 | AndroidX SplashScreen | Splash screen API |
 | kotlinx.coroutines | Async operations |
 

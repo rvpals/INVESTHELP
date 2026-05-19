@@ -1,5 +1,19 @@
 # Changelog
 
+## v1.26 (Build 27) - 2026-05-19
+
+### Added
+- Settings: "Auto Refresh All" toggle with configurable interval (5 min, 30 min, 1 hr, 5 hr, Market close daily)
+- Background auto-refresh via WorkManager with foreground notification during refresh and completion notification
+- Interval dropdown only appears when auto-refresh is enabled
+- Auto-refresh respects "Auto Update Change History" setting
+- Fidelity theme: warm forest green color scheme inspired by the Fidelity brokerage app
+- Dashboard Portfolio Summary redesign: large total value at top, today's gain/loss with label, taller chart with Y-axis labels and dashed grid lines, all-time % below chart
+
+### Changed
+- Portfolio Summary mini chart now 140dp tall with right-side Y-axis labels ($XXK format) and dashed horizontal grid lines
+- Portfolio Summary layout: left-aligned total value (headlineLarge bold), followed by gain/loss line, then chart, then all-time %
+
 ## v1.23 (Build 24) - 2026-05-19
 
 ### Added
