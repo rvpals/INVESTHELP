@@ -15,6 +15,7 @@ import com.investhelp.app.data.local.dao.AccountPerformanceDao
 import com.investhelp.app.data.local.dao.CsvImportMappingDao
 import com.investhelp.app.data.local.entity.AccountPerformanceEntity
 import com.investhelp.app.data.local.entity.CsvImportMappingEntity
+import com.investhelp.app.data.local.entity.NamedCsvMappingEntity
 import com.investhelp.app.model.BackupAccount
 import com.investhelp.app.model.BackupData
 import com.investhelp.app.model.BackupItem
@@ -63,6 +64,30 @@ data class CsvMappingDialogState(
     val hasSavedMapping: Boolean = false
 )
 
+data class PositionMappingScreenState(
+    val csvHeaders: List<String> = emptyList(),
+    val previewRows: List<List<String>> = emptyList(),
+    val columnMappings: Map<Int, String> = emptyMap(),
+    val dateFormats: Map<Int, String> = emptyMap(),
+    val hasSavedMapping: Boolean = false,
+    val savedMappings: List<NamedCsvMappingEntity> = emptyList()
+)
+
+data class ImportLogEntry(
+    val ticker: String,
+    val status: ImportStatus,
+    val details: String = ""
+)
+
+enum class ImportStatus { IMPORTED, UPDATED, SKIPPED }
+
+data class PositionImportResult(
+    val entries: List<ImportLogEntry> = emptyList(),
+    val totalImported: Int = 0,
+    val totalUpdated: Int = 0,
+    val totalSkipped: Int = 0
+)
+
 data class SettingsUiState(
     val backupFolderUri: Uri? = null,
     val backupFolderName: String? = null,
@@ -77,6 +102,11 @@ data class SettingsUiState(
     val marketIndicesOrder: List<String> = SettingsViewModel.AVAILABLE_MARKET_INDICES.map { it.symbol },
     val csvImport: CsvImportState? = null,
     val csvMappingDialog: CsvMappingDialogState? = null,
+    val positionMappingScreen: PositionMappingScreenState? = null,
+    val positionImportResult: PositionImportResult? = null,
+    val showMappingSelectionDialog: Boolean = false,
+    val savedPositionMappings: List<NamedCsvMappingEntity> = emptyList(),
+    val pendingImportFileUri: Uri? = null,
     val accounts: List<InvestmentAccountEntity> = emptyList()
 )
 
@@ -564,6 +594,388 @@ class SettingsViewModel @Inject constructor(
             }
         }
         return result
+    }
+
+    // --- Position Mapping Full Screen ---
+
+    fun openPositionMappingScreen(fileUri: Uri) {
+        viewModelScope.launch {
+            try {
+                val (headers, rows) = withContext(Dispatchers.IO) {
+                    context.contentResolver.openInputStream(fileUri)?.use { input ->
+                        val reader = BufferedReader(InputStreamReader(input))
+                        val headerLine = reader.readLine()
+                            ?: throw Exception("CSV file is empty.")
+                        val parsedHeaders = parseCsvLine(headerLine)
+                        val previewRows = mutableListOf<List<String>>()
+                        repeat(3) {
+                            val line = reader.readLine() ?: return@repeat
+                            previewRows.add(parseCsvLine(line))
+                        }
+                        parsedHeaders to previewRows
+                    } ?: throw Exception("Cannot read CSV file.")
+                }
+
+                val saved = csvMappingDao.getMapping(CsvImportType.Position.name)
+                var mappings = emptyMap<Int, String>()
+                var hasSaved = false
+
+                if (saved != null) {
+                    hasSaved = true
+                    mappings = deserializeMappings(saved.mappingsJson, headers)
+                } else {
+                    mappings = autoMapHeaders(headers, CsvImportType.Position)
+                }
+
+                val namedMappings = csvMappingDao.getNamedMappings(CsvImportType.Position.name)
+
+                _uiState.value = _uiState.value.copy(
+                    positionMappingScreen = PositionMappingScreenState(
+                        csvHeaders = headers,
+                        previewRows = rows,
+                        columnMappings = mappings,
+                        hasSavedMapping = hasSaved,
+                        savedMappings = namedMappings
+                    )
+                )
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(
+                    message = "CSV parse failed: ${e.message}"
+                )
+            }
+        }
+    }
+
+    fun updatePositionMappingField(colIndex: Int, fieldName: String) {
+        val current = _uiState.value.positionMappingScreen ?: return
+        val newMappings = current.columnMappings.toMutableMap()
+        if (fieldName == "Skip") {
+            newMappings.remove(colIndex)
+        } else {
+            val existingKey = newMappings.entries.find { it.value == fieldName }?.key
+            if (existingKey != null) newMappings.remove(existingKey)
+            newMappings[colIndex] = fieldName
+        }
+        _uiState.value = _uiState.value.copy(
+            positionMappingScreen = current.copy(columnMappings = newMappings)
+        )
+    }
+
+    fun savePositionMapping() {
+        val screen = _uiState.value.positionMappingScreen ?: return
+        viewModelScope.launch {
+            val mappingsJson = serializeMappings(screen.columnMappings, screen.csvHeaders)
+            csvMappingDao.upsertMapping(
+                CsvImportMappingEntity(
+                    importType = CsvImportType.Position.name,
+                    mappingsJson = mappingsJson,
+                    dateFormatJson = ""
+                )
+            )
+            _uiState.value = _uiState.value.copy(
+                positionMappingScreen = null,
+                message = "Mapping saved for Position Details."
+            )
+        }
+    }
+
+    fun savePositionMappingAsNamed(name: String) {
+        val screen = _uiState.value.positionMappingScreen ?: return
+        viewModelScope.launch {
+            val mappingsJson = serializeMappings(screen.columnMappings, screen.csvHeaders)
+            csvMappingDao.insertNamedMapping(
+                NamedCsvMappingEntity(
+                    name = name,
+                    importType = CsvImportType.Position.name,
+                    mappingsJson = mappingsJson,
+                    dateFormatJson = ""
+                )
+            )
+            // Also save as the active mapping
+            csvMappingDao.upsertMapping(
+                CsvImportMappingEntity(
+                    importType = CsvImportType.Position.name,
+                    mappingsJson = mappingsJson,
+                    dateFormatJson = ""
+                )
+            )
+            val namedMappings = csvMappingDao.getNamedMappings(CsvImportType.Position.name)
+            _uiState.value = _uiState.value.copy(
+                positionMappingScreen = screen.copy(savedMappings = namedMappings),
+                message = "Mapping \"$name\" saved."
+            )
+        }
+    }
+
+    fun loadNamedMapping(mappingId: Long) {
+        val screen = _uiState.value.positionMappingScreen ?: return
+        viewModelScope.launch {
+            val named = csvMappingDao.getNamedMappingById(mappingId) ?: return@launch
+            val mappings = deserializeMappings(named.mappingsJson, screen.csvHeaders)
+            _uiState.value = _uiState.value.copy(
+                positionMappingScreen = screen.copy(
+                    columnMappings = mappings,
+                    hasSavedMapping = true
+                ),
+                message = "Loaded mapping \"${named.name}\"."
+            )
+        }
+    }
+
+    fun deleteNamedMapping(mappingId: Long) {
+        val screen = _uiState.value.positionMappingScreen ?: return
+        viewModelScope.launch {
+            csvMappingDao.deleteNamedMapping(mappingId)
+            val namedMappings = csvMappingDao.getNamedMappings(CsvImportType.Position.name)
+            _uiState.value = _uiState.value.copy(
+                positionMappingScreen = screen.copy(savedMappings = namedMappings)
+            )
+        }
+    }
+
+    fun dismissPositionMappingScreen() {
+        _uiState.value = _uiState.value.copy(positionMappingScreen = null)
+    }
+
+    fun dismissPositionImportResult() {
+        _uiState.value = _uiState.value.copy(positionImportResult = null)
+    }
+
+    // --- Position Import with Mapping Selection ---
+
+    fun showMappingSelection(fileUri: Uri) {
+        viewModelScope.launch {
+            val namedMappings = csvMappingDao.getNamedMappings(CsvImportType.Position.name)
+            _uiState.value = _uiState.value.copy(
+                showMappingSelectionDialog = true,
+                savedPositionMappings = namedMappings,
+                pendingImportFileUri = fileUri
+            )
+        }
+    }
+
+    fun dismissMappingSelection() {
+        _uiState.value = _uiState.value.copy(
+            showMappingSelectionDialog = false,
+            pendingImportFileUri = null
+        )
+    }
+
+    fun startPositionImportWithMapping(mappingId: Long?, accountId: Long) {
+        val fileUri = _uiState.value.pendingImportFileUri ?: return
+        _uiState.value = _uiState.value.copy(
+            showMappingSelectionDialog = false,
+            pendingImportFileUri = null
+        )
+        viewModelScope.launch {
+            val mapping = if (mappingId != null) {
+                val named = csvMappingDao.getNamedMappingById(mappingId)
+                if (named != null) {
+                    CsvImportMappingEntity(
+                        importType = CsvImportType.Position.name,
+                        mappingsJson = named.mappingsJson,
+                        dateFormatJson = named.dateFormatJson
+                    )
+                } else null
+            } else {
+                csvMappingDao.getMapping(CsvImportType.Position.name)
+            }
+
+            if (mapping == null) {
+                _uiState.value = _uiState.value.copy(
+                    message = "No mapping found. Please define mapping first."
+                )
+                return@launch
+            }
+
+            startPositionImportWithLog(fileUri, mapping, accountId)
+        }
+    }
+
+    private suspend fun startPositionImportWithLog(fileUri: Uri, mapping: CsvImportMappingEntity, accountId: Long) {
+        try {
+            val allRows = withContext(Dispatchers.IO) {
+                context.contentResolver.openInputStream(fileUri)?.use { input ->
+                    val reader = BufferedReader(InputStreamReader(input))
+                    val headerLine = reader.readLine()
+                        ?: throw Exception("CSV file is empty.")
+                    val headers = parseCsvLine(headerLine)
+                    val colCount = headers.size
+                    val rows = mutableListOf<List<String>>()
+                    var line = reader.readLine()
+                    while (line != null) {
+                        if (line.isNotBlank()) {
+                            val parsed = parseCsvLine(line)
+                            if (parsed.size >= colCount / 2) rows.add(parsed)
+                        }
+                        line = reader.readLine()
+                    }
+                    headers to rows
+                } ?: throw Exception("Cannot read CSV file.")
+            }
+
+            val headers = allRows.first
+            val rows = allRows.second
+            val mappings = deserializeMappings(mapping.mappingsJson, headers)
+            val total = rows.size
+
+            _uiState.value = _uiState.value.copy(
+                csvImport = CsvImportState(
+                    importType = CsvImportType.Position,
+                    isImporting = true,
+                    importTotal = total,
+                    importCurrent = 0,
+                    importProgress = 0f
+                )
+            )
+
+            val logEntries = mutableListOf<ImportLogEntry>()
+            var imported = 0
+            var updated = 0
+            var skipped = 0
+
+            for (row in rows) {
+                val fieldValues = mutableMapOf<String, String>()
+                for ((colIndex, fieldName) in mappings) {
+                    if (colIndex < row.size) {
+                        fieldValues[fieldName] = row[colIndex].trim()
+                    }
+                }
+
+                try {
+                    val rawTicker = fieldValues["ticker"]?.trim()?.uppercase()
+                    val ticker = rawTicker?.split("\\s+-\\s+".toRegex())?.firstOrNull()?.trim()
+                    if (ticker.isNullOrBlank()) {
+                        skipped++
+                        logEntries.add(ImportLogEntry(
+                            ticker = rawTicker ?: "UNKNOWN",
+                            status = ImportStatus.SKIPPED,
+                            details = "Missing ticker"
+                        ))
+                        continue
+                    }
+
+                    val existing = itemDao.getItemByTicker(ticker)
+                    val changedFields = mutableListOf<String>()
+
+                    val newPrice = parseNumeric(fieldValues["currentPrice"])
+                    val newQty = parseNumeric(fieldValues["quantity"])
+                    val newCost = parseNumeric(fieldValues["cost"])
+                    val newName = fieldValues["name"]?.ifBlank { null }
+                    val newValue = parseNumeric(fieldValues["value"])
+                    val newDayGL = parseNumeric(fieldValues["dayGainLoss"])
+                    val newTotalGL = parseNumeric(fieldValues["totalGainLoss"])
+
+                    if (existing != null) {
+                        if (newPrice != null && newPrice != existing.currentPrice) changedFields.add("price: ${existing.currentPrice} → $newPrice")
+                        if (newQty != null && newQty != existing.quantity) changedFields.add("qty: ${existing.quantity} → $newQty")
+                        if (newCost != null && newCost != existing.cost) changedFields.add("cost: ${existing.cost} → $newCost")
+                        if (newName != null && newName != existing.name) changedFields.add("name: ${existing.name} → $newName")
+                        if (newValue != null && newValue != existing.value) changedFields.add("value: ${existing.value} → $newValue")
+                        if (newDayGL != null && newDayGL != existing.dayGainLoss) changedFields.add("dayG/L: ${existing.dayGainLoss} → $newDayGL")
+                        if (newTotalGL != null && newTotalGL != existing.totalGainLoss) changedFields.add("totalG/L: ${existing.totalGainLoss} → $newTotalGL")
+                    }
+
+                    val item = InvestmentItemEntity(
+                        ticker = ticker,
+                        name = newName ?: existing?.name ?: ticker,
+                        type = fieldValues["type"]?.let {
+                            runCatching { InvestmentType.valueOf(it) }.getOrNull()
+                        } ?: existing?.type ?: InvestmentType.Stock,
+                        currentPrice = newPrice ?: existing?.currentPrice ?: 0.0,
+                        quantity = newQty ?: existing?.quantity ?: 0.0,
+                        cost = newCost ?: existing?.cost ?: 0.0,
+                        dayGainLoss = newDayGL ?: existing?.dayGainLoss ?: 0.0,
+                        totalGainLoss = newTotalGL ?: existing?.totalGainLoss ?: 0.0,
+                        value = newValue ?: existing?.value ?: 0.0,
+                        dayHigh = existing?.dayHigh ?: 0.0,
+                        dayLow = existing?.dayLow ?: 0.0
+                    )
+                    itemDao.upsertItem(item)
+
+                    if (existing != null) {
+                        updated++
+                        logEntries.add(ImportLogEntry(
+                            ticker = ticker,
+                            status = ImportStatus.UPDATED,
+                            details = if (changedFields.isEmpty()) "No changes" else changedFields.joinToString("; ")
+                        ))
+                    } else {
+                        imported++
+                        logEntries.add(ImportLogEntry(
+                            ticker = ticker,
+                            status = ImportStatus.IMPORTED,
+                            details = "New position: price=$newPrice, qty=$newQty, cost=$newCost"
+                        ))
+                    }
+                } catch (e: Exception) {
+                    skipped++
+                    val rawTicker = fieldValues["ticker"]?.trim()?.uppercase() ?: "UNKNOWN"
+                    logEntries.add(ImportLogEntry(
+                        ticker = rawTicker,
+                        status = ImportStatus.SKIPPED,
+                        details = e.message ?: "Unknown error"
+                    ))
+                }
+
+                _uiState.value = _uiState.value.copy(
+                    csvImport = _uiState.value.csvImport?.copy(
+                        importCurrent = imported + updated + skipped,
+                        importProgress = (imported + updated + skipped).toFloat() / total
+                    )
+                )
+            }
+
+            _uiState.value = _uiState.value.copy(
+                csvImport = null,
+                positionImportResult = PositionImportResult(
+                    entries = logEntries,
+                    totalImported = imported,
+                    totalUpdated = updated,
+                    totalSkipped = skipped
+                )
+            )
+            com.investhelp.app.AppLog.log("Position import: $imported new, $updated updated, $skipped skipped")
+        } catch (e: Exception) {
+            _uiState.value = _uiState.value.copy(
+                csvImport = null,
+                message = "Import failed: ${e.message}"
+            )
+        }
+    }
+
+    private fun autoMapHeaders(headers: List<String>, importType: CsvImportType): Map<Int, String> {
+        val autoMappings = mutableMapOf<Int, String>()
+        val aliases = mapOf(
+            "price" to "currentPrice",
+            "current price" to "currentPrice",
+            "last price" to "currentPrice",
+            "description" to "name",
+            "security" to "name",
+            "security name" to "name",
+            "symbol" to "ticker",
+            "unrealized g/l amt." to "totalGainLoss",
+            "unrealized g/l" to "totalGainLoss",
+            "unrealized gain/loss" to "totalGainLoss",
+            "gain/loss" to "totalGainLoss",
+            "today's value change" to "dayGainLoss",
+            "shares" to "quantity",
+            "qty" to "quantity",
+            "cost basis" to "cost",
+            "market value" to "value",
+            "unit cost" to "currentPrice",
+        )
+        val usedFields = mutableSetOf<String>()
+        headers.forEachIndexed { index, header ->
+            val normalized = header.trim().lowercase()
+            val match = importType.mappableFields.firstOrNull { it.lowercase() == normalized }
+                ?: aliases[normalized]?.takeIf { it in importType.mappableFields }
+            if (match != null && match !in usedFields) {
+                autoMappings[index] = match
+                usedFields.add(match)
+            }
+        }
+        return autoMappings
     }
 
     fun startCsvImport(importType: CsvImportType, fileUri: Uri, accountId: Long) {

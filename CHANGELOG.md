@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.23 (Build 24) - 2026-05-19
+
+### Added
+- Position Import: full-screen mapping editor (replaces dialog) with Save, Save As, and Load buttons
+- Position Import: named mapping profiles — save column mappings with custom names and reuse them later
+- Position Import: mapping selection dialog when starting import — choose from saved named mappings or default active mapping
+- Position Import: detailed import result log showing per-ticker status (NEW/UPDATED/SKIPPED) with field change details (e.g., "price: 150.0 → 155.0")
+- New database table `csv_named_mappings` for storing named mapping profiles
+
+### Changed
+- Database version bumped to 23 (migration v22→v23 creates csv_named_mappings table)
+
 ## v1.20 (Build 21) - 2026-05-14
 
 ### Added

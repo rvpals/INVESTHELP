@@ -93,6 +93,8 @@ Android investment tracking app built with Kotlin, Jetpack Compose, and Material
 - Settings Data Management: "Import Data" section with CSV position import; column mapping dialog with 3-row preview, auto-mapping with brokerage aliases (Price→currentPrice, Description→name, Symbol→ticker, etc.), account selector, progress bar; upserts into investment_items
 - CSV Import: `parseNumeric()` strips commas from numbers (handles brokerage formats like "92,150.62"); non-data rows (blank lines, FOOTNOTES) filtered out during import
 - CSV Position Import: confirmation dialog before proceeding ("Position details will be refreshed with imported CSV file. Are you sure?")
+- CSV Position Import: "Define Mapping" opens full-screen mapping editor with Save, Save As (named), and Load buttons; saved mappings stored in `csv_named_mappings` table
+- CSV Position Import: "Start Import" prompts to select a saved mapping (or default active mapping), then imports with detailed per-ticker log showing NEW/UPDATED/SKIPPED status and field changes
 - AppLog: in-memory application log (up to 200 entries) capturing price fetch results, refresh summaries, and errors
 - About dialog: "Show Log" button opens scrollable log viewer (newest first) with clear button; logs include timestamps
 - Item detail transactions: each card shows days since transaction date (e.g. "123d") and G/L = (currentPrice - pricePerShare) * shares; green for gain, red for loss
@@ -123,7 +125,8 @@ Android investment tracking app built with Kotlin, Jetpack Compose, and Material
 - Database migration v19 -> v20: adds logo BLOB column to investment_items for cached company logo
 - Database migration v20 -> v21: removes accountId from investment_transactions (recreates table without FK/index)
 - Database migration v21 -> v22: adds dailyChangeEtf, dailyChangeStock, dailyChangeTotal columns to change_history
-- Database version 22
+- Database migration v22 -> v23: creates csv_named_mappings table (id, name, importType, mappingsJson, dateFormatJson)
+- Database version 23
 - Change History: `change_history` table records daily portfolio values by type (ETF, Stock, Total) plus daily change values (dailyChangeEtf, dailyChangeStock, dailyChangeTotal); one row per day, overwritten on re-refresh
 - Change History dialog: "Change Value This Week So Far" summary card above data table showing sum of daily changes for ETF, Stock, and Total since Monday; color-coded green/red
 - Settings: "Auto Update Change History when refresh" toggle (default: off) — when on, automatically records ETF/Stock/Total values to change_history after price refresh; overwrites existing entry for today

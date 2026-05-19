@@ -27,7 +27,7 @@ com.investhelp.app/
 ├── MainActivity.kt              # Single activity, top bar, bottom nav, navigation host
 ├── data/
 │   ├── local/
-│   │   ├── AppDatabase.kt       # Room database (version 21) with all DAOs and migrations
+│   │   ├── AppDatabase.kt       # Room database (version 23) with all DAOs and migrations
 │   │   ├── DatabaseProvider.kt  # Lazy database initialization pattern
 │   │   ├── dao/                 # Room DAO interfaces
 │   │   └── entity/              # Room entity classes
@@ -59,7 +59,7 @@ com.investhelp.app/
 
 ## Database
 
-### Room Database (version 22)
+### Room Database (version 23)
 
 **Entities:**
 | Table | Primary Key | Description |
@@ -71,6 +71,7 @@ com.investhelp.app/
 | `watch_lists` | `id` (auto) | Named watch list groups |
 | `watch_list_items` | `id` (auto) | Watch list ticker entries (with optional reminder) |
 | `csv_import_mappings` | `importType` | Persistent CSV column maps |
+| `csv_named_mappings` | `id` (auto) | Named/reusable CSV mapping profiles |
 | `change_history` | `id` (auto) | Daily portfolio value snapshots (ETF/Stock/Total) + daily change values |
 
 **Key Relationships:**
@@ -96,6 +97,7 @@ com.investhelp.app/
 - v19->v20: Add logo BLOB column to investment_items (cached company logo)
 - v20->v21: Remove accountId from transactions (recreate table without FK/index)
 - v21->v22: Add dailyChangeEtf, dailyChangeStock, dailyChangeTotal columns to change_history
+- v22->v23: Create csv_named_mappings table for named mapping profiles
 
 ### DatabaseProvider
 Lazy initialization pattern: database opens on first access, not at app startup.

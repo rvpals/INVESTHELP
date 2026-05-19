@@ -55,7 +55,7 @@ When modifying the Room database schema:
 3. Register the migration in the database builder
 4. Update `CLAUDE.md` and `ISSUES.md` with migration notes
 
-Current version: **22**
+Current version: **23**
 
 ## Key Conventions
 

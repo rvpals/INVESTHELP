@@ -2,7 +2,7 @@
 
 Android investment tracking app built with Kotlin, Jetpack Compose, and Material 3.
 
-**Version:** 1.20 (Build 21)
+**Version:** 1.23 (Build 24)
 
 ## Overview
 
@@ -16,7 +16,7 @@ Invest Help is a personal investment portfolio tracker for Android. It supports 
 - **Simulation** with historical price charts (1W to MAX range), tap-to-select tooltips
 - **Account Performance** charting with multi-account overlay, pinch-to-zoom, and full-screen mode
 - **Watch Lists** for tracking potential investments with current vs. added price comparison and scheduled reminders
-- **CSV Import** for positions, transactions, and performance records from brokerage exports
+- **CSV Import** for positions, transactions, and performance records from brokerage exports with named mapping profiles and detailed import logs
 - **SQL Explorer** for raw database queries with CSV export
 - **Backup & Restore** with JSON export/import (v1/v2/v3/v4 format compatibility)
 - **Help screen** with comprehensive HTML-based feature guide
@@ -33,7 +33,7 @@ Invest Help is a personal investment portfolio tracker for Android. It supports 
 | UI | Jetpack Compose + Material 3 |
 | Architecture | MVVM + Repository pattern |
 | DI | Hilt (KSP) |
-| Database | Room (SQLite), version 22 |
+| Database | Room (SQLite), version 23 |
 | Navigation | Compose Navigation (type-safe routes) |
 | Charts | Custom Canvas-drawn (pie chart, line chart) |
 | Images | Coil 2.7.0 |

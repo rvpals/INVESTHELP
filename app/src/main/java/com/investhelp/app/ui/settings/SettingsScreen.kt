@@ -66,8 +66,12 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.ui.graphics.Color
+import com.investhelp.app.data.local.entity.NamedCsvMappingEntity
 import com.investhelp.app.model.CsvImportType
 import com.investhelp.app.ui.theme.AppTheme
 
@@ -83,6 +87,20 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
             snackbarHostState.showSnackbar(it)
             viewModel.clearMessage()
         }
+    }
+
+    // Full-screen position mapping
+    uiState.positionMappingScreen?.let { screenState ->
+        PositionMappingScreen(
+            state = screenState,
+            onFieldChanged = { colIndex, field -> viewModel.updatePositionMappingField(colIndex, field) },
+            onSave = { viewModel.savePositionMapping() },
+            onSaveAs = { name -> viewModel.savePositionMappingAsNamed(name) },
+            onLoadMapping = { id -> viewModel.loadNamedMapping(id) },
+            onDeleteMapping = { id -> viewModel.deleteNamedMapping(id) },
+            onDismiss = { viewModel.dismissPositionMappingScreen() }
+        )
+        return
     }
 
     Scaffold(
@@ -380,6 +398,14 @@ private fun DataManagementTab(viewModel: SettingsViewModel, uiState: SettingsUiS
         }
     }
 
+    val positionMappingCsvPicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        uri?.let { fileUri ->
+            viewModel.openPositionMappingScreen(fileUri)
+        }
+    }
+
     val mappingCsvPicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
     ) { uri ->
@@ -388,6 +414,15 @@ private fun DataManagementTab(viewModel: SettingsViewModel, uiState: SettingsUiS
                 viewModel.openMappingDialog(type, fileUri)
                 mappingPickerType = null
             }
+        }
+    }
+
+    val positionImportCsvPicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        uri?.let { fileUri ->
+            pendingImportUri = fileUri
+            showPositionImportWarning = true
         }
     }
 
@@ -456,8 +491,7 @@ private fun DataManagementTab(viewModel: SettingsViewModel, uiState: SettingsUiS
             confirmButton = {
                 TextButton(onClick = {
                     showPositionImportWarning = false
-                    pendingImportUri?.let { viewModel.startCsvImport(CsvImportType.Position, it, importAccountId) }
-                    pendingImportUri = null
+                    pendingImportUri?.let { viewModel.showMappingSelection(it) }
                 }) {
                     Text("Import", color = MaterialTheme.colorScheme.error)
                 }
@@ -470,6 +504,25 @@ private fun DataManagementTab(viewModel: SettingsViewModel, uiState: SettingsUiS
                     Text("Cancel")
                 }
             }
+        )
+    }
+
+    // Mapping selection dialog for position import
+    if (uiState.showMappingSelectionDialog) {
+        MappingSelectionDialog(
+            savedMappings = uiState.savedPositionMappings,
+            onSelect = { mappingId ->
+                viewModel.startPositionImportWithMapping(mappingId, importAccountId)
+            },
+            onDismiss = { viewModel.dismissMappingSelection() }
+        )
+    }
+
+    // Position import result log dialog
+    uiState.positionImportResult?.let { result ->
+        PositionImportResultDialog(
+            result = result,
+            onDismiss = { viewModel.dismissPositionImportResult() }
         )
     }
 
@@ -592,12 +645,20 @@ private fun DataManagementTab(viewModel: SettingsViewModel, uiState: SettingsUiS
                 type = type,
                 enabled = importAccountId != -1L,
                 onDefineMapping = {
-                    mappingPickerType = type
-                    mappingCsvPicker.launch(csvMimeTypes)
+                    if (type == CsvImportType.Position) {
+                        positionMappingCsvPicker.launch(csvMimeTypes)
+                    } else {
+                        mappingPickerType = type
+                        mappingCsvPicker.launch(csvMimeTypes)
+                    }
                 },
                 onStartImport = {
-                    importPickerType = type
-                    importCsvPicker.launch(csvMimeTypes)
+                    if (type == CsvImportType.Position) {
+                        positionImportCsvPicker.launch(csvMimeTypes)
+                    } else {
+                        importPickerType = type
+                        importCsvPicker.launch(csvMimeTypes)
+                    }
                 },
                 onClear = { clearTableType = type }
             )
@@ -958,4 +1019,438 @@ private fun SettingsCollapsibleSection(
             }
         }
     }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun PositionMappingScreen(
+    state: PositionMappingScreenState,
+    onFieldChanged: (Int, String) -> Unit,
+    onSave: () -> Unit,
+    onSaveAs: (String) -> Unit,
+    onLoadMapping: (Long) -> Unit,
+    onDeleteMapping: (Long) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val fields = CsvImportType.Position.mappableFields
+    var showSaveAsDialog by remember { mutableStateOf(false) }
+    var showLoadDialog by remember { mutableStateOf(false) }
+
+    if (showSaveAsDialog) {
+        SaveMappingNameDialog(
+            onConfirm = { name ->
+                onSaveAs(name)
+                showSaveAsDialog = false
+            },
+            onDismiss = { showSaveAsDialog = false }
+        )
+    }
+
+    if (showLoadDialog) {
+        LoadMappingDialog(
+            mappings = state.savedMappings,
+            onSelect = { id ->
+                onLoadMapping(id)
+                showLoadDialog = false
+            },
+            onDelete = onDeleteMapping,
+            onDismiss = { showLoadDialog = false }
+        )
+    }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Position Mapping") },
+                navigationIcon = {
+                    IconButton(onClick = onDismiss) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                actions = {
+                    TextButton(onClick = { showLoadDialog = true }) {
+                        Text("Load")
+                    }
+                    TextButton(onClick = { showSaveAsDialog = true }) {
+                        Text("Save As")
+                    }
+                    TextButton(onClick = onSave) {
+                        Text("Save")
+                    }
+                }
+            )
+        }
+    ) { padding ->
+        Column(
+            modifier = Modifier
+                .padding(padding)
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(16.dp)
+        ) {
+            if (state.hasSavedMapping) {
+                Text(
+                    "Existing mapping loaded.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+
+            // Header row
+            Row(modifier = Modifier.fillMaxWidth()) {
+                Text(
+                    "CSV Column",
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.weight(1f)
+                )
+                Text(
+                    "Preview",
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.weight(1f)
+                )
+                Text(
+                    "Mapped Field",
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+            HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+
+            state.csvHeaders.forEachIndexed { colIndex, header ->
+                val selectedField = state.columnMappings[colIndex] ?: "Skip"
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = header,
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f)
+                    )
+
+                    Column(modifier = Modifier.weight(1f)) {
+                        state.previewRows.forEach { row ->
+                            Text(
+                                text = row.getOrNull(colIndex)?.ifBlank { "-" } ?: "-",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    }
+
+                    CsvFieldDropdown(
+                        selected = selectedField,
+                        fields = fields,
+                        onSelected = { onFieldChanged(colIndex, it) },
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+                HorizontalDivider()
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Saved mappings list
+            if (state.savedMappings.isNotEmpty()) {
+                HorizontalDivider()
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    "Saved Mappings",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                state.savedMappings.forEach { mapping ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onLoadMapping(mapping.id) }
+                            .padding(vertical = 8.dp, horizontal = 4.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = mapping.name,
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                        IconButton(
+                            onClick = { onDeleteMapping(mapping.id) },
+                            modifier = Modifier.size(32.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.Delete,
+                                contentDescription = "Delete",
+                                tint = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    }
+                    HorizontalDivider()
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SaveMappingNameDialog(
+    onConfirm: (String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    var name by remember { mutableStateOf("") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Save Mapping As") },
+        text = {
+            OutlinedTextField(
+                value = name,
+                onValueChange = { name = it },
+                label = { Text("Mapping Name") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth()
+            )
+        },
+        confirmButton = {
+            Button(
+                onClick = { onConfirm(name.trim()) },
+                enabled = name.isNotBlank()
+            ) {
+                Text("Save")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
+}
+
+@Composable
+private fun LoadMappingDialog(
+    mappings: List<NamedCsvMappingEntity>,
+    onSelect: (Long) -> Unit,
+    onDelete: (Long) -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Load Mapping") },
+        text = {
+            if (mappings.isEmpty()) {
+                Text("No saved mappings.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            } else {
+                Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                    mappings.forEach { mapping ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { onSelect(mapping.id) }
+                                .padding(vertical = 10.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = mapping.name,
+                                style = MaterialTheme.typography.bodyLarge,
+                                modifier = Modifier.weight(1f)
+                            )
+                            IconButton(
+                                onClick = { onDelete(mapping.id) },
+                                modifier = Modifier.size(32.dp)
+                            ) {
+                                Icon(
+                                    Icons.Default.Delete,
+                                    contentDescription = "Delete",
+                                    tint = MaterialTheme.colorScheme.error,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        }
+                        HorizontalDivider()
+                    }
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Close")
+            }
+        }
+    )
+}
+
+@Composable
+private fun MappingSelectionDialog(
+    savedMappings: List<NamedCsvMappingEntity>,
+    onSelect: (Long?) -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Select Mapping") },
+        text = {
+            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                // Default/active mapping option
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onSelect(null) }
+                        .padding(vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Default (Active Mapping)",
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+                HorizontalDivider()
+
+                if (savedMappings.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        "Saved Mappings:",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    savedMappings.forEach { mapping ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { onSelect(mapping.id) }
+                                .padding(vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = mapping.name,
+                                style = MaterialTheme.typography.bodyLarge
+                            )
+                        }
+                        HorizontalDivider()
+                    }
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun PositionImportResultDialog(
+    result: PositionImportResult,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Import Results") },
+        text = {
+            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                // Summary
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceEvenly
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            "${result.totalImported}",
+                            style = MaterialTheme.typography.titleLarge,
+                            color = Color(0xFF4CAF50)
+                        )
+                        Text("New", style = MaterialTheme.typography.labelSmall)
+                    }
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            "${result.totalUpdated}",
+                            style = MaterialTheme.typography.titleLarge,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Text("Updated", style = MaterialTheme.typography.labelSmall)
+                    }
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            "${result.totalSkipped}",
+                            style = MaterialTheme.typography.titleLarge,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                        Text("Skipped", style = MaterialTheme.typography.labelSmall)
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+                HorizontalDivider()
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Log entries
+                result.entries.forEach { entry ->
+                    val statusColor = when (entry.status) {
+                        ImportStatus.IMPORTED -> Color(0xFF4CAF50)
+                        ImportStatus.UPDATED -> MaterialTheme.colorScheme.primary
+                        ImportStatus.SKIPPED -> MaterialTheme.colorScheme.error
+                    }
+                    val statusLabel = when (entry.status) {
+                        ImportStatus.IMPORTED -> "NEW"
+                        ImportStatus.UPDATED -> "UPD"
+                        ImportStatus.SKIPPED -> "SKIP"
+                    }
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 3.dp),
+                        verticalAlignment = Alignment.Top
+                    ) {
+                        Text(
+                            text = "[$statusLabel]",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = statusColor,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.width(40.dp)
+                        )
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = entry.ticker,
+                                style = MaterialTheme.typography.bodySmall,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            if (entry.details.isNotBlank()) {
+                                Text(
+                                    text = entry.details,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(onClick = onDismiss) {
+                Text("Close")
+            }
+        },
+        dismissButton = {}
+    )
 }

@@ -14,6 +14,7 @@ import com.investhelp.app.data.local.dao.WatchListDao
 import com.investhelp.app.data.local.entity.AccountPerformanceEntity
 import com.investhelp.app.data.local.entity.ChangeHistoryEntity
 import com.investhelp.app.data.local.entity.CsvImportMappingEntity
+import com.investhelp.app.data.local.entity.NamedCsvMappingEntity
 import com.investhelp.app.data.local.entity.InvestmentAccountEntity
 import com.investhelp.app.data.local.entity.InvestmentItemEntity
 import com.investhelp.app.data.local.entity.InvestmentTransactionEntity
@@ -29,9 +30,10 @@ import com.investhelp.app.data.local.entity.WatchListItemEntity
         WatchListEntity::class,
         WatchListItemEntity::class,
         CsvImportMappingEntity::class,
+        NamedCsvMappingEntity::class,
         ChangeHistoryEntity::class
     ],
-    version = 22,
+    version = 23,
     exportSchema = true
 )
 @TypeConverters(Converters::class)

@@ -166,11 +166,20 @@ Two tabs: **Details** and **Price History**
 
 ### Data Management
 - CSV Import: 3 types (Transaction, Position, Performance)
-  - Column mapping dialog with 3-row preview
+  - Column mapping dialog with 3-row preview (Transaction, Performance)
   - Auto-mapping with brokerage aliases
   - Date format options per column
   - Persistent mappings (csv_import_mappings table)
   - Clear (x) button per type: erases all entries from the corresponding table with confirmation dialog
+- **Position Import (enhanced)**:
+  - Full-screen mapping editor (replaces dialog) with back navigation
+  - Top bar actions: Load, Save As, Save
+  - "Save As" prompts for a name to store the mapping as a reusable profile
+  - "Load" shows all saved named mappings with delete option
+  - Saved mappings list shown at bottom of the mapping screen (clickable to load)
+  - "Start Import" prompts user to select a mapping (Default active or a saved named mapping)
+  - Detailed import result log after completion: summary counts (New/Updated/Skipped) + per-ticker entries showing status and field changes
+- Named mapping profiles stored in `csv_named_mappings` table
 - Backup folder selection (persisted)
 - Export to JSON (v4 format)
 - Restore from JSON (v1/v2/v3/v4 compatible)
