@@ -204,27 +204,21 @@ fun DashboardScreen(
                 }
             }
 
-            if (uiState.positions.isNotEmpty()) {
-                item(key = "pie_chart") {
-                    CollapsibleCard(
-                        title = "Positions",
-                        pinned = pinStates[DashboardViewModel.KEY_PIN_POSITIONS] == true,
-                        onPinToggle = { viewModel.setPinState(DashboardViewModel.KEY_PIN_POSITIONS, it) }
-                    ) {
+            item(key = "positions") {
+                CollapsibleCard(
+                    title = "Positions",
+                    pinned = pinStates[DashboardViewModel.KEY_PIN_POSITIONS] == true,
+                    onPinToggle = { viewModel.setPinState(DashboardViewModel.KEY_PIN_POSITIONS, it) }
+                ) {
+                    if (uiState.positions.isNotEmpty()) {
                         PositionsPieChartContent(
                             positions = uiState.positions,
                             onItemClick = onNavigateToItem
                         )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        HorizontalDivider()
+                        Spacer(modifier = Modifier.height(8.dp))
                     }
-                }
-            }
-
-            item(key = "position_details") {
-                CollapsibleCard(
-                    title = "Position Details",
-                    pinned = pinStates[DashboardViewModel.KEY_PIN_POSITION_DETAILS] == true,
-                    onPinToggle = { viewModel.setPinState(DashboardViewModel.KEY_PIN_POSITION_DETAILS, it) }
-                ) {
                     PositionDetailsContent(
                         details = positionDetails,
                         currencyFormat = currencyFormat,
