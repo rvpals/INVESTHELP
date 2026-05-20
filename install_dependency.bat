@@ -11,7 +11,7 @@ echo.
 :: ------------------------------------------------
 echo [1/3] Checking JDK 17...
 
-set "JAVA_HOME_PATH=E:\Prog\Java\jdk-17"
+set "JAVA_HOME_PATH=C:\Program Files\jdk-17.0.2"
 
 if exist "%JAVA_HOME_PATH%\bin\java.exe" (
     echo  Found JDK 17 at %JAVA_HOME_PATH%

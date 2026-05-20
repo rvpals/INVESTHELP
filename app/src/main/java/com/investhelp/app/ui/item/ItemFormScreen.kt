@@ -1,11 +1,13 @@
 package com.investhelp.app.ui.item
 
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -22,6 +24,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -51,11 +54,14 @@ fun ItemFormScreen(
     }
 
     val existingItem by viewModel.selectedItem.collectAsStateWithLifecycle()
+    val fetchedPrice by viewModel.fetchedPrice.collectAsStateWithLifecycle()
 
     var name by remember { mutableStateOf("") }
     var tickerInput by remember { mutableStateOf("") }
     var selectedType by remember { mutableStateOf(InvestmentType.Stock) }
     var currentPrice by remember { mutableStateOf("") }
+    var quantity by remember { mutableStateOf("") }
+    var cost by remember { mutableStateOf("") }
     var typeExpanded by remember { mutableStateOf(false) }
     var initialized by remember { mutableStateOf(false) }
 
@@ -65,8 +71,18 @@ fun ItemFormScreen(
             tickerInput = existingItem!!.ticker
             selectedType = existingItem!!.type
             currentPrice = existingItem!!.currentPrice.toString()
+            quantity = existingItem!!.quantity.toString()
+            cost = existingItem!!.cost.toString()
             initialized = true
         }
+    }
+
+    LaunchedEffect(fetchedPrice) {
+        fetchedPrice?.let { currentPrice = it.toString() }
+    }
+
+    DisposableEffect(Unit) {
+        onDispose { viewModel.clearFetchedPrice() }
     }
 
     Scaffold(
@@ -141,11 +157,47 @@ fun ItemFormScreen(
 
             Spacer(modifier = Modifier.height(12.dp))
 
+            Row(modifier = Modifier.fillMaxWidth()) {
+                OutlinedTextField(
+                    value = currentPrice,
+                    onValueChange = { currentPrice = it },
+                    label = { Text("Current Price per Share") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    modifier = Modifier.weight(1f)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Button(
+                    onClick = {
+                        val t = tickerInput.trim()
+                        if (t.isNotBlank()) viewModel.fetchPriceForTicker(t)
+                    },
+                    enabled = tickerInput.isNotBlank(),
+                    modifier = Modifier.padding(top = 8.dp)
+                ) {
+                    Text("Fetch")
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
             OutlinedTextField(
-                value = currentPrice,
-                onValueChange = { currentPrice = it },
-                label = { Text("Current Price per Share") },
+                value = quantity,
+                onValueChange = { quantity = it },
+                label = { Text("Quantity") },
                 singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            OutlinedTextField(
+                value = cost,
+                onValueChange = { cost = it },
+                label = { Text("Cost (USD)") },
+                singleLine = true,
+                prefix = { Text("$") },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                 modifier = Modifier.fillMaxWidth()
             )
@@ -155,6 +207,8 @@ fun ItemFormScreen(
             Button(
                 onClick = {
                     val price = currentPrice.toDoubleOrNull() ?: 0.0
+                    val qty = quantity.toDoubleOrNull() ?: existingItem?.quantity ?: 0.0
+                    val costVal = cost.toDoubleOrNull() ?: existingItem?.cost ?: 0.0
                     val resolvedTicker = tickerInput.trim().uppercase()
                     if (resolvedTicker.isNotBlank()) {
                         viewModel.saveItem(
@@ -162,8 +216,8 @@ fun ItemFormScreen(
                             name = name,
                             type = selectedType,
                             currentPrice = price,
-                            quantity = existingItem?.quantity ?: 0.0,
-                            cost = existingItem?.cost ?: 0.0
+                            quantity = qty,
+                            cost = costVal
                         )
                         onSaved()
                     }

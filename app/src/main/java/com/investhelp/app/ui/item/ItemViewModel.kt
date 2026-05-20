@@ -77,6 +77,24 @@ class ItemViewModel @Inject constructor(
     private val _analysisError = MutableStateFlow<String?>(null)
     val analysisError: StateFlow<String?> = _analysisError.asStateFlow()
 
+    // --- Fetch price for form ---
+    private val _fetchedPrice = MutableStateFlow<Double?>(null)
+    val fetchedPrice: StateFlow<Double?> = _fetchedPrice.asStateFlow()
+
+    fun fetchPriceForTicker(ticker: String) {
+        viewModelScope.launch {
+            try {
+                _fetchedPrice.value = stockPriceService.fetchPrice(ticker)
+            } catch (_: Exception) {
+                _fetchedPrice.value = null
+            }
+        }
+    }
+
+    fun clearFetchedPrice() {
+        _fetchedPrice.value = null
+    }
+
     // --- Position refresh state ---
     private val _isRefreshing = MutableStateFlow(false)
     val isRefreshing: StateFlow<Boolean> = _isRefreshing.asStateFlow()
