@@ -2,7 +2,6 @@ package com.investhelp.app.ui.item
 
 import android.content.Intent
 import android.net.Uri
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -126,6 +125,9 @@ fun ItemDetailScreen(
     val priceHistory by viewModel.priceHistory.collectAsStateWithLifecycle()
     val isLoadingPriceHistory by viewModel.isLoadingPriceHistory.collectAsStateWithLifecycle()
     val priceHistoryError by viewModel.priceHistoryError.collectAsStateWithLifecycle()
+    val investingPerformance by viewModel.investingPerformance.collectAsStateWithLifecycle()
+    val isLoadingInvestingPerf by viewModel.isLoadingInvestingPerf.collectAsStateWithLifecycle()
+    val investingPerfError by viewModel.investingPerfError.collectAsStateWithLifecycle()
     val currencyFormat = NumberFormat.getCurrencyInstance(Locale.US)
     val dateFormatter = DateTimeFormatter.ofPattern("MMM dd, yyyy")
 
@@ -143,8 +145,6 @@ fun ItemDetailScreen(
     var showDeleteConfirm by remember { mutableStateOf(false) }
 
     var selectedTab by rememberSaveable { mutableIntStateOf(0) }
-    var statsExpanded by remember { mutableStateOf(false) }
-    var transactionsExpanded by remember { mutableStateOf(false) }
     var statsStartDate by remember { mutableStateOf(LocalDate.now().minusYears(1)) }
     var statsEndDate by remember { mutableStateOf(LocalDate.now()) }
 
@@ -396,14 +396,14 @@ fun ItemDetailScreen(
                     statistics = statistics,
                     currencyFormat = currencyFormat,
                     dateFormatter = dateFormatter,
-                    statsExpanded = statsExpanded,
-                    onStatsExpandedChange = { statsExpanded = it },
-                    transactionsExpanded = transactionsExpanded,
-                    onTransactionsExpandedChange = { transactionsExpanded = it },
                     statsStartDate = statsStartDate,
                     onStatsStartDateChange = { statsStartDate = it },
                     statsEndDate = statsEndDate,
-                    onStatsEndDateChange = { statsEndDate = it }
+                    onStatsEndDateChange = { statsEndDate = it },
+                    viewModel = viewModel,
+                    investingPerformance = investingPerformance,
+                    isLoadingInvestingPerf = isLoadingInvestingPerf,
+                    investingPerfError = investingPerfError
                 )
             }
         }
@@ -555,43 +555,52 @@ private fun TransactionDetailsTab(
     statistics: com.investhelp.app.model.ItemStatistics,
     currencyFormat: NumberFormat,
     dateFormatter: DateTimeFormatter,
-    statsExpanded: Boolean,
-    onStatsExpandedChange: (Boolean) -> Unit,
-    transactionsExpanded: Boolean,
-    onTransactionsExpandedChange: (Boolean) -> Unit,
     statsStartDate: LocalDate,
     onStatsStartDateChange: (LocalDate) -> Unit,
     statsEndDate: LocalDate,
-    onStatsEndDateChange: (LocalDate) -> Unit
+    onStatsEndDateChange: (LocalDate) -> Unit,
+    viewModel: ItemViewModel,
+    investingPerformance: List<ItemViewModel.InvestingPerfPoint>,
+    isLoadingInvestingPerf: Boolean,
+    investingPerfError: String?
 ) {
+    var expanded by remember { mutableStateOf(true) }
+    var perfExpanded by remember { mutableStateOf(true) }
+
+    LaunchedEffect(ticker) {
+        viewModel.loadInvestingPerformance(ticker)
+    }
+
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
             .padding(horizontal = 16.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        // Stats section
         item {
             Spacer(modifier = Modifier.height(4.dp))
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable { onStatsExpandedChange(!statsExpanded) }
+                    .clickable { expanded = !expanded }
                     .padding(vertical = 8.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    "$ticker Stats",
+                    "Transactions & Stats",
                     style = MaterialTheme.typography.titleLarge
                 )
                 Icon(
-                    if (statsExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                    contentDescription = if (statsExpanded) "Collapse" else "Expand"
+                    if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                    contentDescription = if (expanded) "Collapse" else "Expand"
                 )
             }
+        }
 
-            AnimatedVisibility(visible = statsExpanded) {
+        if (expanded) {
+            // Stats section
+            item {
                 Column {
                     DateRangeSelector(
                         startDate = statsStartDate,
@@ -649,33 +658,18 @@ private fun TransactionDetailsTab(
                             modifier = Modifier.weight(1f)
                         )
                     }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+                    HorizontalDivider()
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        "Transactions (${transactions.size})",
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
                 }
             }
-        }
 
-        // Transactions section
-        item {
-            Spacer(modifier = Modifier.height(4.dp))
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { onTransactionsExpandedChange(!transactionsExpanded) }
-                    .padding(vertical = 8.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    "Transactions",
-                    style = MaterialTheme.typography.titleLarge
-                )
-                Icon(
-                    if (transactionsExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                    contentDescription = if (transactionsExpanded) "Collapse" else "Expand"
-                )
-            }
-        }
-
-        if (transactionsExpanded) {
             if (transactions.isEmpty()) {
                 item {
                     Text(
@@ -731,7 +725,326 @@ private fun TransactionDetailsTab(
             }
         }
 
+        // Investing Performance panel
+        item {
+            Spacer(modifier = Modifier.height(4.dp))
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { perfExpanded = !perfExpanded }
+                    .padding(vertical = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    "Investing Performance for $ticker",
+                    style = MaterialTheme.typography.titleLarge
+                )
+                Icon(
+                    if (perfExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                    contentDescription = if (perfExpanded) "Collapse" else "Expand"
+                )
+            }
+        }
+
+        if (perfExpanded) {
+            item {
+                if (isLoadingInvestingPerf) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(24.dp),
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        CircularProgressIndicator(modifier = Modifier.size(32.dp))
+                    }
+                } else if (investingPerfError != null) {
+                    Text(
+                        text = investingPerfError,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(16.dp)
+                    )
+                } else if (investingPerformance.isNotEmpty()) {
+                    InvestingPerformanceChart(
+                        points = investingPerformance,
+                        currencyFormat = currencyFormat
+                    )
+                } else {
+                    Text(
+                        "No transaction data to show performance",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(16.dp)
+                    )
+                }
+            }
+
+            if (!isLoadingInvestingPerf && investingPerformance.isNotEmpty()) {
+                item {
+                    InvestingPerformanceTable(
+                        points = investingPerformance,
+                        currencyFormat = currencyFormat,
+                        dateFormatter = dateFormatter
+                    )
+                }
+            }
+        }
+
         item { Spacer(modifier = Modifier.height(16.dp)) }
+    }
+}
+
+@Composable
+private fun InvestingPerformanceChart(
+    points: List<ItemViewModel.InvestingPerfPoint>,
+    currencyFormat: NumberFormat
+) {
+    if (points.size < 2) return
+
+    val lineColor = MaterialTheme.colorScheme.outline
+    val txColor = MaterialTheme.colorScheme.error
+    val gridColor = MaterialTheme.colorScheme.outlineVariant
+    val labelColor = MaterialTheme.colorScheme.onSurfaceVariant
+    val tooltipBg = MaterialTheme.colorScheme.inverseSurface
+    val tooltipText = MaterialTheme.colorScheme.inverseOnSurface
+
+    val prices = remember(points) { points.map { it.price } }
+    val minPrice = remember(prices) { prices.min() }
+    val maxPrice = remember(prices) { prices.max() }
+    val priceRange = remember(minPrice, maxPrice) { (maxPrice - minPrice).coerceAtLeast(0.01) }
+
+    var selectedIdx by remember { mutableStateOf<Int?>(null) }
+
+    val dateFormat = remember { DateTimeFormatter.ofPattern("MMM dd") }
+
+    Card(
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+        ),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(200.dp)
+                .padding(start = 48.dp, end = 8.dp, top = 8.dp, bottom = 24.dp)
+                .pointerInput(points) {
+                    detectTapGestures(
+                        onTap = { offset ->
+                            val chartWidth = size.width.toFloat()
+                            val spacing = chartWidth / (points.size - 1).coerceAtLeast(1)
+                            val idx = ((offset.x + spacing / 2) / spacing).toInt()
+                                .coerceIn(0, points.size - 1)
+                            selectedIdx = if (selectedIdx == idx) null else idx
+                        }
+                    )
+                }
+        ) {
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                val chartWidth = size.width
+                val chartHeight = size.height
+                val spacing = chartWidth / (points.size - 1).coerceAtLeast(1)
+
+                // Y-axis grid lines and labels
+                for (i in 0..3) {
+                    val y = chartHeight * i / 3f
+                    drawLine(gridColor, Offset(0f, y), Offset(chartWidth, y), 1f)
+                    val price = maxPrice - (priceRange * i / 3)
+                    drawContext.canvas.nativeCanvas.drawText(
+                        currencyFormat.format(price),
+                        -44.dp.toPx(),
+                        y + 4.dp.toPx(),
+                        android.graphics.Paint().apply {
+                            color = labelColor.hashCode()
+                            textSize = 9.dp.toPx()
+                            textAlign = android.graphics.Paint.Align.LEFT
+                        }
+                    )
+                }
+
+                // Draw line path connecting all points
+                val path = Path()
+                for (i in points.indices) {
+                    val x = i * spacing
+                    val y = chartHeight * (1f - ((prices[i] - minPrice) / priceRange).toFloat())
+                    if (i == 0) path.moveTo(x, y) else path.lineTo(x, y)
+                }
+                drawPath(path, lineColor, style = Stroke(2.dp.toPx()))
+
+                // Draw data points
+                for (i in points.indices) {
+                    val x = i * spacing
+                    val y = chartHeight * (1f - ((prices[i] - minPrice) / priceRange).toFloat())
+                    if (points[i].isTransaction) {
+                        drawCircle(txColor, 7.dp.toPx(), Offset(x, y))
+                        drawCircle(Color.White, 4.dp.toPx(), Offset(x, y))
+                        drawCircle(txColor, 3.dp.toPx(), Offset(x, y))
+                    } else {
+                        drawCircle(lineColor, 4.dp.toPx(), Offset(x, y))
+                    }
+                }
+
+                // Selected point indicator
+                selectedIdx?.let { idx ->
+                    val x = idx * spacing
+                    val y = chartHeight * (1f - ((prices[idx] - minPrice) / priceRange).toFloat())
+                    drawLine(gridColor, Offset(x, 0f), Offset(x, chartHeight), 1f)
+                    drawCircle(
+                        if (points[idx].isTransaction) txColor else lineColor,
+                        8.dp.toPx(), Offset(x, y), style = Stroke(2.dp.toPx())
+                    )
+                }
+
+                // X-axis labels
+                val labelCount = minOf(points.size, 5)
+                for (i in 0 until labelCount) {
+                    val dataIdx = (i * (points.size - 1) / (labelCount - 1).coerceAtLeast(1))
+                        .coerceIn(0, points.size - 1)
+                    val x = dataIdx * spacing
+                    if (x in 0f..chartWidth) {
+                        drawContext.canvas.nativeCanvas.drawText(
+                            points[dataIdx].date.format(dateFormat),
+                            x,
+                            chartHeight + 14.dp.toPx(),
+                            android.graphics.Paint().apply {
+                                color = labelColor.hashCode()
+                                textSize = 9.dp.toPx()
+                                textAlign = android.graphics.Paint.Align.CENTER
+                            }
+                        )
+                    }
+                }
+            }
+
+            // Tooltip
+            selectedIdx?.let { idx ->
+                val pt = points[idx]
+                val label = "${currencyFormat.format(pt.price)} — ${pt.date.format(dateFormat)}${if (pt.isTransaction) " (TX)" else ""}"
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .background(tooltipBg, RoundedCornerShape(4.dp))
+                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                ) {
+                    Text(
+                        text = label,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = tooltipText,
+                        fontWeight = if (pt.isTransaction) FontWeight.Bold else FontWeight.Normal
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun InvestingPerformanceTable(
+    points: List<ItemViewModel.InvestingPerfPoint>,
+    currencyFormat: NumberFormat,
+    dateFormatter: DateTimeFormatter
+) {
+    val dividerColor = MaterialTheme.colorScheme.outlineVariant
+    val txBgColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
+
+    Card(
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+        ),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState())
+                .padding(4.dp)
+        ) {
+            HorizontalDivider(color = dividerColor)
+            // Header
+            Row(
+                modifier = Modifier
+                    .height(IntrinsicSize.Min)
+                    .padding(vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "#",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.width(36.dp).padding(start = 4.dp),
+                    textAlign = TextAlign.Center
+                )
+                VerticalDivider(color = dividerColor)
+                Text(
+                    text = "Date",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.width(100.dp).padding(horizontal = 4.dp)
+                )
+                VerticalDivider(color = dividerColor)
+                Text(
+                    text = "Price",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.width(90.dp).padding(horizontal = 4.dp),
+                    textAlign = TextAlign.End
+                )
+                VerticalDivider(color = dividerColor)
+                Text(
+                    text = "Type",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.width(70.dp).padding(horizontal = 4.dp),
+                    textAlign = TextAlign.Center
+                )
+            }
+            HorizontalDivider(thickness = 2.dp, color = dividerColor)
+
+            points.forEachIndexed { index, pt ->
+                val bgMod = if (pt.isTransaction) Modifier.background(txBgColor) else Modifier
+                Row(
+                    modifier = bgMod
+                        .height(IntrinsicSize.Min)
+                        .padding(vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "${index + 1}",
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.width(36.dp).padding(start = 4.dp),
+                        textAlign = TextAlign.Center,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    VerticalDivider(color = dividerColor)
+                    Text(
+                        text = pt.date.format(dateFormatter),
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = if (pt.isTransaction) FontWeight.Bold else FontWeight.Normal,
+                        modifier = Modifier.width(100.dp).padding(horizontal = 4.dp)
+                    )
+                    VerticalDivider(color = dividerColor)
+                    Text(
+                        text = currencyFormat.format(pt.price),
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = if (pt.isTransaction) FontWeight.Bold else FontWeight.Normal,
+                        modifier = Modifier.width(90.dp).padding(horizontal = 4.dp),
+                        textAlign = TextAlign.End,
+                        color = if (pt.isTransaction) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
+                    )
+                    VerticalDivider(color = dividerColor)
+                    Text(
+                        text = if (pt.isTransaction) "BUY/SELL" else "Market",
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = if (pt.isTransaction) FontWeight.Bold else FontWeight.Normal,
+                        modifier = Modifier.width(70.dp).padding(horizontal = 4.dp),
+                        textAlign = TextAlign.Center,
+                        color = if (pt.isTransaction) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                HorizontalDivider(color = dividerColor)
+            }
+        }
     }
 }
 

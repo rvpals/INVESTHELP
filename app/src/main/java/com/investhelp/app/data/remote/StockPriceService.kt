@@ -173,6 +173,36 @@ class StockPriceService @Inject constructor() {
             }
         }
 
+    suspend fun fetchPriceHistoryByPeriod(ticker: String, period1: Long, period2: Long, interval: String = "1d"): List<HistoricalPrice> =
+        withContext(Dispatchers.IO) {
+            val url = URL("https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?period1=${period1}&period2=${period2}&interval=${interval}")
+            val connection = url.openConnection() as HttpURLConnection
+            connection.instanceFollowRedirects = true
+            connection.setRequestProperty("User-Agent", "Mozilla/5.0")
+            connection.connectTimeout = 15_000
+            connection.readTimeout = 30_000
+
+            try {
+                if (connection.responseCode != 200) {
+                    throw Exception("Yahoo Finance returned ${connection.responseCode}")
+                }
+
+                val body = connection.inputStream.bufferedReader().readText()
+                val root = json.parseToJsonElement(body) as JsonObject
+                val result = root["chart"]!!.jsonObject["result"]!!.jsonArray[0].jsonObject
+                val timestamps = result["timestamp"]?.jsonArray?.map { it.jsonPrimitive.long } ?: emptyList()
+                val closes = result["indicators"]!!.jsonObject["quote"]!!.jsonArray[0]
+                    .jsonObject["close"]!!.jsonArray
+
+                timestamps.mapIndexedNotNull { i, ts ->
+                    val close = closes[i].jsonPrimitive.doubleOrNull ?: return@mapIndexedNotNull null
+                    HistoricalPrice(timestamp = ts, close = close)
+                }
+            } finally {
+                connection.disconnect()
+            }
+        }
+
     suspend fun fetchAnalysisInfo(ticker: String): AnalysisInfo = withContext(Dispatchers.IO) {
         ensureCrumb()
         val modules = "summaryProfile,summaryDetail,financialData,defaultKeyStatistics"

@@ -75,6 +75,75 @@ class ItemViewModel @Inject constructor(
         definitionRepository.getAllDefinitions()
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    // --- Investing Performance ---
+    data class InvestingPerfPoint(
+        val date: LocalDate,
+        val price: Double,
+        val isTransaction: Boolean
+    )
+
+    private val _investingPerformance = MutableStateFlow<List<InvestingPerfPoint>>(emptyList())
+    val investingPerformance: StateFlow<List<InvestingPerfPoint>> = _investingPerformance.asStateFlow()
+
+    private val _isLoadingInvestingPerf = MutableStateFlow(false)
+    val isLoadingInvestingPerf: StateFlow<Boolean> = _isLoadingInvestingPerf.asStateFlow()
+
+    private val _investingPerfError = MutableStateFlow<String?>(null)
+    val investingPerfError: StateFlow<String?> = _investingPerfError.asStateFlow()
+
+    fun loadInvestingPerformance(ticker: String) {
+        viewModelScope.launch {
+            _isLoadingInvestingPerf.value = true
+            _investingPerfError.value = null
+            try {
+                val transactions = transactionRepository.getTransactionsByTicker(ticker).first()
+                    .sortedBy { it.date }
+                if (transactions.isEmpty()) {
+                    _investingPerformance.value = emptyList()
+                    return@launch
+                }
+
+                val points = mutableListOf<InvestingPerfPoint>()
+                for (tx in transactions) {
+                    val txDate = tx.date
+                    val dayBefore = txDate.minusDays(1)
+                    val dayAfter = txDate.plusDays(1)
+
+                    val period1 = dayBefore.atStartOfDay(java.time.ZoneId.systemDefault()).toEpochSecond()
+                    val period2 = dayAfter.plusDays(1).atStartOfDay(java.time.ZoneId.systemDefault()).toEpochSecond()
+
+                    try {
+                        val history = stockPriceService.fetchPriceHistoryByPeriod(ticker, period1, period2, "1d")
+                        val beforePrice = history.firstOrNull { hp ->
+                            java.time.Instant.ofEpochSecond(hp.timestamp)
+                                .atZone(java.time.ZoneId.systemDefault()).toLocalDate() == dayBefore
+                        }?.close
+                        val afterPrice = history.firstOrNull { hp ->
+                            java.time.Instant.ofEpochSecond(hp.timestamp)
+                                .atZone(java.time.ZoneId.systemDefault()).toLocalDate() == dayAfter
+                        }?.close
+
+                        if (beforePrice != null) {
+                            points.add(InvestingPerfPoint(dayBefore, beforePrice, false))
+                        }
+                        points.add(InvestingPerfPoint(txDate, tx.pricePerShare, true))
+                        if (afterPrice != null) {
+                            points.add(InvestingPerfPoint(dayAfter, afterPrice, false))
+                        }
+                    } catch (_: Exception) {
+                        points.add(InvestingPerfPoint(txDate, tx.pricePerShare, true))
+                    }
+                }
+                _investingPerformance.value = points.sortedBy { it.date }
+            } catch (e: Exception) {
+                _investingPerfError.value = "Failed to load performance: ${e.message}"
+                _investingPerformance.value = emptyList()
+            } finally {
+                _isLoadingInvestingPerf.value = false
+            }
+        }
+    }
+
     // --- Analysis info ---
     private val _analysisInfo = MutableStateFlow<AnalysisInfo?>(null)
     val analysisInfo: StateFlow<AnalysisInfo?> = _analysisInfo.asStateFlow()

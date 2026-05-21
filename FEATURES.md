@@ -103,8 +103,8 @@ Four tabs: **Details**, **Price History**, **Analysis Info**, **Transactions** (
 - Clickable metric labels show definition popup (from definitions table)
 
 ### Transactions Tab
-- Collapsible Stats section: average/max/min buy/sell prices with date range filter
-- Collapsible Transactions section: each card shows days since date and G/L
+- "Transactions & Stats" collapsible panel (default expanded): date range filter with buy/sell statistics (avg/max/min), followed by transaction cards showing days since date and G/L
+- "Investing Performance for <TICKER>" collapsible panel (default expanded): fetches Yahoo Finance closing prices 1 day before and 1 day after each transaction; line chart with transaction prices as bold red dots and market prices as gray dots; tap-to-select tooltip; data table below with highlighted transaction rows
 
 ### Delete Item
 - Delete button (trash icon, red tint) in top app bar

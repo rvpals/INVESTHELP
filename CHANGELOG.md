@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.31 (Build 32) - 2026-05-21
+
+### Added
+- Item Detail Transactions tab: "Investing Performance for <TICKER>" collapsible panel (default expanded)
+- Investing Performance: fetches Yahoo Finance closing prices for 1 day before and 1 day after each transaction date
+- Investing Performance chart: line chart showing transaction prices (bold red dots) vs market prices (gray dots); tap-to-select with tooltip
+- Investing Performance table: data grid with Date, Price, Type columns; transaction rows highlighted with different background color and bold text
+- StockPriceService: `fetchPriceHistoryByPeriod()` method for fetching prices between specific epoch timestamps
+
+### Changed
+- Item Detail Transactions tab: combined Stats and Transactions into single "Transactions & Stats" collapsible panel
+
 ## v1.30 (Build 31) - 2026-05-21
 
 ### Changed
