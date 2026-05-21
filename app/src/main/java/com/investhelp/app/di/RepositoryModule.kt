@@ -6,6 +6,8 @@ import com.investhelp.app.data.repository.AccountRepository
 import com.investhelp.app.data.repository.AccountRepositoryImpl
 import com.investhelp.app.data.repository.ChangeHistoryRepository
 import com.investhelp.app.data.repository.ChangeHistoryRepositoryImpl
+import com.investhelp.app.data.repository.DefinitionRepository
+import com.investhelp.app.data.repository.DefinitionRepositoryImpl
 import com.investhelp.app.data.repository.InvestmentItemRepository
 import com.investhelp.app.data.repository.InvestmentItemRepositoryImpl
 import com.investhelp.app.data.repository.TransactionRepository
@@ -39,4 +41,7 @@ abstract class RepositoryModule {
 
     @Binds
     abstract fun bindChangeHistoryRepository(impl: ChangeHistoryRepositoryImpl): ChangeHistoryRepository
+
+    @Binds
+    abstract fun bindDefinitionRepository(impl: DefinitionRepositoryImpl): DefinitionRepository
 }

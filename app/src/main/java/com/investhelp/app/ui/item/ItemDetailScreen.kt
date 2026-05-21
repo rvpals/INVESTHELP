@@ -48,6 +48,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Tab
+import androidx.compose.material3.ScrollableTabRow
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -87,9 +88,9 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.TextButton
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.investhelp.app.data.local.entity.DefinitionEntity
 import com.investhelp.app.data.remote.AnalysisInfo
 import com.investhelp.app.data.remote.HistoricalPrice
-import com.investhelp.app.ui.components.CollapsibleCard
 import com.investhelp.app.ui.components.ConfirmDeleteDialog
 import com.investhelp.app.ui.components.DateRangeSelector
 import com.investhelp.app.ui.settings.SettingsViewModel
@@ -120,6 +121,7 @@ fun ItemDetailScreen(
     val analysisInfo by viewModel.analysisInfo.collectAsStateWithLifecycle()
     val isLoadingAnalysis by viewModel.isLoadingAnalysis.collectAsStateWithLifecycle()
     val analysisError by viewModel.analysisError.collectAsStateWithLifecycle()
+    val definitions by viewModel.definitions.collectAsStateWithLifecycle()
     val statistics by viewModel.statistics.collectAsStateWithLifecycle()
     val priceHistory by viewModel.priceHistory.collectAsStateWithLifecycle()
     val isLoadingPriceHistory by viewModel.isLoadingPriceHistory.collectAsStateWithLifecycle()
@@ -315,12 +317,34 @@ fun ItemDetailScreen(
                             tint = MaterialTheme.colorScheme.error
                         )
                     }
+                    VerticalDivider(
+                        modifier = Modifier
+                            .height(24.dp)
+                            .padding(horizontal = 4.dp),
+                        color = MaterialTheme.colorScheme.outlineVariant
+                    )
+                    val context = LocalContext.current
+                    IconButton(onClick = {
+                        val intent = Intent(
+                            Intent.ACTION_VIEW,
+                            Uri.parse("https://finance.yahoo.com/quote/$ticker")
+                        )
+                        context.startActivity(intent)
+                    }) {
+                        Icon(Icons.Default.OpenInNew, contentDescription = "Yahoo Finance")
+                    }
+                    IconButton(onClick = { onSimulate(ticker, item?.quantity ?: 0.0) }) {
+                        Icon(Icons.AutoMirrored.Filled.TrendingUp, contentDescription = "Simulate")
+                    }
+                    IconButton(onClick = { showAddToWatchList = true }) {
+                        Icon(Icons.Default.PlaylistAdd, contentDescription = "Add to Watch List")
+                    }
                 }
             )
         }
     ) { padding ->
         Column(modifier = Modifier.padding(padding)) {
-            TabRow(selectedTabIndex = selectedTab) {
+            ScrollableTabRow(selectedTabIndex = selectedTab, edgePadding = 0.dp) {
                 Tab(
                     selected = selectedTab == 0,
                     onClick = { selectedTab = 0 },
@@ -331,16 +355,44 @@ fun ItemDetailScreen(
                     onClick = { selectedTab = 1 },
                     text = { Text("Price History") }
                 )
+                Tab(
+                    selected = selectedTab == 2,
+                    onClick = { selectedTab = 2 },
+                    text = { Text("Analysis Info") }
+                )
+                Tab(
+                    selected = selectedTab == 3,
+                    onClick = { selectedTab = 3 },
+                    text = { Text("Transactions") }
+                )
             }
 
             when (selectedTab) {
                 0 -> ItemDetailContent(
                     ticker = ticker,
                     item = item,
-                    transactions = transactions,
+                    currencyFormat = currencyFormat
+                )
+                1 -> PriceHistoryTab(
+                    ticker = ticker,
+                    viewModel = viewModel,
+                    priceHistory = priceHistory,
+                    isLoading = isLoadingPriceHistory,
+                    error = priceHistoryError,
+                    currencyFormat = currencyFormat
+                )
+                2 -> AnalysisInfoTab(
+                    ticker = ticker,
                     analysisInfo = analysisInfo,
                     isLoadingAnalysis = isLoadingAnalysis,
                     analysisError = analysisError,
+                    currencyFormat = currencyFormat,
+                    definitions = definitions
+                )
+                3 -> TransactionDetailsTab(
+                    ticker = ticker,
+                    item = item,
+                    transactions = transactions,
                     statistics = statistics,
                     currencyFormat = currencyFormat,
                     dateFormatter = dateFormatter,
@@ -351,17 +403,7 @@ fun ItemDetailScreen(
                     statsStartDate = statsStartDate,
                     onStatsStartDateChange = { statsStartDate = it },
                     statsEndDate = statsEndDate,
-                    onStatsEndDateChange = { statsEndDate = it },
-                    onSimulate = onSimulate,
-                    onAddToWatchList = { showAddToWatchList = true }
-                )
-                1 -> PriceHistoryTab(
-                    ticker = ticker,
-                    viewModel = viewModel,
-                    priceHistory = priceHistory,
-                    isLoading = isLoadingPriceHistory,
-                    error = priceHistoryError,
-                    currencyFormat = currencyFormat
+                    onStatsEndDateChange = { statsEndDate = it }
                 )
             }
         }
@@ -372,23 +414,7 @@ fun ItemDetailScreen(
 private fun ItemDetailContent(
     ticker: String,
     item: com.investhelp.app.data.local.entity.InvestmentItemEntity?,
-    transactions: List<com.investhelp.app.data.local.entity.InvestmentTransactionEntity>,
-    analysisInfo: AnalysisInfo?,
-    isLoadingAnalysis: Boolean,
-    analysisError: String?,
-    statistics: com.investhelp.app.model.ItemStatistics,
-    currencyFormat: NumberFormat,
-    dateFormatter: DateTimeFormatter,
-    statsExpanded: Boolean,
-    onStatsExpandedChange: (Boolean) -> Unit,
-    transactionsExpanded: Boolean,
-    onTransactionsExpandedChange: (Boolean) -> Unit,
-    statsStartDate: LocalDate,
-    onStatsStartDateChange: (LocalDate) -> Unit,
-    statsEndDate: LocalDate,
-    onStatsEndDateChange: (LocalDate) -> Unit,
-    onSimulate: (ticker: String, shares: Double) -> Unit,
-    onAddToWatchList: () -> Unit = {}
+    currencyFormat: NumberFormat
 ) {
     LazyColumn(
         modifier = Modifier
@@ -396,7 +422,6 @@ private fun ItemDetailContent(
             .padding(horizontal = 16.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        // Header card with item info
         item {
             item?.let { inv ->
                 Card(
@@ -443,7 +468,6 @@ private fun ItemDetailContent(
                             )
                         }
                         Spacer(modifier = Modifier.height(8.dp))
-                        // Row 1: Total Shares, Total Value, Total Cost, Total G/L (big font)
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -480,7 +504,6 @@ private fun ItemDetailContent(
                             }
                         }
                         Spacer(modifier = Modifier.height(8.dp))
-                        // Row 2: Daily G/L, Daily G/L per Share, Daily Min, Daily Max (medium font)
                         val dailyChangePerShare = if (inv.quantity > 0) inv.dayGainLoss / inv.quantity else 0.0
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -521,89 +544,33 @@ private fun ItemDetailContent(
                 }
             }
         }
+    }
+}
 
-        // Analysis Info collapsible panel
-        item {
-            Spacer(modifier = Modifier.height(4.dp))
-            CollapsibleCard(
-                title = "Analysis Info",
-                pinned = false,
-                onPinToggle = {}
-            ) {
-                if (isLoadingAnalysis) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.padding(16.dp),
-                        strokeWidth = 2.dp
-                    )
-                } else if (analysisError != null) {
-                    Text(
-                        text = analysisError,
-                        color = MaterialTheme.colorScheme.error,
-                        style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.padding(16.dp)
-                    )
-                } else if (analysisInfo != null) {
-                    AnalysisInfoContent(
-                        ticker = ticker,
-                        info = analysisInfo,
-                        currencyFormat = currencyFormat
-                    )
-                }
-            }
-        }
-
-        // Yahoo Finance + Simulate buttons
-        item {
-            Spacer(modifier = Modifier.height(4.dp))
-
-            val context = LocalContext.current
-            OutlinedButton(
-                onClick = {
-                    val intent = Intent(
-                        Intent.ACTION_VIEW,
-                        Uri.parse("https://finance.yahoo.com/quote/$ticker")
-                    )
-                    context.startActivity(intent)
-                },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Icon(
-                    Icons.Default.OpenInNew,
-                    contentDescription = null,
-                    modifier = Modifier.padding(end = 8.dp)
-                )
-                Text("Yahoo Finance")
-            }
-
-            Button(
-                onClick = { onSimulate(ticker, item?.quantity ?: 0.0) },
-                modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.tertiary
-                )
-            ) {
-                Icon(
-                    Icons.AutoMirrored.Filled.TrendingUp,
-                    contentDescription = null,
-                    modifier = Modifier.padding(end = 8.dp)
-                )
-                Text("Simulate")
-            }
-
-            OutlinedButton(
-                onClick = onAddToWatchList,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Icon(
-                    Icons.Default.PlaylistAdd,
-                    contentDescription = null,
-                    modifier = Modifier.padding(end = 8.dp)
-                )
-                Text("Add to Watch List")
-            }
-        }
-
-        // Collapsible Stats section
+@Composable
+private fun TransactionDetailsTab(
+    ticker: String,
+    item: com.investhelp.app.data.local.entity.InvestmentItemEntity?,
+    transactions: List<com.investhelp.app.data.local.entity.InvestmentTransactionEntity>,
+    statistics: com.investhelp.app.model.ItemStatistics,
+    currencyFormat: NumberFormat,
+    dateFormatter: DateTimeFormatter,
+    statsExpanded: Boolean,
+    onStatsExpandedChange: (Boolean) -> Unit,
+    transactionsExpanded: Boolean,
+    onTransactionsExpandedChange: (Boolean) -> Unit,
+    statsStartDate: LocalDate,
+    onStatsStartDateChange: (LocalDate) -> Unit,
+    statsEndDate: LocalDate,
+    onStatsEndDateChange: (LocalDate) -> Unit
+) {
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        // Stats section
         item {
             Spacer(modifier = Modifier.height(4.dp))
             Row(
@@ -686,7 +653,7 @@ private fun ItemDetailContent(
             }
         }
 
-        // Collapsible Transactions section
+        // Transactions section
         item {
             Spacer(modifier = Modifier.height(4.dp))
             Row(
@@ -763,6 +730,8 @@ private fun ItemDetailContent(
                 }
             }
         }
+
+        item { Spacer(modifier = Modifier.height(16.dp)) }
     }
 }
 
@@ -1045,6 +1014,60 @@ private fun PriceHistoryTab(
 }
 
 @Composable
+private fun AnalysisInfoTab(
+    ticker: String,
+    analysisInfo: AnalysisInfo?,
+    isLoadingAnalysis: Boolean,
+    analysisError: String?,
+    currencyFormat: NumberFormat,
+    definitions: List<DefinitionEntity>
+) {
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        item {
+            Spacer(modifier = Modifier.height(8.dp))
+            if (isLoadingAnalysis) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(24.dp),
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    CircularProgressIndicator(modifier = Modifier.size(32.dp))
+                }
+            } else if (analysisError != null) {
+                Text(
+                    text = analysisError,
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.padding(16.dp)
+                )
+            } else if (analysisInfo != null) {
+                AnalysisInfoContent(
+                    ticker = ticker,
+                    info = analysisInfo,
+                    currencyFormat = currencyFormat,
+                    definitions = definitions
+                )
+            } else {
+                Text(
+                    "No analysis info available",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(16.dp)
+                )
+            }
+        }
+
+        item { Spacer(modifier = Modifier.height(16.dp)) }
+    }
+}
+
+@Composable
 private fun PriceLineChart(
     priceHistory: List<HistoricalPrice>,
     selectedTimeframe: String,
@@ -1222,10 +1245,33 @@ private fun PriceLineChart(
 private fun AnalysisInfoContent(
     ticker: String,
     info: AnalysisInfo,
-    currencyFormat: NumberFormat
+    currencyFormat: NumberFormat,
+    definitions: List<DefinitionEntity>
 ) {
     val percentFormat = NumberFormat.getPercentInstance(Locale.US).apply {
         maximumFractionDigits = 2
+    }
+    val definitionMap = remember(definitions) {
+        definitions.associateBy { it.name.lowercase() }
+    }
+    var showDefinitionPopup by remember { mutableStateOf<DefinitionEntity?>(null) }
+
+    if (showDefinitionPopup != null) {
+        AlertDialog(
+            onDismissRequest = { showDefinitionPopup = null },
+            title = { Text(showDefinitionPopup!!.name) },
+            text = {
+                Text(
+                    text = showDefinitionPopup!!.description,
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = { showDefinitionPopup = null }) {
+                    Text("OK")
+                }
+            }
+        )
     }
 
     Column(
@@ -1252,21 +1298,21 @@ private fun AnalysisInfoContent(
         Text("Key Metrics", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
         HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
 
-        info.marketCap?.let { InfoRow("Market Cap", formatMarketCap(it)) }
-        info.trailingPE?.let { InfoRow("Trailing P/E", "%.2f".format(it)) }
-        info.forwardPE?.let { InfoRow("Forward P/E", "%.2f".format(it)) }
-        info.eps?.let { InfoRow("EPS", currencyFormat.format(it)) }
-        info.dividendYield?.let { InfoRow("Dividend Yield", percentFormat.format(it)) }
+        info.marketCap?.let { InfoRow("Market Cap", formatMarketCap(it), definitionMap) { showDefinitionPopup = it } }
+        info.trailingPE?.let { InfoRow("Trailing P/E", "%.2f".format(it), definitionMap) { showDefinitionPopup = it } }
+        info.forwardPE?.let { InfoRow("Forward P/E", "%.2f".format(it), definitionMap) { showDefinitionPopup = it } }
+        info.eps?.let { InfoRow("EPS", currencyFormat.format(it), definitionMap) { showDefinitionPopup = it } }
+        info.dividendYield?.let { InfoRow("Dividend Yield", percentFormat.format(it), definitionMap) { showDefinitionPopup = it } }
 
         Spacer(modifier = Modifier.height(12.dp))
 
         Text("Price Range", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
         HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
 
-        info.fiftyTwoWeekHigh?.let { InfoRow("52-Week High", currencyFormat.format(it)) }
-        info.fiftyTwoWeekLow?.let { InfoRow("52-Week Low", currencyFormat.format(it)) }
-        info.fiftyDayAverage?.let { InfoRow("50-Day Avg", currencyFormat.format(it)) }
-        info.twoHundredDayAverage?.let { InfoRow("200-Day Avg", currencyFormat.format(it)) }
+        info.fiftyTwoWeekHigh?.let { InfoRow("52-Week High", currencyFormat.format(it), definitionMap) { showDefinitionPopup = it } }
+        info.fiftyTwoWeekLow?.let { InfoRow("52-Week Low", currencyFormat.format(it), definitionMap) { showDefinitionPopup = it } }
+        info.fiftyDayAverage?.let { InfoRow("50-Day Avg", currencyFormat.format(it), definitionMap) { showDefinitionPopup = it } }
+        info.twoHundredDayAverage?.let { InfoRow("200-Day Avg", currencyFormat.format(it), definitionMap) { showDefinitionPopup = it } }
 
         Spacer(modifier = Modifier.height(12.dp))
 
@@ -1276,10 +1322,10 @@ private fun AnalysisInfoContent(
             Text("Financials", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
 
-            info.targetMeanPrice?.let { InfoRow("Analyst Target", currencyFormat.format(it)) }
-            info.revenuePerShare?.let { InfoRow("Revenue/Share", currencyFormat.format(it)) }
-            info.profitMargins?.let { InfoRow("Profit Margins", percentFormat.format(it)) }
-            info.returnOnEquity?.let { InfoRow("Return on Equity", percentFormat.format(it)) }
+            info.targetMeanPrice?.let { InfoRow("Analyst Target", currencyFormat.format(it), definitionMap) { showDefinitionPopup = it } }
+            info.revenuePerShare?.let { InfoRow("Revenue/Share", currencyFormat.format(it), definitionMap) { showDefinitionPopup = it } }
+            info.profitMargins?.let { InfoRow("Profit Margins", percentFormat.format(it), definitionMap) { showDefinitionPopup = it } }
+            info.returnOnEquity?.let { InfoRow("Return on Equity", percentFormat.format(it), definitionMap) { showDefinitionPopup = it } }
         }
 
         if (!info.longBusinessSummary.isNullOrBlank()) {
@@ -1296,18 +1342,39 @@ private fun AnalysisInfoContent(
 }
 
 @Composable
-private fun InfoRow(label: String, value: String) {
+private fun InfoRow(
+    label: String,
+    value: String,
+    definitionMap: Map<String, DefinitionEntity>,
+    onShowDefinition: (DefinitionEntity) -> Unit
+) {
+    val definition = definitionMap[label.lowercase()]
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 4.dp),
-        horizontalArrangement = Arrangement.SpaceBetween
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
+        if (definition != null) {
+            TextButton(
+                onClick = { onShowDefinition(definition) },
+                modifier = Modifier.padding(0.dp),
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)
+            ) {
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+        } else {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
         Text(
             text = value,
             style = MaterialTheme.typography.bodyMedium,

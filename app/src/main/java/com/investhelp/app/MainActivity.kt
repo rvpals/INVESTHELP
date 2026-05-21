@@ -77,7 +77,6 @@ import com.investhelp.app.ui.navigation.AccountListRoute
 import com.investhelp.app.ui.navigation.DashboardRoute
 import com.investhelp.app.ui.navigation.InvestHelpNavHost
 import com.investhelp.app.ui.navigation.ItemDetailRoute
-import com.investhelp.app.ui.navigation.ItemListRoute
 import com.investhelp.app.ui.navigation.AccountPerformanceRoute
 import com.investhelp.app.ui.navigation.SettingsRoute
 import com.investhelp.app.ui.navigation.SqlExplorerRoute
@@ -102,7 +101,7 @@ data class BottomNavItem(
 
 val bottomNavItems = listOf(
     BottomNavItem("Dashboard", Icons.Default.Dashboard, DashboardRoute, Color(0xFF1E88E5)),
-    BottomNavItem("Items", Icons.Default.PieChart, ItemListRoute, Color(0xFF43A047)),
+    BottomNavItem("Positions", Icons.Default.PieChart, PositionDetailRoute, Color(0xFF43A047)),
     BottomNavItem("Performance", Icons.Default.ShowChart, AccountPerformanceRoute, Color(0xFF2E7D32)),
     BottomNavItem("Transaction", Icons.Default.Receipt, TransactionListRoute, Color(0xFF8E24AA)),
     BottomNavItem("Simulation", Icons.AutoMirrored.Filled.TrendingUp, SimulationRoute(), Color(0xFFE53935))
@@ -378,18 +377,6 @@ fun GlobalTopBar(navController: NavHostController) {
                         }
                     },
                     leadingIcon = { Icon3D(Icons.Default.AccountBalance, null, Color(0xFF1565C0), iconSize = 16.dp, boxSize = 28.dp) }
-                )
-                DropdownMenuItem(
-                    text = { Text("Positions") },
-                    onClick = {
-                        menuExpanded = false
-                        navController.navigate(PositionDetailRoute) {
-                            popUpTo(DashboardRoute) { saveState = true }
-                            launchSingleTop = true
-                            restoreState = true
-                        }
-                    },
-                    leadingIcon = { Icon3D(Icons.Default.PieChart, null, Color(0xFF2E7D32), iconSize = 16.dp, boxSize = 28.dp) }
                 )
                 DropdownMenuItem(
                     text = { Text("Watch List") },

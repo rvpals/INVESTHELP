@@ -5,6 +5,7 @@ import com.investhelp.app.data.local.DatabaseProvider
 import com.investhelp.app.data.local.dao.AccountPerformanceDao
 import com.investhelp.app.data.local.dao.ChangeHistoryDao
 import com.investhelp.app.data.local.dao.CsvImportMappingDao
+import com.investhelp.app.data.local.dao.DefinitionDao
 import com.investhelp.app.data.local.dao.InvestmentAccountDao
 import com.investhelp.app.data.local.dao.InvestmentItemDao
 import com.investhelp.app.data.local.dao.InvestmentTransactionDao
@@ -60,5 +61,10 @@ object DatabaseModule {
     @Provides
     fun provideChangeHistoryDao(dbProvider: DatabaseProvider): ChangeHistoryDao {
         return dbProvider.database.changeHistoryDao()
+    }
+
+    @Provides
+    fun provideDefinitionDao(dbProvider: DatabaseProvider): DefinitionDao {
+        return dbProvider.database.definitionDao()
     }
 }

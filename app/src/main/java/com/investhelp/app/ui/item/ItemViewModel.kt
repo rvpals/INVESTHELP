@@ -7,9 +7,11 @@ import com.investhelp.app.data.local.dao.InvestmentAccountDao
 import com.investhelp.app.data.local.entity.InvestmentAccountEntity
 import com.investhelp.app.data.local.entity.InvestmentItemEntity
 import com.investhelp.app.data.local.entity.InvestmentTransactionEntity
+import com.investhelp.app.data.local.entity.DefinitionEntity
 import com.investhelp.app.data.remote.AnalysisInfo
 import com.investhelp.app.data.remote.HistoricalPrice
 import com.investhelp.app.data.remote.StockPriceService
+import com.investhelp.app.data.repository.DefinitionRepository
 import com.investhelp.app.data.repository.InvestmentItemRepository
 import com.investhelp.app.data.repository.TransactionRepository
 import com.investhelp.app.model.InvestmentType
@@ -30,7 +32,8 @@ class ItemViewModel @Inject constructor(
     private val itemRepository: InvestmentItemRepository,
     private val transactionRepository: TransactionRepository,
     private val stockPriceService: StockPriceService,
-    private val accountDao: InvestmentAccountDao
+    private val accountDao: InvestmentAccountDao,
+    private val definitionRepository: DefinitionRepository
 ) : ViewModel() {
 
     // --- Refresh/update state ---
@@ -66,6 +69,11 @@ class ItemViewModel @Inject constructor(
 
     private val _statistics = MutableStateFlow(ItemStatistics(null, null, null, null, null, null))
     val statistics: StateFlow<ItemStatistics> = _statistics.asStateFlow()
+
+    // --- Definitions ---
+    val definitions: StateFlow<List<DefinitionEntity>> =
+        definitionRepository.getAllDefinitions()
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     // --- Analysis info ---
     private val _analysisInfo = MutableStateFlow<AnalysisInfo?>(null)

@@ -5,6 +5,7 @@ import android.net.Uri
 import androidx.documentfile.provider.DocumentFile
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.investhelp.app.data.local.dao.DefinitionDao
 import com.investhelp.app.data.local.dao.InvestmentAccountDao
 import com.investhelp.app.data.local.dao.InvestmentItemDao
 import com.investhelp.app.data.local.dao.InvestmentTransactionDao
@@ -15,6 +16,7 @@ import com.investhelp.app.data.local.dao.AccountPerformanceDao
 import com.investhelp.app.data.local.dao.CsvImportMappingDao
 import com.investhelp.app.data.local.entity.AccountPerformanceEntity
 import com.investhelp.app.data.local.entity.CsvImportMappingEntity
+import com.investhelp.app.data.local.entity.DefinitionEntity
 import com.investhelp.app.data.local.entity.NamedCsvMappingEntity
 import com.investhelp.app.model.BackupAccount
 import com.investhelp.app.model.BackupData
@@ -35,8 +37,10 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
@@ -127,7 +131,8 @@ class SettingsViewModel @Inject constructor(
     private val itemDao: InvestmentItemDao,
     private val transactionDao: InvestmentTransactionDao,
     private val accountPerformanceDao: AccountPerformanceDao,
-    private val csvMappingDao: CsvImportMappingDao
+    private val csvMappingDao: CsvImportMappingDao,
+    private val definitionDao: DefinitionDao
 ) : ViewModel() {
 
     companion object {
@@ -1318,5 +1323,28 @@ class SettingsViewModel @Inject constructor(
         }
         result.add(current.toString())
         return result
+    }
+
+    // Definitions
+    val definitions: StateFlow<List<DefinitionEntity>> =
+        definitionDao.getAllDefinitions()
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    fun addDefinition(name: String, description: String) {
+        viewModelScope.launch {
+            definitionDao.insertDefinition(DefinitionEntity(name = name, description = description))
+        }
+    }
+
+    fun updateDefinition(definition: DefinitionEntity) {
+        viewModelScope.launch {
+            definitionDao.updateDefinition(definition)
+        }
+    }
+
+    fun deleteDefinition(definition: DefinitionEntity) {
+        viewModelScope.launch {
+            definitionDao.deleteDefinition(definition)
+        }
     }
 }

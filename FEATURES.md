@@ -74,17 +74,12 @@
 
 ## Item Detail
 
-Two tabs: **Details** and **Price History**
+Four tabs: **Details**, **Price History**, **Analysis Info**, **Transactions** (ScrollableTabRow)
 
 ### Details Tab
 - Header: company logo icon (48dp, cached from DB) + ticker (bold) + company name + type chip + current price
 - Card row 1 (large): Total Shares, Total Value, Total Cost, Total G/L
 - Card row 2 (medium): Daily G/L, Daily G/L/Share, Daily Min, Daily Max
-- Collapsible Stats section: average/max/min buy/sell prices with date range filter
-- Collapsible Transactions section: each card shows days since date and G/L
-- Collapsible "Analysis Info" panel: auto-fetches Yahoo Finance quoteSummary (sector, P/E, EPS, 52-week range, profit margins, business summary) on screen load; displayed inline
-- Yahoo Finance link: opens ticker page in browser (full-width button)
-- Simulate button: opens simulation with ticker and shares
 
 ### Price History Tab
 - Timeframe radio buttons: Hourly, Daily, Monthly, Yearly
@@ -98,6 +93,18 @@ Two tabs: **Details** and **Price History**
 - Summary cards: Average, Max, Min of the result prices
 - Line chart: Canvas-drawn with all data points; pinch-to-zoom (1x–5x) with pan; tap-to-select with tooltip (price + date); double-tap to reset; filled area under curve; Y-axis price labels, X-axis date labels
 - Grid table: row number, date/time, closing price with horizontal and vertical gridlines
+
+### Analysis Info Tab
+- Auto-fetches Yahoo Finance quoteSummary on screen load
+- Key Metrics: Market Cap, Trailing P/E, Forward P/E, EPS, Dividend Yield
+- Price Range: 52-Week High/Low, 50-Day Avg, 200-Day Avg
+- Financials: Analyst Target, Revenue/Share, Profit Margins, Return on Equity
+- About: long business summary
+- Clickable metric labels show definition popup (from definitions table)
+
+### Transactions Tab
+- Collapsible Stats section: average/max/min buy/sell prices with date range filter
+- Collapsible Transactions section: each card shows days since date and G/L
 
 ### Delete Item
 - Delete button (trash icon, red tint) in top app bar

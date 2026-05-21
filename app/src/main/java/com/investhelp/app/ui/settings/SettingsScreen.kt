@@ -69,8 +69,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.ui.graphics.Color
+import com.investhelp.app.data.local.entity.DefinitionEntity
 import com.investhelp.app.data.local.entity.NamedCsvMappingEntity
 import com.investhelp.app.model.CsvImportType
 import com.investhelp.app.ui.theme.AppTheme
@@ -119,11 +122,17 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
                     onClick = { selectedTab = 1 },
                     text = { Text("Data Management") }
                 )
+                Tab(
+                    selected = selectedTab == 2,
+                    onClick = { selectedTab = 2 },
+                    text = { Text("Definitions") }
+                )
             }
 
             when (selectedTab) {
                 0 -> PreferencesTab(viewModel, uiState)
                 1 -> DataManagementTab(viewModel, uiState)
+                2 -> DefinitionsTab(viewModel)
             }
         }
     }
@@ -1609,5 +1618,192 @@ private fun PositionImportResultDialog(
             }
         },
         dismissButton = {}
+    )
+}
+
+@Composable
+private fun DefinitionsTab(viewModel: SettingsViewModel) {
+    val definitions by viewModel.definitions.collectAsStateWithLifecycle()
+    var showAddDialog by remember { mutableStateOf(false) }
+    var editingDefinition by remember { mutableStateOf<DefinitionEntity?>(null) }
+    var deleteTarget by remember { mutableStateOf<DefinitionEntity?>(null) }
+
+    if (showAddDialog) {
+        DefinitionFormDialog(
+            title = "Add Definition",
+            onDismiss = { showAddDialog = false },
+            onSave = { name, description ->
+                viewModel.addDefinition(name, description)
+                showAddDialog = false
+            }
+        )
+    }
+
+    if (editingDefinition != null) {
+        DefinitionFormDialog(
+            title = "Edit Definition",
+            initialName = editingDefinition!!.name,
+            initialDescription = editingDefinition!!.description,
+            onDismiss = { editingDefinition = null },
+            onSave = { name, description ->
+                viewModel.updateDefinition(editingDefinition!!.copy(name = name, description = description))
+                editingDefinition = null
+            }
+        )
+    }
+
+    if (deleteTarget != null) {
+        AlertDialog(
+            onDismissRequest = { deleteTarget = null },
+            title = { Text("Delete Definition") },
+            text = { Text("Delete \"${deleteTarget!!.name}\"?") },
+            confirmButton = {
+                TextButton(onClick = {
+                    viewModel.deleteDefinition(deleteTarget!!)
+                    deleteTarget = null
+                }) {
+                    Text("Delete", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { deleteTarget = null }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(24.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Investment Definitions",
+                style = MaterialTheme.typography.titleMedium
+            )
+            IconButton(onClick = { showAddDialog = true }) {
+                Icon(Icons.Default.Add, contentDescription = "Add Definition")
+            }
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Text(
+            text = "Store definitions of investment terms to help you understand what they mean.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        if (definitions.isEmpty()) {
+            Text(
+                text = "No definitions yet. Tap + to add one.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        } else {
+            definitions.forEach { definition ->
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp)
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = definition.name,
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.weight(1f)
+                            )
+                            Row {
+                                IconButton(onClick = { editingDefinition = definition }) {
+                                    Icon(
+                                        Icons.Default.Edit,
+                                        contentDescription = "Edit",
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                                IconButton(onClick = { deleteTarget = definition }) {
+                                    Icon(
+                                        Icons.Default.Delete,
+                                        contentDescription = "Delete",
+                                        tint = MaterialTheme.colorScheme.error,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = definition.description,
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DefinitionFormDialog(
+    title: String,
+    initialName: String = "",
+    initialDescription: String = "",
+    onDismiss: () -> Unit,
+    onSave: (name: String, description: String) -> Unit
+) {
+    var name by remember { mutableStateOf(initialName) }
+    var description by remember { mutableStateOf(initialDescription) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title) },
+        text = {
+            Column {
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text("Name") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                OutlinedTextField(
+                    value = description,
+                    onValueChange = { description = it },
+                    label = { Text("Description") },
+                    minLines = 3,
+                    maxLines = 6,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = { onSave(name.trim(), description.trim()) },
+                enabled = name.isNotBlank() && description.isNotBlank()
+            ) {
+                Text("Save")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
     )
 }

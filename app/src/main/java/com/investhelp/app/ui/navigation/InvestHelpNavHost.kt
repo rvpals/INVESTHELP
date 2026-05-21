@@ -15,7 +15,6 @@ import com.investhelp.app.ui.dashboard.DashboardScreen
 import com.investhelp.app.ui.dashboard.DashboardViewModel
 import com.investhelp.app.ui.item.ItemDetailScreen
 import com.investhelp.app.ui.item.ItemFormScreen
-import com.investhelp.app.ui.item.ItemListScreen
 import com.investhelp.app.ui.item.ItemViewModel
 import com.investhelp.app.ui.settings.SettingsScreen
 import com.investhelp.app.ui.settings.SettingsViewModel
@@ -73,6 +72,11 @@ fun InvestHelpNavHost(
                 },
                 onAddAccount = {
                     navController.navigate(AccountFormRoute())
+                },
+                onNavigateToPerformance = {
+                    navController.navigate(AccountPerformanceRoute) {
+                        launchSingleTop = true
+                    }
                 }
             )
         }
@@ -98,19 +102,6 @@ fun InvestHelpNavHost(
                 viewModel = viewModel,
                 onSaved = { navController.popBackStack() },
                 onBack = { navController.popBackStack() }
-            )
-        }
-
-        composable<ItemListRoute> {
-            val viewModel: ItemViewModel = hiltViewModel()
-            ItemListScreen(
-                viewModel = viewModel,
-                onNavigateToItem = { ticker ->
-                    navController.navigate(ItemDetailRoute(ticker))
-                },
-                onAddItem = {
-                    navController.navigate(ItemFormRoute())
-                }
             )
         }
 

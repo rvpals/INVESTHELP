@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -26,6 +27,11 @@ class AccountViewModel @Inject constructor(
     val accountsWithValues: StateFlow<List<AccountWithValue>> =
         accountRepository.getAllAccountsWithValues()
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val allPerformanceByAccount: StateFlow<Map<Long, List<AccountPerformanceEntity>>> =
+        performanceRepository.getAllRecords()
+            .map { records -> records.groupBy { it.accountId }.mapValues { (_, v) -> v.sortedBy { it.date } } }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
 
     private val _selectedAccount = MutableStateFlow<InvestmentAccountEntity?>(null)
     val selectedAccount: StateFlow<InvestmentAccountEntity?> = _selectedAccount.asStateFlow()

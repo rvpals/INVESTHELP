@@ -17,11 +17,31 @@ class DatabaseProvider @Inject constructor(
             InvestHelpDatabase::class.java,
             "invest_help.db"
         )
-            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23, MIGRATION_23_24)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23, MIGRATION_23_24, MIGRATION_24_25)
             .build()
     }
 
     companion object {
+        val MIGRATION_24_25 = object : Migration(24, 25) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """CREATE TABLE IF NOT EXISTS definitions (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        name TEXT NOT NULL,
+                        description TEXT NOT NULL
+                    )"""
+                )
+                db.execSQL("INSERT INTO definitions (name, description) VALUES ('Trailing P/E', 'Price-to-Earnings ratio based on the last 12 months of actual earnings. Calculated as current stock price divided by earnings per share (EPS) over the past 12 months. A higher trailing P/E suggests investors are paying more for each dollar of recent earnings, often indicating growth expectations.')")
+                db.execSQL("INSERT INTO definitions (name, description) VALUES ('Forward P/E', 'Price-to-Earnings ratio based on projected future earnings. Calculated as current stock price divided by estimated earnings per share for the next 12 months. Lower than trailing P/E suggests analysts expect earnings growth; higher suggests expected earnings decline.')")
+                db.execSQL("INSERT INTO definitions (name, description) VALUES ('EPS', 'Earnings Per Share. Net income available to common shareholders divided by the total number of outstanding shares. Measures how much profit is allocated to each share of stock. Higher EPS indicates greater profitability. Diluted EPS also accounts for convertible securities and stock options.')")
+                db.execSQL("INSERT INTO definitions (name, description) VALUES ('Market Cap', 'Market Capitalization. Total market value of a company''s outstanding shares. Calculated as current stock price multiplied by total shares outstanding. Used to classify companies: Mega-cap (>$200B), Large-cap ($10B-$200B), Mid-cap ($2B-$10B), Small-cap ($300M-$2B), Micro-cap (<$300M).')")
+                db.execSQL("INSERT INTO definitions (name, description) VALUES ('Dividend Yield', 'Annual dividend payment expressed as a percentage of the stock''s current price. Calculated as annual dividends per share divided by price per share. A 3% yield means you receive $3 in dividends for every $100 invested. Higher yields provide income but may signal limited growth reinvestment.')")
+                db.execSQL("INSERT INTO definitions (name, description) VALUES ('Revenue/Share', 'Revenue Per Share. Total revenue (sales) divided by the number of outstanding shares. Indicates how much top-line revenue each share generates before any expenses are deducted. Useful for comparing companies with negative earnings where EPS is not meaningful.')")
+                db.execSQL("INSERT INTO definitions (name, description) VALUES ('Profit Margins', 'Percentage of revenue that remains as profit after expenses. Net profit margin = net income divided by total revenue. For example, a 20% margin means $0.20 of every dollar of revenue becomes profit. Higher margins indicate better cost control and pricing power relative to peers in the same industry.')")
+                db.execSQL("INSERT INTO definitions (name, description) VALUES ('Return on Equity', 'ROE. Measures how efficiently a company generates profit from shareholders'' equity. Calculated as net income divided by shareholders'' equity, expressed as a percentage. A 15% ROE means the company generates $0.15 of profit for every $1 of equity. Higher ROE indicates management is using invested capital effectively.')")
+            }
+        }
+
         val MIGRATION_23_24 = object : Migration(23, 24) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE investment_accounts ADD COLUMN lastUpdatedOn INTEGER")

@@ -1,5 +1,13 @@
 # Changelog
 
+## v1.30 (Build 31) - 2026-05-21
+
+### Changed
+- Item Detail: restructured from 2 tabs to 4 tabs using ScrollableTabRow (Details, Price History, Analysis Info, Transactions)
+- Item Detail "Details" tab: now only shows the header card with ticker info, prices, and daily stats (cleaner layout)
+- Item Detail "Analysis Info": moved from collapsible panel in Details tab to its own dedicated tab; content displayed directly without collapse wrapper
+- Item Detail "Transactions": new tab containing the `<TICKER> Stats` collapsible section and the Transactions collapsible section (moved from Details tab)
+
 ## v1.27 (Build 28) - 2026-05-20
 
 ### Added
