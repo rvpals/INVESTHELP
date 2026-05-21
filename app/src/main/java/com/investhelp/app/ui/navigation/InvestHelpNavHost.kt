@@ -34,6 +34,7 @@ import com.investhelp.app.ui.transaction.TransactionViewModel
 import com.investhelp.app.ui.watchlist.WatchListScreen
 import com.investhelp.app.ui.watchlist.WatchListViewModel
 import com.investhelp.app.ui.help.HelpScreen
+import com.investhelp.app.ui.positions.PositionDetailScreen
 
 @Composable
 fun InvestHelpNavHost(
@@ -52,6 +53,13 @@ fun InvestHelpNavHost(
                 viewModel = viewModel,
                 onNavigateToItem = { ticker ->
                     navController.navigate(ItemDetailRoute(ticker))
+                },
+                onNavigateToWatchList = {
+                    navController.navigate(WatchListRoute) {
+                        popUpTo(DashboardRoute) { saveState = true }
+                        launchSingleTop = true
+                        restoreState = true
+                    }
                 }
             )
         }
@@ -220,6 +228,16 @@ fun InvestHelpNavHost(
         composable<WatchListRoute> {
             val viewModel: WatchListViewModel = hiltViewModel()
             WatchListScreen(
+                viewModel = viewModel,
+                onNavigateToItem = { ticker ->
+                    navController.navigate(ItemDetailRoute(ticker))
+                }
+            )
+        }
+
+        composable<PositionDetailRoute> {
+            val viewModel: ItemViewModel = hiltViewModel()
+            PositionDetailScreen(
                 viewModel = viewModel,
                 onNavigateToItem = { ticker ->
                     navController.navigate(ItemDetailRoute(ticker))

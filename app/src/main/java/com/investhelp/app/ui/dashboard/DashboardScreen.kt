@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -18,10 +17,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CurrencyBitcoin
@@ -56,7 +53,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
@@ -94,9 +90,6 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.zIndex
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import coil.compose.AsyncImage
-import coil.request.ImageRequest
-import java.nio.ByteBuffer
 import com.investhelp.app.data.local.entity.ChangeHistoryEntity
 import com.investhelp.app.ui.components.CollapsibleCard
 import java.text.DecimalFormat
@@ -105,34 +98,20 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import kotlin.math.abs
-import kotlin.math.cos
-import kotlin.math.sin
-
-private val pieColors = listOf(
-    Color(0xFF4285F4),
-    Color(0xFFEA4335),
-    Color(0xFFFBBC04),
-    Color(0xFF34A853),
-    Color(0xFFFF6D00),
-    Color(0xFF46BDC6),
-    Color(0xFFAB47BC),
-    Color(0xFF7CB342),
-    Color(0xFFE91E63),
-    Color(0xFF00ACC1),
-    Color(0xFFFF7043),
-    Color(0xFF5C6BC0)
-)
 
 @Composable
 fun DashboardScreen(
     viewModel: DashboardViewModel,
-    onNavigateToItem: (String) -> Unit = {}
+    onNavigateToItem: (String) -> Unit = {},
+    onNavigateToWatchList: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val pinStates by viewModel.pinStates.collectAsStateWithLifecycle()
-    val positionDetails by viewModel.positionDetails.collectAsStateWithLifecycle()
     val changeHistory by viewModel.changeHistoryRecords.collectAsStateWithLifecycle(initialValue = emptyList())
     val lastRefreshedAt by viewModel.lastRefreshedAt.collectAsStateWithLifecycle()
+    val watchListCardVisible by viewModel.watchListCardVisible.collectAsStateWithLifecycle()
+    val dashboardWatchLists by viewModel.dashboardWatchLists.collectAsStateWithLifecycle()
+    val cardOrder by viewModel.dashboardCardOrder.collectAsStateWithLifecycle()
     val currencyFormat = NumberFormat.getCurrencyInstance(Locale.US)
     var showChangeHistoryDialog by remember { mutableStateOf(false) }
 
@@ -152,81 +131,76 @@ fun DashboardScreen(
                 .padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            item(key = "portfolio_summary") {
-                CollapsibleCard(
-                    title = "Portfolio Summary",
-                    pinned = pinStates[DashboardViewModel.KEY_PIN_PORTFOLIO_SUMMARY] == true,
-                    onPinToggle = { viewModel.setPinState(DashboardViewModel.KEY_PIN_PORTFOLIO_SUMMARY, it) }
-                ) {
-                    PortfolioSummaryRow(
-                        uiState = uiState,
-                        currencyFormat = currencyFormat,
-                        changeHistory = changeHistory,
-                        lastRefreshedAt = lastRefreshedAt,
-                        onChartClick = { showChangeHistoryDialog = true }
-                    )
-                }
-            }
-
-            if (uiState.marketIndices.isNotEmpty()) {
-                item(key = "market_indices") {
-                    CollapsibleCard(
-                        title = "Market Indices",
-                        pinned = pinStates[DashboardViewModel.KEY_PIN_MARKET_INDICES] == true,
-                        onPinToggle = { viewModel.setPinState(DashboardViewModel.KEY_PIN_MARKET_INDICES, it) }
-                    ) {
-                        Column {
-                            Spacer(modifier = Modifier.height(8.dp))
-                            MarketIndexCards(
-                                indices = uiState.marketIndices,
-                                onReorder = { viewModel.reorderMarketIndices(it) }
+            cardOrder.forEach { cardKey ->
+                when (cardKey) {
+                    "portfolio_summary" -> item(key = "portfolio_summary") {
+                        CollapsibleCard(
+                            title = "Portfolio Summary",
+                            pinned = pinStates[DashboardViewModel.KEY_PIN_PORTFOLIO_SUMMARY] == true,
+                            onPinToggle = { viewModel.setPinState(DashboardViewModel.KEY_PIN_PORTFOLIO_SUMMARY, it) }
+                        ) {
+                            PortfolioSummaryRow(
+                                uiState = uiState,
+                                currencyFormat = currencyFormat,
+                                changeHistory = changeHistory,
+                                lastRefreshedAt = lastRefreshedAt,
+                                onChartClick = { showChangeHistoryDialog = true }
                             )
+                        }
+                    }
+
+                    "market_indices" -> if (uiState.marketIndices.isNotEmpty()) {
+                        item(key = "market_indices") {
+                            CollapsibleCard(
+                                title = "Market Indices",
+                                pinned = pinStates[DashboardViewModel.KEY_PIN_MARKET_INDICES] == true,
+                                onPinToggle = { viewModel.setPinState(DashboardViewModel.KEY_PIN_MARKET_INDICES, it) }
+                            ) {
+                                Column {
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    MarketIndexCards(
+                                        indices = uiState.marketIndices,
+                                        onReorder = { viewModel.reorderMarketIndices(it) }
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    "daily_glance" -> if (uiState.topGainers.isNotEmpty() || uiState.topLosers.isNotEmpty()) {
+                        item(key = "daily_glance") {
+                            CollapsibleCard(
+                                title = "Daily Glance",
+                                pinned = pinStates[DashboardViewModel.KEY_PIN_DAILY_GLANCE] == true,
+                                onPinToggle = { viewModel.setPinState(DashboardViewModel.KEY_PIN_DAILY_GLANCE, it) }
+                            ) {
+                                DailyGlanceContent(
+                                    topGainers = uiState.topGainers,
+                                    topLosers = uiState.topLosers,
+                                    overallDailyByType = uiState.overallDailyByType,
+                                    currencyFormat = currencyFormat,
+                                    onItemClick = onNavigateToItem
+                                )
+                            }
+                        }
+                    }
+
+                    "watch_list" -> if (watchListCardVisible && dashboardWatchLists.isNotEmpty()) {
+                        item(key = "watch_list") {
+                            CollapsibleCard(
+                                title = "Watch List",
+                                pinned = pinStates[DashboardViewModel.KEY_PIN_WATCH_LIST] == true,
+                                onPinToggle = { viewModel.setPinState(DashboardViewModel.KEY_PIN_WATCH_LIST, it) }
+                            ) {
+                                WatchListCardContent(
+                                    watchLists = dashboardWatchLists,
+                                    onNavigateToWatchList = onNavigateToWatchList
+                                )
+                            }
                         }
                     }
                 }
             }
-
-            if (uiState.topGainers.isNotEmpty() || uiState.topLosers.isNotEmpty()) {
-                item(key = "daily_glance") {
-                    CollapsibleCard(
-                        title = "Daily Glance",
-                        pinned = pinStates[DashboardViewModel.KEY_PIN_DAILY_GLANCE] == true,
-                        onPinToggle = { viewModel.setPinState(DashboardViewModel.KEY_PIN_DAILY_GLANCE, it) }
-                    ) {
-                        DailyGlanceContent(
-                            topGainers = uiState.topGainers,
-                            topLosers = uiState.topLosers,
-                            overallDailyByType = uiState.overallDailyByType,
-                            currencyFormat = currencyFormat,
-                            onItemClick = onNavigateToItem
-                        )
-                    }
-                }
-            }
-
-            item(key = "positions") {
-                CollapsibleCard(
-                    title = "Positions",
-                    pinned = pinStates[DashboardViewModel.KEY_PIN_POSITIONS] == true,
-                    onPinToggle = { viewModel.setPinState(DashboardViewModel.KEY_PIN_POSITIONS, it) }
-                ) {
-                    if (uiState.positions.isNotEmpty()) {
-                        PositionsPieChartContent(
-                            positions = uiState.positions,
-                            onItemClick = onNavigateToItem
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-                        HorizontalDivider()
-                        Spacer(modifier = Modifier.height(8.dp))
-                    }
-                    PositionDetailsContent(
-                        details = positionDetails,
-                        currencyFormat = currencyFormat,
-                        onItemClick = onNavigateToItem
-                    )
-                }
-            }
-
         }
     }
 }
@@ -583,222 +557,109 @@ private fun DailyGlanceRow(
 }
 
 @Composable
-private fun PositionsPieChartContent(
-    positions: List<TickerPosition>,
-    onItemClick: (String) -> Unit = {}
+private fun WatchListCardContent(
+    watchLists: List<DashboardWatchList>,
+    onNavigateToWatchList: () -> Unit
 ) {
-    val totalValue = positions.sumOf { it.totalValue }
+    val currencyFormat = NumberFormat.getCurrencyInstance(Locale.US)
     val sharesFormat = DecimalFormat("#,##0.##")
-    var showAll by remember { mutableStateOf(false) }
-    val visibleLimit = 20
-    val hasMore = positions.size > visibleLimit
-    val visiblePositions = if (showAll) positions else positions.take(visibleLimit)
+    val dividerColor = MaterialTheme.colorScheme.outlineVariant
 
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Spacer(modifier = Modifier.height(12.dp))
-
-        Canvas(
-            modifier = Modifier
-                .fillMaxWidth(0.7f)
-                .aspectRatio(1f)
-        ) {
-            val diameter = size.minDimension
-            val radius = diameter / 2f
-            val centerX = size.width / 2f
-            val centerY = size.height / 2f
-            val topLeft = Offset(
-                (size.width - diameter) / 2f,
-                (size.height - diameter) / 2f
+    Column(modifier = Modifier.fillMaxWidth()) {
+        watchLists.forEachIndexed { listIndex, watchList ->
+            if (listIndex > 0) {
+                Spacer(modifier = Modifier.height(12.dp))
+                HorizontalDivider()
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+            Text(
+                text = watchList.name,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(bottom = 8.dp)
             )
 
-            var startAngle = -90f
-
-            // Draw slices
-            positions.forEachIndexed { index, pos ->
-                val sweep = (pos.totalValue / totalValue * 360.0).toFloat()
-                drawArc(
-                    color = pieColors[index % pieColors.size],
-                    startAngle = startAngle,
-                    sweepAngle = sweep,
-                    useCenter = true,
-                    topLeft = topLeft,
-                    size = Size(diameter, diameter)
-                )
-                startAngle += sweep
-            }
-
-            // Draw labels inside slices
-            startAngle = -90f
-            positions.forEachIndexed { index, pos ->
-                val sweep = (pos.totalValue / totalValue * 360.0).toFloat()
-                if (sweep > 15f) { // Only label slices > 15 degrees
-                    val midAngle = Math.toRadians((startAngle + sweep / 2f).toDouble())
-                    val labelRadius = radius * 0.65f
-                    val lx = centerX + labelRadius * cos(midAngle).toFloat()
-                    val ly = centerY + labelRadius * sin(midAngle).toFloat()
-
-                    val label = sharesFormat.format(pos.totalQuantity)
-                    drawContext.canvas.nativeCanvas.drawText(
-                        label,
-                        lx,
-                        ly + 5.dp.toPx(),
-                        android.graphics.Paint().apply {
-                            color = android.graphics.Color.WHITE
-                            textSize = 11.dp.toPx()
-                            textAlign = android.graphics.Paint.Align.CENTER
-                            isFakeBoldText = true
-                            setShadowLayer(3f, 1f, 1f, android.graphics.Color.BLACK)
-                        }
-                    )
-                }
-                startAngle += sweep
-            }
-        }
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        // Legend table with grid lines
-        val legendDividerColor = MaterialTheme.colorScheme.outlineVariant
-        Column(modifier = Modifier.fillMaxWidth()) {
-            // Header row
-            HorizontalDivider(color = legendDividerColor)
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(IntrinsicSize.Min)
-                    .padding(vertical = 6.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Spacer(modifier = Modifier.width(16.dp))
+            if (watchList.items.isEmpty()) {
                 Text(
-                    text = "Ticker",
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.weight(1f)
+                    "No items",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                VerticalDivider(color = legendDividerColor)
-                Text(
-                    text = "Shares",
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.weight(1f),
-                    textAlign = TextAlign.End
-                )
-                VerticalDivider(color = legendDividerColor)
-                Text(
-                    text = "%",
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.weight(0.6f),
-                    textAlign = TextAlign.End
-                )
-            }
-            HorizontalDivider(thickness = 2.dp, color = legendDividerColor)
-
-            // Data rows
-            visiblePositions.forEachIndexed { index, pos ->
-                val pct = if (totalValue > 0) pos.totalValue / totalValue * 100 else 0.0
+            } else {
+                HorizontalDivider(color = dividerColor)
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(IntrinsicSize.Min)
-                        .clickable { onItemClick(pos.ticker) }
-                        .padding(vertical = 6.dp),
+                        .padding(vertical = 4.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .size(10.dp)
-                            .clip(CircleShape)
-                            .background(pieColors[index % pieColors.size])
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
                     Text(
-                        text = pos.ticker,
-                        style = MaterialTheme.typography.bodyMedium,
+                        "Ticker",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
                         modifier = Modifier.weight(1f)
                     )
-                    VerticalDivider(color = legendDividerColor)
+                    VerticalDivider(color = dividerColor)
                     Text(
-                        text = sharesFormat.format(pos.totalQuantity),
-                        style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.weight(1f),
+                        "Shares",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.weight(0.7f),
                         textAlign = TextAlign.End
                     )
-                    VerticalDivider(color = legendDividerColor)
+                    VerticalDivider(color = dividerColor)
                     Text(
-                        text = String.format("%.1f%%", pct),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.weight(0.6f),
+                        "Added",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.weight(0.8f),
                         textAlign = TextAlign.End
                     )
                 }
-                HorizontalDivider(color = legendDividerColor)
-            }
+                HorizontalDivider(thickness = 2.dp, color = dividerColor)
 
-            if (hasMore) {
-                TextButton(
-                    onClick = { showAll = !showAll },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(
-                        if (showAll) "Show Less"
-                        else "More (${positions.size - visibleLimit} remaining)"
-                    )
+                watchList.items.forEach { item ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(IntrinsicSize.Min)
+                            .padding(vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            item.ticker,
+                            style = MaterialTheme.typography.bodySmall,
+                            fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.weight(1f)
+                        )
+                        VerticalDivider(color = dividerColor)
+                        Text(
+                            sharesFormat.format(item.shares),
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.weight(0.7f),
+                            textAlign = TextAlign.End
+                        )
+                        VerticalDivider(color = dividerColor)
+                        Text(
+                            currencyFormat.format(item.priceWhenAdded),
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.weight(0.8f),
+                            textAlign = TextAlign.End
+                        )
+                    }
+                    HorizontalDivider(color = dividerColor)
                 }
             }
         }
-    }
-}
 
-private val tickerIconColors = listOf(
-    Color(0xFF4285F4), Color(0xFFEA4335), Color(0xFFFBBC04), Color(0xFF34A853),
-    Color(0xFFFF6D01), Color(0xFF46BDC6), Color(0xFF7B1FA2), Color(0xFFD81B60),
-    Color(0xFF00897B), Color(0xFF5C6BC0), Color(0xFFFFA000), Color(0xFF8D6E63)
-)
-
-@Composable
-private fun DashboardTickerIcon(ticker: String, name: String, logo: ByteArray? = null) {
-    val context = LocalContext.current
-    val hash = ticker.hashCode()
-    val baseColor = tickerIconColors[(hash and 0x7FFFFFFF) % tickerIconColors.size]
-    val gradient = Brush.linearGradient(
-        colors = listOf(
-            baseColor.copy(alpha = 0.85f),
-            baseColor,
-            baseColor.copy(
-                red = baseColor.red * 0.65f,
-                green = baseColor.green * 0.65f,
-                blue = baseColor.blue * 0.65f
-            )
-        )
-    )
-
-    Box(
-        modifier = Modifier
-            .size(30.dp)
-            .shadow(3.dp, RoundedCornerShape(8.dp))
-            .background(gradient, RoundedCornerShape(8.dp)),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = (if (name != ticker) name else ticker).first().uppercase(),
-            style = MaterialTheme.typography.labelMedium,
-            fontWeight = FontWeight.Bold,
-            color = Color.White
-        )
-        val imageData: Any = if (logo != null) ByteBuffer.wrap(logo) else "https://companiesmarketcap.com/img/company-logos/64/${ticker.lowercase()}.webp"
-        AsyncImage(
-            model = ImageRequest.Builder(context)
-                .data(imageData)
-                .crossfade(true)
-                .build(),
-            contentDescription = "$ticker logo",
-            modifier = Modifier
-                .size(30.dp)
-                .clip(RoundedCornerShape(8.dp))
-        )
+        Spacer(modifier = Modifier.height(8.dp))
+        TextButton(
+            onClick = onNavigateToWatchList,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("View All Watch Lists")
+        }
     }
 }
 
@@ -1541,203 +1402,4 @@ private fun ChangeHistoryFullChart(
     }
 }
 
-private enum class PositionSortField {
-    TICKER, SHARES, PRICE, COST, VALUE, CHANGE_AMT, CHANGE_PCT
-}
-
-@Composable
-private fun PositionDetailsContent(
-    details: List<PositionDetail>,
-    currencyFormat: NumberFormat,
-    onItemClick: (String) -> Unit
-) {
-    val sharesFormat = DecimalFormat("#,##0.##")
-    val priceFormat = DecimalFormat("#,##0.00")
-    val dividerColor = MaterialTheme.colorScheme.outlineVariant
-    var sortField by rememberSaveable { mutableStateOf(PositionSortField.VALUE.name) }
-    var sortAsc by rememberSaveable { mutableStateOf(false) }
-
-    val sortedDetails = remember(details, sortField, sortAsc) {
-        val field = PositionSortField.valueOf(sortField)
-        val comparator: Comparator<PositionDetail> = when (field) {
-            PositionSortField.TICKER -> compareBy { it.ticker }
-            PositionSortField.SHARES -> compareBy { it.totalShares }
-            PositionSortField.PRICE -> compareBy { it.currentPrice }
-            PositionSortField.COST -> compareBy { it.totalCost }
-            PositionSortField.VALUE -> compareBy { it.totalValue }
-            PositionSortField.CHANGE_AMT -> compareBy { it.changeAmount }
-            PositionSortField.CHANGE_PCT -> compareBy { it.changePercent }
-        }
-        if (sortAsc) details.sortedWith(comparator) else details.sortedWith(comparator.reversed())
-    }
-
-    fun onHeaderClick(field: PositionSortField) {
-        if (sortField == field.name) {
-            sortAsc = !sortAsc
-        } else {
-            sortField = field.name
-            sortAsc = field == PositionSortField.TICKER
-        }
-    }
-
-    Column(modifier = Modifier.fillMaxWidth()) {
-        Spacer(modifier = Modifier.height(8.dp))
-
-        if (sortedDetails.isNotEmpty()) {
-            val horizontalScroll = rememberScrollState()
-            val currentSortField = PositionSortField.valueOf(sortField)
-
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(horizontalScroll)
-            ) {
-                HorizontalDivider(color = dividerColor)
-                Row(
-                    modifier = Modifier
-                        .height(IntrinsicSize.Min)
-                        .padding(vertical = 2.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Spacer(modifier = Modifier.width(4.dp))
-                    SortableHeader("Ticker", PositionSortField.TICKER, currentSortField, sortAsc, 100, TextAlign.Start) { onHeaderClick(it) }
-                    VerticalDivider(color = dividerColor)
-                    SortableHeader("Shares", PositionSortField.SHARES, currentSortField, sortAsc, 70, TextAlign.End) { onHeaderClick(it) }
-                    VerticalDivider(color = dividerColor)
-                    SortableHeader("Price", PositionSortField.PRICE, currentSortField, sortAsc, 80, TextAlign.End) { onHeaderClick(it) }
-                    VerticalDivider(color = dividerColor)
-                    SortableHeader("Cost", PositionSortField.COST, currentSortField, sortAsc, 90, TextAlign.End) { onHeaderClick(it) }
-                    VerticalDivider(color = dividerColor)
-                    SortableHeader("Value", PositionSortField.VALUE, currentSortField, sortAsc, 90, TextAlign.End) { onHeaderClick(it) }
-                    VerticalDivider(color = dividerColor)
-                    SortableHeader("Change $", PositionSortField.CHANGE_AMT, currentSortField, sortAsc, 90, TextAlign.End) { onHeaderClick(it) }
-                    VerticalDivider(color = dividerColor)
-                    SortableHeader("Change %", PositionSortField.CHANGE_PCT, currentSortField, sortAsc, 80, TextAlign.End) { onHeaderClick(it) }
-                }
-                HorizontalDivider(thickness = 2.dp, color = dividerColor)
-
-                sortedDetails.forEach { detail ->
-                    val changeColor = if (detail.changeAmount >= 0) Color(0xFF2E7D32) else Color(0xFFC62828)
-                    val sign = if (detail.changeAmount > 0) "+" else ""
-
-                    Row(
-                        modifier = Modifier
-                            .height(IntrinsicSize.Min)
-                            .clickable { onItemClick(detail.ticker) }
-                            .padding(vertical = 6.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Row(
-                            modifier = Modifier.width(100.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            DashboardTickerIcon(ticker = detail.ticker, name = detail.name, logo = detail.logo)
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text(
-                                text = detail.ticker,
-                                style = MaterialTheme.typography.bodySmall,
-                                fontWeight = FontWeight.SemiBold,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        }
-                        VerticalDivider(color = dividerColor)
-                        Text(
-                            text = sharesFormat.format(detail.totalShares),
-                            style = MaterialTheme.typography.bodySmall,
-                            modifier = Modifier.width(70.dp),
-                            textAlign = TextAlign.End
-                        )
-                        VerticalDivider(color = dividerColor)
-                        Text(
-                            text = priceFormat.format(detail.currentPrice),
-                            style = MaterialTheme.typography.bodySmall,
-                            modifier = Modifier.width(80.dp),
-                            textAlign = TextAlign.End
-                        )
-                        VerticalDivider(color = dividerColor)
-                        Text(
-                            text = currencyFormat.format(detail.totalCost),
-                            style = MaterialTheme.typography.bodySmall,
-                            modifier = Modifier.width(90.dp),
-                            textAlign = TextAlign.End
-                        )
-                        VerticalDivider(color = dividerColor)
-                        Text(
-                            text = currencyFormat.format(detail.totalValue),
-                            style = MaterialTheme.typography.bodySmall,
-                            modifier = Modifier.width(90.dp),
-                            textAlign = TextAlign.End
-                        )
-                        VerticalDivider(color = dividerColor)
-                        Text(
-                            text = "$sign${currencyFormat.format(detail.changeAmount)}",
-                            style = MaterialTheme.typography.bodySmall,
-                            fontWeight = FontWeight.SemiBold,
-                            color = changeColor,
-                            modifier = Modifier.width(90.dp),
-                            textAlign = TextAlign.End
-                        )
-                        VerticalDivider(color = dividerColor)
-                        Text(
-                            text = "$sign${String.format("%.2f", detail.changePercent)}%",
-                            style = MaterialTheme.typography.bodySmall,
-                            fontWeight = FontWeight.SemiBold,
-                            color = changeColor,
-                            modifier = Modifier.width(80.dp).padding(end = 4.dp),
-                            textAlign = TextAlign.End
-                        )
-                    }
-                    HorizontalDivider(color = dividerColor)
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun SortableHeader(
-    label: String,
-    field: PositionSortField,
-    currentField: PositionSortField,
-    ascending: Boolean,
-    widthDp: Int,
-    align: TextAlign,
-    onClick: (PositionSortField) -> Unit
-) {
-    val isActive = field == currentField
-    Row(
-        modifier = Modifier
-            .width(widthDp.dp)
-            .clickable { onClick(field) }
-            .padding(vertical = 4.dp),
-        horizontalArrangement = if (align == TextAlign.End) Arrangement.End else Arrangement.Start,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        if (isActive && align == TextAlign.End) {
-            Icon(
-                imageVector = if (ascending) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
-                contentDescription = null,
-                modifier = Modifier.size(14.dp),
-                tint = MaterialTheme.colorScheme.primary
-            )
-        }
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelSmall,
-            fontWeight = FontWeight.Bold,
-            color = if (isActive) MaterialTheme.colorScheme.primary
-                else MaterialTheme.colorScheme.onSurface
-        )
-        if (isActive && align != TextAlign.End) {
-            Icon(
-                imageVector = if (ascending) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
-                contentDescription = null,
-                modifier = Modifier.size(14.dp),
-                tint = MaterialTheme.colorScheme.primary
-            )
-        }
-    }
-}
 

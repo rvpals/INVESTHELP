@@ -388,6 +388,77 @@ private fun PreferencesTab(viewModel: SettingsViewModel, uiState: SettingsUiStat
                 }
             }
         }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        SettingsCollapsibleSection(title = "Dashboard Cards", defaultExpanded = false) {
+            Spacer(modifier = Modifier.height(4.dp))
+
+            Text(
+                "Show or hide cards and reorder them on the dashboard",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            val cardOrder = uiState.dashboardCardOrder
+            val cardLabels = mapOf(
+                "portfolio_summary" to "Portfolio Summary",
+                "market_indices" to "Market Indices",
+                "daily_glance" to "Daily Glance",
+                "watch_list" to "Watch List"
+            )
+
+            cardOrder.forEachIndexed { displayIndex, cardKey ->
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Column {
+                            IconButton(
+                                onClick = { viewModel.moveDashboardCard(cardKey, -1) },
+                                enabled = displayIndex > 0,
+                                modifier = Modifier.size(24.dp)
+                            ) {
+                                Icon(
+                                    Icons.Default.KeyboardArrowUp,
+                                    contentDescription = "Move up",
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                            IconButton(
+                                onClick = { viewModel.moveDashboardCard(cardKey, 1) },
+                                enabled = displayIndex < cardOrder.lastIndex,
+                                modifier = Modifier.size(24.dp)
+                            ) {
+                                Icon(
+                                    Icons.Default.KeyboardArrowDown,
+                                    contentDescription = "Move down",
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            cardLabels[cardKey] ?: cardKey,
+                            style = MaterialTheme.typography.bodyLarge
+                        )
+                    }
+                    if (cardKey == "watch_list") {
+                        Switch(
+                            checked = uiState.watchListCardVisible,
+                            onCheckedChange = { viewModel.setWatchListCardVisible(it) }
+                        )
+                    }
+                }
+            }
+        }
     }
 }
 

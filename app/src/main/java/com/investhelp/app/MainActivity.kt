@@ -84,6 +84,7 @@ import com.investhelp.app.ui.navigation.SqlExplorerRoute
 import com.investhelp.app.ui.navigation.SimulationRoute
 import com.investhelp.app.ui.navigation.TransactionListRoute
 import com.investhelp.app.ui.navigation.WatchListRoute
+import com.investhelp.app.ui.navigation.PositionDetailRoute
 import com.investhelp.app.ui.navigation.HelpRoute
 import androidx.compose.material.icons.filled.HelpOutline
 import com.investhelp.app.ui.theme.InvestHelpTheme
@@ -377,6 +378,18 @@ fun GlobalTopBar(navController: NavHostController) {
                         }
                     },
                     leadingIcon = { Icon3D(Icons.Default.AccountBalance, null, Color(0xFF1565C0), iconSize = 16.dp, boxSize = 28.dp) }
+                )
+                DropdownMenuItem(
+                    text = { Text("Positions") },
+                    onClick = {
+                        menuExpanded = false
+                        navController.navigate(PositionDetailRoute) {
+                            popUpTo(DashboardRoute) { saveState = true }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    },
+                    leadingIcon = { Icon3D(Icons.Default.PieChart, null, Color(0xFF2E7D32), iconSize = 16.dp, boxSize = 28.dp) }
                 )
                 DropdownMenuItem(
                     text = { Text("Watch List") },

@@ -35,4 +35,7 @@ interface InvestmentAccountDao {
 
     @Query("SELECT COALESCE(SUM(value), 0.0) FROM investment_items")
     suspend fun computeTotalPortfolioValue(): Double
+
+    @Query("UPDATE investment_accounts SET lastValue = :value, lastUpdatedOn = :updatedOn WHERE id = :accountId")
+    suspend fun updateLastValue(accountId: Long, value: Double, updatedOn: Long)
 }

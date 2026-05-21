@@ -126,7 +126,8 @@ Android investment tracking app built with Kotlin, Jetpack Compose, and Material
 - Database migration v20 -> v21: removes accountId from investment_transactions (recreates table without FK/index)
 - Database migration v21 -> v22: adds dailyChangeEtf, dailyChangeStock, dailyChangeTotal columns to change_history
 - Database migration v22 -> v23: creates csv_named_mappings table (id, name, importType, mappingsJson, dateFormatJson)
-- Database version 23
+- Database migration v23 -> v24: adds lastUpdatedOn (INTEGER, epoch seconds) and lastValue (REAL) columns to investment_accounts
+- Database version 24
 - Change History: `change_history` table records daily portfolio values by type (ETF, Stock, Total) plus daily change values (dailyChangeEtf, dailyChangeStock, dailyChangeTotal); one row per day, overwritten on re-refresh
 - Change History dialog: "Change Value This Week So Far" summary card above data table showing sum of daily changes for ETF, Stock, and Total since Monday; color-coded green/red
 - Settings: "Auto Update Change History when refresh" toggle (default: off) — when on, automatically records ETF/Stock/Total values to change_history after price refresh; overwrites existing entry for today

@@ -18,4 +18,5 @@ import kotlinx.serialization.Serializable
 @Serializable object SqlExplorerRoute
 @Serializable object AccountPerformanceRoute
 @Serializable object WatchListRoute
+@Serializable object PositionDetailRoute
 @Serializable object HelpRoute

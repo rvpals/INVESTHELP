@@ -33,7 +33,7 @@ import com.investhelp.app.data.local.entity.WatchListItemEntity
         NamedCsvMappingEntity::class,
         ChangeHistoryEntity::class
     ],
-    version = 23,
+    version = 24,
     exportSchema = true
 )
 @TypeConverters(Converters::class)

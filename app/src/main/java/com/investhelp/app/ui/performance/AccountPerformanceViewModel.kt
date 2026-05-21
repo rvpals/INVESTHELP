@@ -142,6 +142,7 @@ class AccountPerformanceViewModel @Inject constructor(
                 note = note.trim()
             )
             performanceRepository.insertRecord(record)
+            accountRepository.updateLastValue(accountId, totalValue)
         }
         return true
     }

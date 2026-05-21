@@ -115,7 +115,9 @@ data class SettingsUiState(
     val showMappingSelectionDialog: Boolean = false,
     val savedPositionMappings: List<NamedCsvMappingEntity> = emptyList(),
     val pendingImportFileUri: Uri? = null,
-    val accounts: List<InvestmentAccountEntity> = emptyList()
+    val accounts: List<InvestmentAccountEntity> = emptyList(),
+    val dashboardCardOrder: List<String> = SettingsViewModel.DEFAULT_CARD_ORDER,
+    val watchListCardVisible: Boolean = true
 )
 
 @HiltViewModel
@@ -157,6 +159,12 @@ class SettingsViewModel @Inject constructor(
         )
 
         val DEFAULT_MARKET_INDICES = setOf("^IXIC", "^GSPC", "^DJI", "GC=F")
+
+        const val KEY_CARD_VISIBLE_WATCH_LIST = "card_visible_watch_list"
+        const val KEY_DASHBOARD_CARD_ORDER = "dashboard_card_order"
+        val DEFAULT_CARD_ORDER = listOf(
+            "portfolio_summary", "market_indices", "daily_glance", "watch_list"
+        )
     }
 
     private val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -188,7 +196,11 @@ class SettingsViewModel @Inject constructor(
             backupFolderUri = savedBackupUri,
             backupFolderName = savedBackupUri?.let {
                 DocumentFile.fromTreeUri(context, it)?.name ?: it.lastPathSegment
-            }
+            },
+            dashboardCardOrder = prefs.getString(KEY_DASHBOARD_CARD_ORDER, null)
+                ?.split(",")?.filter { it.isNotBlank() }
+                ?: DEFAULT_CARD_ORDER,
+            watchListCardVisible = prefs.getBoolean(KEY_CARD_VISIBLE_WATCH_LIST, true)
         )
     )
     val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
@@ -288,6 +300,22 @@ class SettingsViewModel @Inject constructor(
         order[idx] = order[newIdx].also { order[newIdx] = order[idx] }
         prefs.edit().putString(KEY_MARKET_INDICES_ORDER, order.joinToString(",")).apply()
         _uiState.value = _uiState.value.copy(marketIndicesOrder = order)
+    }
+
+    fun moveDashboardCard(cardKey: String, direction: Int) {
+        val order = _uiState.value.dashboardCardOrder.toMutableList()
+        val idx = order.indexOf(cardKey)
+        if (idx < 0) return
+        val newIdx = idx + direction
+        if (newIdx < 0 || newIdx >= order.size) return
+        order[idx] = order[newIdx].also { order[newIdx] = order[idx] }
+        prefs.edit().putString(KEY_DASHBOARD_CARD_ORDER, order.joinToString(",")).apply()
+        _uiState.value = _uiState.value.copy(dashboardCardOrder = order)
+    }
+
+    fun setWatchListCardVisible(visible: Boolean) {
+        prefs.edit().putBoolean(KEY_CARD_VISIBLE_WATCH_LIST, visible).apply()
+        _uiState.value = _uiState.value.copy(watchListCardVisible = visible)
     }
 
     fun setBackupFolder(uri: Uri) {

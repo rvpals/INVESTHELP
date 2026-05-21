@@ -4,10 +4,12 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.investhelp.app.data.local.entity.ChangeHistoryEntity
+import com.investhelp.app.data.local.entity.WatchListItemEntity
 import com.investhelp.app.data.remote.StockPriceService
 import com.investhelp.app.data.repository.AccountRepository
 import com.investhelp.app.data.repository.ChangeHistoryRepository
 import com.investhelp.app.data.repository.InvestmentItemRepository
+import com.investhelp.app.data.repository.WatchListRepository
 import kotlinx.coroutines.flow.Flow
 import com.investhelp.app.model.AccountWithValue
 import com.investhelp.app.model.InvestmentType
@@ -26,32 +28,6 @@ import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.LocalDateTime
 import javax.inject.Inject
-
-data class TickerPosition(
-    val ticker: String,
-    val totalQuantity: Double,
-    val totalValue: Double
-)
-
-data class PositionDetail(
-    val ticker: String,
-    val name: String,
-    val totalShares: Double,
-    val currentPrice: Double,
-    val totalCost: Double,
-    val totalValue: Double,
-    val changeAmount: Double = 0.0,
-    val changePercent: Double = 0.0,
-    val logo: ByteArray? = null
-) {
-    override fun equals(other: Any?): Boolean {
-        if (this === other) return true
-        if (other !is PositionDetail) return false
-        return ticker == other.ticker
-    }
-
-    override fun hashCode(): Int = ticker.hashCode()
-}
 
 data class DailyGlanceItem(
     val ticker: String,
@@ -80,11 +56,16 @@ data class DashboardUiState(
     val totalPortfolioValue: Double = 0.0,
     val totalDayGainLoss: Double = 0.0,
     val totalCost: Double = 0.0,
-    val positions: List<TickerPosition> = emptyList(),
     val marketIndices: List<MarketIndexQuote> = emptyList(),
     val topGainers: List<DailyGlanceItem> = emptyList(),
     val topLosers: List<DailyGlanceItem> = emptyList(),
     val overallDailyByType: List<OverallDailyByType> = emptyList()
+)
+
+data class DashboardWatchList(
+    val id: Long,
+    val name: String,
+    val items: List<WatchListItemEntity>
 )
 
 @HiltViewModel
@@ -93,7 +74,8 @@ class DashboardViewModel @Inject constructor(
     accountRepository: AccountRepository,
     private val itemRepository: InvestmentItemRepository,
     private val stockPriceService: StockPriceService,
-    private val changeHistoryRepository: ChangeHistoryRepository
+    private val changeHistoryRepository: ChangeHistoryRepository,
+    private val watchListRepository: WatchListRepository
 ) : ViewModel() {
 
     private val prefs = context.getSharedPreferences(
@@ -102,10 +84,10 @@ class DashboardViewModel @Inject constructor(
 
     companion object {
         const val KEY_PIN_MARKET_INDICES = "pin_card_market_indices"
-        const val KEY_PIN_POSITIONS = "pin_card_positions"
         const val KEY_PIN_DAILY_GLANCE = "pin_card_daily_glance"
         const val KEY_PIN_POSITION_DETAILS = "pin_card_position_details"
         const val KEY_PIN_PORTFOLIO_SUMMARY = "pin_card_portfolio_summary"
+        const val KEY_PIN_WATCH_LIST = "pin_card_watch_list"
     }
 
     val changeHistoryRecords: Flow<List<ChangeHistoryEntity>> = changeHistoryRepository.getAllRecords()
@@ -135,36 +117,47 @@ class DashboardViewModel @Inject constructor(
     private val _pinStates = MutableStateFlow(
         mapOf(
             KEY_PIN_MARKET_INDICES to prefs.getBoolean(KEY_PIN_MARKET_INDICES, false),
-            KEY_PIN_POSITIONS to prefs.getBoolean(KEY_PIN_POSITIONS, false),
             KEY_PIN_DAILY_GLANCE to prefs.getBoolean(KEY_PIN_DAILY_GLANCE, false),
             KEY_PIN_POSITION_DETAILS to prefs.getBoolean(KEY_PIN_POSITION_DETAILS, false),
-            KEY_PIN_PORTFOLIO_SUMMARY to prefs.getBoolean(KEY_PIN_PORTFOLIO_SUMMARY, true)
+            KEY_PIN_PORTFOLIO_SUMMARY to prefs.getBoolean(KEY_PIN_PORTFOLIO_SUMMARY, true),
+            KEY_PIN_WATCH_LIST to prefs.getBoolean(KEY_PIN_WATCH_LIST, false)
         )
     )
     val pinStates: StateFlow<Map<String, Boolean>> = _pinStates.asStateFlow()
 
-    private val _positionDetails = MutableStateFlow<List<PositionDetail>>(emptyList())
-    val positionDetails: StateFlow<List<PositionDetail>> = _positionDetails.asStateFlow()
+    private val _watchListCardVisible = MutableStateFlow(
+        prefs.getBoolean(SettingsViewModel.KEY_CARD_VISIBLE_WATCH_LIST, true)
+    )
+    val watchListCardVisible: StateFlow<Boolean> = _watchListCardVisible.asStateFlow()
 
-    fun fetchPositionDetails() {
-        viewModelScope.launch {
-            val allItems = itemRepository.getAllItems().first()
-            val details = allItems
-                .filter { it.quantity > 0 }
-                .map { item ->
-                    val changeAmt = item.value - item.cost
-                    val changePct = if (item.cost != 0.0) changeAmt / item.cost * 100.0 else 0.0
-                    PositionDetail(
-                        ticker = item.ticker, name = item.name,
-                        totalShares = item.quantity, currentPrice = item.currentPrice,
-                        totalCost = item.cost, totalValue = item.value,
-                        changeAmount = changeAmt, changePercent = changePct,
-                        logo = item.logo
-                    )
-                }
-                .sortedByDescending { it.totalValue }
-            _positionDetails.value = details
-        }
+    private val _dashboardCardOrder = MutableStateFlow(
+        prefs.getString(SettingsViewModel.KEY_DASHBOARD_CARD_ORDER, null)
+            ?.split(",")?.filter { it.isNotBlank() }
+            ?: SettingsViewModel.DEFAULT_CARD_ORDER
+    )
+    val dashboardCardOrder: StateFlow<List<String>> = _dashboardCardOrder.asStateFlow()
+
+    private val _dashboardWatchLists = MutableStateFlow<List<DashboardWatchList>>(emptyList())
+    val dashboardWatchLists: StateFlow<List<DashboardWatchList>> = _dashboardWatchLists.asStateFlow()
+
+    fun setWatchListCardVisible(visible: Boolean) {
+        prefs.edit().putBoolean(SettingsViewModel.KEY_CARD_VISIBLE_WATCH_LIST, visible).apply()
+        _watchListCardVisible.value = visible
+    }
+
+    fun setDashboardCardOrder(order: List<String>) {
+        prefs.edit().putString(SettingsViewModel.KEY_DASHBOARD_CARD_ORDER, order.joinToString(",")).apply()
+        _dashboardCardOrder.value = order
+    }
+
+    fun moveDashboardCard(cardKey: String, direction: Int) {
+        val current = _dashboardCardOrder.value.toMutableList()
+        val index = current.indexOf(cardKey)
+        if (index < 0) return
+        val newIndex = index + direction
+        if (newIndex < 0 || newIndex >= current.size) return
+        current[index] = current[newIndex].also { current[newIndex] = current[index] }
+        setDashboardCardOrder(current)
     }
 
     fun setPinState(key: String, pinned: Boolean) {
@@ -183,7 +176,23 @@ class DashboardViewModel @Inject constructor(
 
     init {
         refreshMarketIndices()
-        fetchPositionDetails()
+        fetchWatchLists()
+    }
+
+    private fun fetchWatchLists() {
+        viewModelScope.launch {
+            watchListRepository.getAllWatchLists().collect { lists ->
+                val dashboardLists = lists.take(2).map { watchList ->
+                    val items = watchListRepository.getItemsByWatchList(watchList.id).first()
+                    DashboardWatchList(
+                        id = watchList.id,
+                        name = watchList.name,
+                        items = items.take(5)
+                    )
+                }
+                _dashboardWatchLists.value = dashboardLists
+            }
+        }
     }
 
     fun refreshMarketIndices() {
@@ -340,17 +349,6 @@ class DashboardViewModel @Inject constructor(
         itemRepository.getAllItems(),
         _marketIndices
     ) { accounts, items, indices ->
-        val tickerPositions = items
-            .filter { it.value > 0 }
-            .map { item ->
-                TickerPosition(
-                    ticker = item.ticker,
-                    totalQuantity = item.quantity,
-                    totalValue = item.value
-                )
-            }
-            .sortedByDescending { it.totalValue }
-
         val glanceItems = items.map { item ->
             val previousValue = item.value - item.dayGainLoss
             val pct = if (previousValue != 0.0) item.dayGainLoss / previousValue * 100.0 else 0.0
@@ -389,7 +387,6 @@ class DashboardViewModel @Inject constructor(
             totalPortfolioValue = items.sumOf { it.value },
             totalDayGainLoss = items.sumOf { it.dayGainLoss },
             totalCost = items.sumOf { it.cost },
-            positions = tickerPositions,
             marketIndices = indices,
             topGainers = topGainers,
             topLosers = topLosers,

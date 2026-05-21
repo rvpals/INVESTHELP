@@ -1,5 +1,18 @@
 # Changelog
 
+## v1.27 (Build 28) - 2026-05-20
+
+### Added
+- Account Detail: performance records table (Date, Value, Note columns) with grid lines and alternating row colors
+- Account Detail: interactive line chart showing account performance history (pinch-to-zoom, pan, tap-to-select tooltip, double-tap reset); displayed when 2+ records exist
+- Account entity: `lastUpdatedOn` (datetime) and `lastValue` (currency) columns; auto-updated when a new performance record is saved
+- Account List: displays "Last: $X,XXX.XX" on each account card when lastValue is set
+- Item Form: up/down arrow buttons next to Quantity field to increment/decrement by 1
+
+### Changed
+- App icon updated with new investment-themed illustration (Stock/ETF/charts motif)
+- Database version bumped to 24 (migration v23→v24 adds lastUpdatedOn and lastValue columns to investment_accounts)
+
 ## v1.26 (Build 27) - 2026-05-19
 
 ### Added

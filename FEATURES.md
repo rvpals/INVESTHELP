@@ -68,7 +68,7 @@
   - Below ticker: current price with day change $ and % (color-coded)
   - Right: total position value + gain/loss badge (green/red chip)
 - Edit button per row; Delete available in Edit dialog
-- Add/edit via form with type selector (Stock, ETF, Bond, MutualFund, Crypto, Other)
+- Add/edit via form with type selector (Stock, ETF, Bond, MutualFund, Crypto, Other); quantity field has up/down arrows for +1/-1 adjustment
 - Refresh All updates live prices for all items
 - One record per ticker (ticker is sole primary key)
 
@@ -128,6 +128,15 @@ Two tabs: **Details** and **Price History**
 - Tap-to-select with tooltip (price + date)
 - Custom day ranges from transaction simulation (auto-runs)
 - Large ranges (5Y+) use weekly interval; MAX uses Yahoo Finance `range=max`
+
+## Accounts
+
+- Account list with name, description, initial value, and last value (from most recent performance record)
+- Account detail screen with:
+  - Info card showing initial value and last value
+  - Interactive performance line chart (pinch-to-zoom, pan, tap-to-select tooltip, double-tap reset); shown when 2+ performance records exist
+  - Performance records table (Date, Value, Note columns) with grid lines, alternating row colors, newest first
+- lastValue and lastUpdatedOn auto-updated when a new performance record is saved
 
 ## Account Performance
 

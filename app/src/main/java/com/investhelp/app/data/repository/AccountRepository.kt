@@ -5,6 +5,8 @@ import com.investhelp.app.data.local.entity.InvestmentAccountEntity
 import com.investhelp.app.model.AccountWithValue
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import java.time.LocalDateTime
+import java.time.ZoneOffset
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -16,6 +18,7 @@ interface AccountRepository {
     suspend fun updateAccount(account: InvestmentAccountEntity)
     suspend fun deleteAccount(account: InvestmentAccountEntity)
     suspend fun computeTotalPortfolioValue(): Double
+    suspend fun updateLastValue(accountId: Long, value: Double)
 }
 
 @Singleton
@@ -50,4 +53,9 @@ class AccountRepositoryImpl @Inject constructor(
 
     override suspend fun computeTotalPortfolioValue(): Double =
         accountDao.computeTotalPortfolioValue()
+
+    override suspend fun updateLastValue(accountId: Long, value: Double) {
+        val updatedOn = LocalDateTime.now().toEpochSecond(ZoneOffset.UTC)
+        accountDao.updateLastValue(accountId, value, updatedOn)
+    }
 }

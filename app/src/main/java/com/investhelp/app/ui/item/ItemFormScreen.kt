@@ -11,6 +11,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -30,6 +32,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -181,14 +184,43 @@ fun ItemFormScreen(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            OutlinedTextField(
-                value = quantity,
-                onValueChange = { quantity = it },
-                label = { Text("Quantity") },
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                modifier = Modifier.fillMaxWidth()
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                OutlinedTextField(
+                    value = quantity,
+                    onValueChange = { quantity = it },
+                    label = { Text("Quantity") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    modifier = Modifier.weight(1f)
+                )
+                Column {
+                    IconButton(
+                        onClick = {
+                            val current = quantity.toDoubleOrNull() ?: 0.0
+                            quantity = (current + 1).let {
+                                if (it == it.toLong().toDouble()) it.toLong().toString() else it.toString()
+                            }
+                        }
+                    ) {
+                        Icon(Icons.Default.KeyboardArrowUp, contentDescription = "Increase quantity")
+                    }
+                    IconButton(
+                        onClick = {
+                            val current = quantity.toDoubleOrNull() ?: 0.0
+                            if (current >= 1) {
+                                quantity = (current - 1).let {
+                                    if (it == it.toLong().toDouble()) it.toLong().toString() else it.toString()
+                                }
+                            }
+                        }
+                    ) {
+                        Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Decrease quantity")
+                    }
+                }
+            }
 
             Spacer(modifier = Modifier.height(12.dp))
 

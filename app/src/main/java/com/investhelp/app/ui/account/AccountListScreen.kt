@@ -130,6 +130,14 @@ fun AccountListScreen(
                                     style = MaterialTheme.typography.titleMedium,
                                     color = MaterialTheme.colorScheme.primary
                                 )
+                                accountWithValue.account.lastValue?.let { lastVal ->
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Text(
+                                        text = "Last: ${currencyFormat.format(lastVal)}",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
                             }
                             IconButton(onClick = {
                                 if (warnBeforeDelete) {

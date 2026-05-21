@@ -1,4 +1,4 @@
-# Data Structure — Room Database (v22)
+# Data Structure — Room Database (v24)
 
 ## Tables
 
@@ -9,6 +9,8 @@
 | name | String | |
 | description | String | |
 | initialValue | Double | |
+| lastUpdatedOn | LocalDateTime? | nullable, stored as epoch seconds |
+| lastValue | Double? | nullable |
 
 ### investment_items
 | Column | Type | Constraints |
