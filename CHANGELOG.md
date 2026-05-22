@@ -1,5 +1,13 @@
 # Changelog
 
+## v1.33 (Build 34) - 2026-05-21
+
+### Changed
+- Help screen: completely rewritten help.html with comprehensive coverage of all current features
+- Help guide now documents: Portfolio Summary, Market Indices, Daily Glance, all 4 Item Detail tabs, Investing Performance chart, chart gestures, Watch List reminders, Auto Refresh, CSV named mappings, and more
+- Added Chart Interactions section explaining shared pinch-to-zoom/pan/tap/double-tap gestures
+- Updated Tips & Shortcuts with 14 practical tips
+
 ## v1.32 (Build 33) - 2026-05-21
 
 ### Added
