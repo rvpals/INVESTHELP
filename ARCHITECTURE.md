@@ -134,6 +134,7 @@ Gradient-filled rounded boxes with drop shadow for bottom nav and menu icons.
 - **Pie chart**: Dashboard positions allocation with labels inside slices
 - **Line chart**: Account performance with multi-account overlay, zoom, pan, tooltips
 - **Price history line chart**: Item detail Price History tab with zoom, pan, tap-to-select tooltips
+- **Investing performance line chart**: Item detail Transactions tab with zoom, pan, price labels on data points, tap-to-select tooltips
 
 ## Data Storage Patterns
 

@@ -498,7 +498,7 @@ fun AccountPerformanceScreen(
                         }
                         if (accountRecords.size >= 2) {
                             Spacer(modifier = Modifier.height(12.dp))
-                            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                            HorizontalDivider(color = MaterialTheme.colorScheme.outline)
                             Spacer(modifier = Modifier.height(8.dp))
                             Text(
                                 "${accounts.find { it.id == selectedAccountId }?.name ?: ""} History",
@@ -693,10 +693,12 @@ fun AccountPerformanceScreen(
                                 )
                             }
                             HorizontalDivider()
+                            val altColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
                             chartDataRecords.forEachIndexed { index, (accountName, date, value) ->
                                 Row(
                                     modifier = Modifier
                                         .fillMaxWidth()
+                                        .background(if (index % 2 == 1) altColor else Color.Transparent)
                                         .padding(vertical = 4.dp),
                                     horizontalArrangement = Arrangement.SpaceBetween
                                 ) {
@@ -719,7 +721,7 @@ fun AccountPerformanceScreen(
                                     )
                                 }
                                 if (index < chartDataRecords.size - 1) {
-                                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                                    HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.7f))
                                 }
                             }
                         }

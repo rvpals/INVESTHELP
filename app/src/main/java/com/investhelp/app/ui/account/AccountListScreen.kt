@@ -2,6 +2,7 @@ package com.investhelp.app.ui.account
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -269,11 +270,13 @@ private fun PerformancePanel(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
-                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                    last10.forEach { record ->
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outline)
+                    val altColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+                    last10.forEachIndexed { index, record ->
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
+                                .background(if (index % 2 == 1) altColor else Color.Transparent)
                                 .padding(vertical = 4.dp)
                         ) {
                             Text(
@@ -287,7 +290,7 @@ private fun PerformancePanel(
                                 modifier = Modifier.weight(1f)
                             )
                         }
-                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.7f))
                     }
                 }
 

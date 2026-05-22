@@ -567,8 +567,8 @@ private fun TransactionDetailsTab(
     var expanded by remember { mutableStateOf(true) }
     var perfExpanded by remember { mutableStateOf(true) }
 
-    LaunchedEffect(ticker) {
-        viewModel.loadInvestingPerformance(ticker)
+    LaunchedEffect(ticker, item?.currentPrice) {
+        viewModel.loadInvestingPerformance(ticker, item?.currentPrice)
     }
 
     LazyColumn(
@@ -804,6 +804,7 @@ private fun InvestingPerformanceChart(
 
     val lineColor = MaterialTheme.colorScheme.outline
     val txColor = MaterialTheme.colorScheme.error
+    val currentPriceColor = MaterialTheme.colorScheme.tertiary
     val gridColor = MaterialTheme.colorScheme.outlineVariant
     val labelColor = MaterialTheme.colorScheme.onSurfaceVariant
     val tooltipBg = MaterialTheme.colorScheme.inverseSurface
@@ -815,6 +816,9 @@ private fun InvestingPerformanceChart(
     val priceRange = remember(minPrice, maxPrice) { (maxPrice - minPrice).coerceAtLeast(0.01) }
 
     var selectedIdx by remember { mutableStateOf<Int?>(null) }
+    var zoom by remember { mutableStateOf(1f) }
+    var scrollOffset by remember { mutableStateOf(0f) }
+    var chartWidthPx by remember { mutableStateOf(0f) }
 
     val dateFormat = remember { DateTimeFormatter.ofPattern("MMM dd") }
 
@@ -827,16 +831,30 @@ private fun InvestingPerformanceChart(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(200.dp)
+                .height(220.dp)
                 .padding(start = 48.dp, end = 8.dp, top = 8.dp, bottom = 24.dp)
+                .pointerInput(points) {
+                    detectTransformGestures { _, pan, gestureZoom, _ ->
+                        zoom = (zoom * gestureZoom).coerceIn(1f, 5f)
+                        val maxScroll = chartWidthPx * (zoom - 1f)
+                        scrollOffset = (scrollOffset - pan.x).coerceIn(0f, maxScroll)
+                        selectedIdx = null
+                    }
+                }
                 .pointerInput(points) {
                     detectTapGestures(
                         onTap = { offset ->
-                            val chartWidth = size.width.toFloat()
-                            val spacing = chartWidth / (points.size - 1).coerceAtLeast(1)
-                            val idx = ((offset.x + spacing / 2) / spacing).toInt()
+                            val virtualWidth = chartWidthPx * zoom
+                            val virtualX = offset.x + scrollOffset
+                            val spacing = virtualWidth / (points.size - 1).coerceAtLeast(1)
+                            val idx = ((virtualX + spacing / 2) / spacing).toInt()
                                 .coerceIn(0, points.size - 1)
                             selectedIdx = if (selectedIdx == idx) null else idx
+                        },
+                        onDoubleTap = {
+                            zoom = 1f
+                            scrollOffset = 0f
+                            selectedIdx = null
                         }
                     )
                 }
@@ -844,7 +862,9 @@ private fun InvestingPerformanceChart(
             Canvas(modifier = Modifier.fillMaxSize()) {
                 val chartWidth = size.width
                 val chartHeight = size.height
-                val spacing = chartWidth / (points.size - 1).coerceAtLeast(1)
+                chartWidthPx = chartWidth
+                val virtualWidth = chartWidth * zoom
+                val spacing = virtualWidth / (points.size - 1).coerceAtLeast(1)
 
                 // Y-axis grid lines and labels
                 for (i in 0..3) {
@@ -866,34 +886,55 @@ private fun InvestingPerformanceChart(
                 // Draw line path connecting all points
                 val path = Path()
                 for (i in points.indices) {
-                    val x = i * spacing
+                    val x = i * spacing - scrollOffset
                     val y = chartHeight * (1f - ((prices[i] - minPrice) / priceRange).toFloat())
                     if (i == 0) path.moveTo(x, y) else path.lineTo(x, y)
                 }
                 drawPath(path, lineColor, style = Stroke(2.dp.toPx()))
 
-                // Draw data points
+                // Draw data points and price labels
+                val priceLabelPaint = android.graphics.Paint().apply {
+                    color = labelColor.hashCode()
+                    textSize = 8.dp.toPx()
+                    textAlign = android.graphics.Paint.Align.CENTER
+                }
                 for (i in points.indices) {
-                    val x = i * spacing
+                    val x = i * spacing - scrollOffset
+                    if (x < -20.dp.toPx() || x > chartWidth + 20.dp.toPx()) continue
                     val y = chartHeight * (1f - ((prices[i] - minPrice) / priceRange).toFloat())
-                    if (points[i].isTransaction) {
+                    if (points[i].isCurrentPrice) {
+                        drawCircle(currentPriceColor, 7.dp.toPx(), Offset(x, y))
+                        drawCircle(Color.White, 4.dp.toPx(), Offset(x, y))
+                        drawCircle(currentPriceColor, 3.dp.toPx(), Offset(x, y))
+                    } else if (points[i].isTransaction) {
                         drawCircle(txColor, 7.dp.toPx(), Offset(x, y))
                         drawCircle(Color.White, 4.dp.toPx(), Offset(x, y))
                         drawCircle(txColor, 3.dp.toPx(), Offset(x, y))
                     } else {
                         drawCircle(lineColor, 4.dp.toPx(), Offset(x, y))
                     }
+
+                    // Price label above/below each point
+                    val labelY = if (y > chartHeight / 2) y - 10.dp.toPx() else y + 14.dp.toPx()
+                    drawContext.canvas.nativeCanvas.drawText(
+                        currencyFormat.format(prices[i]),
+                        x,
+                        labelY,
+                        priceLabelPaint
+                    )
                 }
 
                 // Selected point indicator
                 selectedIdx?.let { idx ->
-                    val x = idx * spacing
+                    val x = idx * spacing - scrollOffset
                     val y = chartHeight * (1f - ((prices[idx] - minPrice) / priceRange).toFloat())
                     drawLine(gridColor, Offset(x, 0f), Offset(x, chartHeight), 1f)
-                    drawCircle(
-                        if (points[idx].isTransaction) txColor else lineColor,
-                        8.dp.toPx(), Offset(x, y), style = Stroke(2.dp.toPx())
-                    )
+                    val pointColor = when {
+                        points[idx].isCurrentPrice -> currentPriceColor
+                        points[idx].isTransaction -> txColor
+                        else -> lineColor
+                    }
+                    drawCircle(pointColor, 8.dp.toPx(), Offset(x, y), style = Stroke(2.dp.toPx()))
                 }
 
                 // X-axis labels
@@ -901,7 +942,7 @@ private fun InvestingPerformanceChart(
                 for (i in 0 until labelCount) {
                     val dataIdx = (i * (points.size - 1) / (labelCount - 1).coerceAtLeast(1))
                         .coerceIn(0, points.size - 1)
-                    val x = dataIdx * spacing
+                    val x = dataIdx * spacing - scrollOffset
                     if (x in 0f..chartWidth) {
                         drawContext.canvas.nativeCanvas.drawText(
                             points[dataIdx].date.format(dateFormat),
@@ -920,7 +961,12 @@ private fun InvestingPerformanceChart(
             // Tooltip
             selectedIdx?.let { idx ->
                 val pt = points[idx]
-                val label = "${currencyFormat.format(pt.price)} — ${pt.date.format(dateFormat)}${if (pt.isTransaction) " (TX)" else ""}"
+                val typeLabel = when {
+                    pt.isCurrentPrice -> " (Current)"
+                    pt.isTransaction -> " (TX)"
+                    else -> ""
+                }
+                val label = "${currencyFormat.format(pt.price)} — ${pt.date.format(dateFormat)}$typeLabel"
                 Box(
                     modifier = Modifier
                         .align(Alignment.TopCenter)
@@ -931,7 +977,7 @@ private fun InvestingPerformanceChart(
                         text = label,
                         style = MaterialTheme.typography.labelSmall,
                         color = tooltipText,
-                        fontWeight = if (pt.isTransaction) FontWeight.Bold else FontWeight.Normal
+                        fontWeight = if (pt.isTransaction || pt.isCurrentPrice) FontWeight.Bold else FontWeight.Normal
                     )
                 }
             }
@@ -945,7 +991,7 @@ private fun InvestingPerformanceTable(
     currencyFormat: NumberFormat,
     dateFormatter: DateTimeFormatter
 ) {
-    val dividerColor = MaterialTheme.colorScheme.outlineVariant
+    val dividerColor = MaterialTheme.colorScheme.outline
     val txBgColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
 
     Card(
@@ -1001,8 +1047,14 @@ private fun InvestingPerformanceTable(
             }
             HorizontalDivider(thickness = 2.dp, color = dividerColor)
 
+            val altColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
             points.forEachIndexed { index, pt ->
-                val bgMod = if (pt.isTransaction) Modifier.background(txBgColor) else Modifier
+                val bgMod = when {
+                    pt.isCurrentPrice -> Modifier.background(MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.4f))
+                    pt.isTransaction -> Modifier.background(txBgColor)
+                    index % 2 == 1 -> Modifier.background(altColor)
+                    else -> Modifier
+                }
                 Row(
                     modifier = bgMod
                         .height(IntrinsicSize.Min)
@@ -1020,26 +1072,38 @@ private fun InvestingPerformanceTable(
                     Text(
                         text = pt.date.format(dateFormatter),
                         style = MaterialTheme.typography.bodySmall,
-                        fontWeight = if (pt.isTransaction) FontWeight.Bold else FontWeight.Normal,
+                        fontWeight = if (pt.isTransaction || pt.isCurrentPrice) FontWeight.Bold else FontWeight.Normal,
                         modifier = Modifier.width(100.dp).padding(horizontal = 4.dp)
                     )
                     VerticalDivider(color = dividerColor)
                     Text(
                         text = currencyFormat.format(pt.price),
                         style = MaterialTheme.typography.bodySmall,
-                        fontWeight = if (pt.isTransaction) FontWeight.Bold else FontWeight.Normal,
+                        fontWeight = if (pt.isTransaction || pt.isCurrentPrice) FontWeight.Bold else FontWeight.Normal,
                         modifier = Modifier.width(90.dp).padding(horizontal = 4.dp),
                         textAlign = TextAlign.End,
-                        color = if (pt.isTransaction) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
+                        color = when {
+                            pt.isCurrentPrice -> MaterialTheme.colorScheme.tertiary
+                            pt.isTransaction -> MaterialTheme.colorScheme.error
+                            else -> MaterialTheme.colorScheme.onSurface
+                        }
                     )
                     VerticalDivider(color = dividerColor)
                     Text(
-                        text = if (pt.isTransaction) "BUY/SELL" else "Market",
+                        text = when {
+                            pt.isCurrentPrice -> "Current"
+                            pt.isTransaction -> "BUY/SELL"
+                            else -> "Market"
+                        },
                         style = MaterialTheme.typography.bodySmall,
-                        fontWeight = if (pt.isTransaction) FontWeight.Bold else FontWeight.Normal,
+                        fontWeight = if (pt.isTransaction || pt.isCurrentPrice) FontWeight.Bold else FontWeight.Normal,
                         modifier = Modifier.width(70.dp).padding(horizontal = 4.dp),
                         textAlign = TextAlign.Center,
-                        color = if (pt.isTransaction) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
+                        color = when {
+                            pt.isCurrentPrice -> MaterialTheme.colorScheme.tertiary
+                            pt.isTransaction -> MaterialTheme.colorScheme.error
+                            else -> MaterialTheme.colorScheme.onSurfaceVariant
+                        }
                     )
                 }
                 HorizontalDivider(color = dividerColor)
@@ -1242,7 +1306,7 @@ private fun PriceHistoryTab(
                             .horizontalScroll(rememberScrollState())
                             .padding(4.dp)
                     ) {
-                        val dividerColor = MaterialTheme.colorScheme.outlineVariant
+                        val dividerColor = MaterialTheme.colorScheme.outline
                         HorizontalDivider(color = dividerColor)
                         Row(
                             modifier = Modifier
@@ -1275,6 +1339,7 @@ private fun PriceHistoryTab(
                         }
                         HorizontalDivider(thickness = 2.dp, color = dividerColor)
 
+                        val altColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
                         priceHistory.forEachIndexed { index, hp ->
                             val dateTime = Instant.ofEpochSecond(hp.timestamp)
                                 .atZone(ZoneId.systemDefault())
@@ -1282,6 +1347,7 @@ private fun PriceHistoryTab(
                             Row(
                                 modifier = Modifier
                                     .height(IntrinsicSize.Min)
+                                    .background(if (index % 2 == 1) altColor else Color.Transparent)
                                     .padding(vertical = 4.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {

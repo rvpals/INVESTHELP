@@ -473,12 +473,14 @@ private fun DailyGlanceContent(
                 color = Color(0xFF2E7D32)
             )
             Spacer(modifier = Modifier.height(4.dp))
-            sortedGainers.forEach { item ->
+            val altColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+            sortedGainers.forEachIndexed { index, item ->
                 DailyGlanceRow(
                     item = item,
                     currencyFormat = currencyFormat,
                     byPerShare = byPerShare,
-                    onClick = { onItemClick(item.ticker) }
+                    onClick = { onItemClick(item.ticker) },
+                    bgColor = if (index % 2 == 1) altColor else Color.Transparent
                 )
             }
         }
@@ -495,12 +497,14 @@ private fun DailyGlanceContent(
                 color = Color(0xFFC62828)
             )
             Spacer(modifier = Modifier.height(4.dp))
-            sortedLosers.forEach { item ->
+            val altColorLosers = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+            sortedLosers.forEachIndexed { index, item ->
                 DailyGlanceRow(
                     item = item,
                     currencyFormat = currencyFormat,
                     byPerShare = byPerShare,
-                    onClick = { onItemClick(item.ticker) }
+                    onClick = { onItemClick(item.ticker) },
+                    bgColor = if (index % 2 == 1) altColorLosers else Color.Transparent
                 )
             }
         }
@@ -512,7 +516,8 @@ private fun DailyGlanceRow(
     item: DailyGlanceItem,
     currencyFormat: NumberFormat,
     byPerShare: Boolean = false,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    bgColor: Color = Color.Transparent
 ) {
     val displayValue = if (byPerShare) item.dayGainLossPerShare else item.dayGainLoss
     val color = if (displayValue >= 0) Color(0xFF2E7D32) else Color(0xFFC62828)
@@ -521,6 +526,7 @@ private fun DailyGlanceRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .background(bgColor)
             .clickable(onClick = onClick)
             .padding(vertical = 4.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -563,7 +569,7 @@ private fun WatchListCardContent(
 ) {
     val currencyFormat = NumberFormat.getCurrencyInstance(Locale.US)
     val sharesFormat = DecimalFormat("#,##0.##")
-    val dividerColor = MaterialTheme.colorScheme.outlineVariant
+    val dividerColor = MaterialTheme.colorScheme.outline
 
     Column(modifier = Modifier.fillMaxWidth()) {
         watchLists.forEachIndexed { listIndex, watchList ->
@@ -619,11 +625,13 @@ private fun WatchListCardContent(
                 }
                 HorizontalDivider(thickness = 2.dp, color = dividerColor)
 
-                watchList.items.forEach { item ->
+                val altColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+                watchList.items.forEachIndexed { index, item ->
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(IntrinsicSize.Min)
+                            .background(if (index % 2 == 1) altColor else Color.Transparent)
                             .padding(vertical = 4.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -899,7 +907,7 @@ private fun ChangeHistoryFullScreenDialog(
 ) {
     val sortedRecords = remember(records) { records.sortedBy { it.date } }
     val dateFormatter = DateTimeFormatter.ofPattern("MMM dd, yyyy")
-    val dividerColor = MaterialTheme.colorScheme.outlineVariant
+    val dividerColor = MaterialTheme.colorScheme.outline
 
     Dialog(
         onDismissRequest = onDismiss,

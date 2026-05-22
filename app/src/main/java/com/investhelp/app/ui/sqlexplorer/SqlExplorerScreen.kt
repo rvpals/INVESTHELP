@@ -212,7 +212,7 @@ fun SqlExplorerScreen(viewModel: SqlExplorerViewModel) {
 private fun ResultTable(result: QueryResult, onRowClick: (Int) -> Unit) {
     val horizontalScroll = rememberScrollState()
     val columnWidth = 120.dp
-    val dividerColor = MaterialTheme.colorScheme.outlineVariant
+    val dividerColor = MaterialTheme.colorScheme.outline
 
     Card(
         modifier = Modifier.fillMaxWidth(),

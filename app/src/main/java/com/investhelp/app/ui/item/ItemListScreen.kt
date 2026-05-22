@@ -494,7 +494,7 @@ private fun ItemsTable(
             }
             HorizontalDivider(
                 thickness = 0.5.dp,
-                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
+                color = MaterialTheme.colorScheme.outline.copy(alpha = 0.6f)
             )
         }
     }

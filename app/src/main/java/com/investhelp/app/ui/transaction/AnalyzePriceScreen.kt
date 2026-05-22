@@ -1,5 +1,6 @@
 package com.investhelp.app.ui.transaction
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -31,6 +32,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -146,7 +148,7 @@ fun AnalyzePriceScreen(
                         uiState.highMax != null || uiState.lowMax != null
 
                 if (hasAnyHistoric) {
-                    val histDividerColor = MaterialTheme.colorScheme.outlineVariant
+                    val histDividerColor = MaterialTheme.colorScheme.outline
                     // Column headers
                     HorizontalDivider(color = histDividerColor)
                     Row(
@@ -179,10 +181,10 @@ fun AnalyzePriceScreen(
                     }
                     HorizontalDivider(thickness = 2.dp, color = histDividerColor)
 
-                    HistoricPriceRow("Last Week", uiState.highLastWeek, uiState.lowLastWeek, currencyFormat, onSelectPrice, histDividerColor)
-                    HistoricPriceRow("Last Month", uiState.highLastMonth, uiState.lowLastMonth, currencyFormat, onSelectPrice, histDividerColor)
-                    HistoricPriceRow("Last Year", uiState.highLastYear, uiState.lowLastYear, currencyFormat, onSelectPrice, histDividerColor)
-                    HistoricPriceRow("Max", uiState.highMax, uiState.lowMax, currencyFormat, onSelectPrice, histDividerColor)
+                    HistoricPriceRow("Last Week", uiState.highLastWeek, uiState.lowLastWeek, currencyFormat, onSelectPrice, histDividerColor, 0)
+                    HistoricPriceRow("Last Month", uiState.highLastMonth, uiState.lowLastMonth, currencyFormat, onSelectPrice, histDividerColor, 1)
+                    HistoricPriceRow("Last Year", uiState.highLastYear, uiState.lowLastYear, currencyFormat, onSelectPrice, histDividerColor, 2)
+                    HistoricPriceRow("Max", uiState.highMax, uiState.lowMax, currencyFormat, onSelectPrice, histDividerColor, 3)
                 } else {
                     Text(
                         "Historical data unavailable",
@@ -229,12 +231,15 @@ private fun HistoricPriceRow(
     low: Double?,
     currencyFormat: NumberFormat,
     onSelectPrice: (Double) -> Unit,
-    dividerColor: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.outlineVariant
+    dividerColor: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.outline,
+    rowIndex: Int = 0
 ) {
+    val altColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(IntrinsicSize.Min),
+            .height(IntrinsicSize.Min)
+            .background(if (rowIndex % 2 == 1) altColor else Color.Transparent),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(

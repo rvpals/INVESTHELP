@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.32 (Build 33) - 2026-05-21
+
+### Added
+- Investing Performance chart: current price per share added as last data point (tertiary color, labeled "Current" in table)
+- Investing Performance chart: price labels displayed above/below each data point on the chart
+- Investing Performance chart: pinch-to-zoom (1x–5x) with pan and double-tap to reset (matches Price History chart behavior)
+- All tables app-wide: alternating row background colors (surfaceVariant at 30% alpha on odd rows) for improved readability
+
+### Changed
+- All table HorizontalDivider colors changed from `outlineVariant` to `outline` for better visibility between rows
+- Investing Performance table: current price row highlighted with tertiary container color and bold "Current" type label
+
 ## v1.31 (Build 32) - 2026-05-21
 
 ### Added

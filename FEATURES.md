@@ -104,7 +104,7 @@ Four tabs: **Details**, **Price History**, **Analysis Info**, **Transactions** (
 
 ### Transactions Tab
 - "Transactions & Stats" collapsible panel (default expanded): date range filter with buy/sell statistics (avg/max/min), followed by transaction cards showing days since date and G/L
-- "Investing Performance for <TICKER>" collapsible panel (default expanded): fetches Yahoo Finance closing prices 1 day before and 1 day after each transaction; line chart with transaction prices as bold red dots and market prices as gray dots; tap-to-select tooltip; data table below with highlighted transaction rows
+- "Investing Performance for <TICKER>" collapsible panel (default expanded): fetches Yahoo Finance closing prices 1 day before and 1 day after each transaction; current price added as last data point (tertiary color); line chart with price labels on each point, transaction prices as bold red dots, market prices as gray dots, current price as tertiary-colored dot; pinch-to-zoom (1x–5x) with pan, tap-to-select tooltip, double-tap to reset; data table below with highlighted transaction rows and alternating row colors
 
 ### Delete Item
 - Delete button (trash icon, red tint) in top app bar

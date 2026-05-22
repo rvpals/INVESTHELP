@@ -1,6 +1,7 @@
 package com.investhelp.app.ui.watchlist
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -350,7 +351,7 @@ private fun WatchListPanel(
                 Column {
                     HorizontalDivider(
                         modifier = Modifier.padding(vertical = 8.dp),
-                        color = MaterialTheme.colorScheme.outlineVariant
+                        color = MaterialTheme.colorScheme.outline
                     )
 
                     Row(
@@ -412,7 +413,7 @@ private fun WatchListTable(
     onReminder: (WatchListItemUi) -> Unit,
     onTickerClick: (String) -> Unit
 ) {
-    val dividerColor = MaterialTheme.colorScheme.outlineVariant
+    val dividerColor = MaterialTheme.colorScheme.outline
     val horizontalScroll = rememberScrollState()
 
     Card(
@@ -454,13 +455,15 @@ private fun WatchListTable(
             }
             HorizontalDivider(thickness = 2.dp, color = dividerColor)
 
-            items.forEach { item ->
+            val altColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+            items.forEachIndexed { index, item ->
                 val changeColor = if (item.changeAmount >= 0) Color(0xFF2E7D32) else Color(0xFFC62828)
                 val sign = if (item.changeAmount > 0) "+" else ""
 
                 Row(
                     modifier = Modifier
                         .height(IntrinsicSize.Min)
+                        .background(if (index % 2 == 1) altColor else Color.Transparent)
                         .padding(vertical = 6.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {

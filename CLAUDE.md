@@ -8,7 +8,7 @@ Android investment tracking app built with Kotlin, Jetpack Compose, and Material
 - **Min SDK:** 29, Target SDK: 35
 - **Architecture:** MVVM + Repository pattern
 - **DI:** Hilt (KSP)
-- **Database:** Room, version 21
+- **Database:** Room, version 24
 - **Navigation:** Compose Navigation (type-safe routes)
 - **Splash:** AndroidX SplashScreen API (core-splashscreen 1.0.1)
 - **Charts:** Custom Canvas-drawn (pie chart, line chart) — no external chart library
@@ -60,7 +60,8 @@ Android investment tracking app built with Kotlin, Jetpack Compose, and Material
 - Item detail Price History tab: radio button timeframe selector (Hourly, Daily, Monthly, Yearly) with hint text below showing meaning; Hourly = today's market hours with interval selector (Every Hour/30m/15m/5m/1m in two rows), Daily = last 60 days, Monthly = last 13 months, Yearly = last 15 years; line chart with pinch-to-zoom/pan/tap-to-select; summary cards (Average, Max, Min) above grid table of prices
 - Item detail Analysis Info tab: auto-fetches Yahoo Finance quoteSummary on screen load; displays Key Metrics, Price Range, Financials, About sections directly (no collapsible wrapper); clickable metric labels show definition popup
 - Item detail Transactions tab: "Transactions & Stats" collapsible panel (default expanded) combining date range filter, buy/sell statistics, and per-transaction G/L cards
-- Item detail Transactions tab: "Investing Performance for <TICKER>" collapsible panel (default expanded); fetches Yahoo Finance prices 1 day before/after each transaction; line chart with bold red transaction dots vs gray market dots; tap-to-select tooltip; data table with highlighted transaction rows
+- Item detail Transactions tab: "Investing Performance for <TICKER>" collapsible panel (default expanded); fetches Yahoo Finance prices 1 day before/after each transaction; current price added as last data point (tertiary color); line chart with price labels on each point, pinch-to-zoom (1x–5x) with pan, tap-to-select tooltip, double-tap to reset; bold red transaction dots vs gray market dots vs tertiary current price dot; data table with highlighted transaction rows and alternating row colors
+- All tables app-wide: alternating row background color (surfaceVariant alpha 0.3f on odd rows) for readability; HorizontalDivider uses `outline` color (not `outlineVariant`) for visible row separation
 - **Image loading:** Coil 2.7.0 for company logos; logos cached as BLOB in investment_items table, fetched from multiple CDN sources (companiesmarketcap.com, parqet.com, iexcloud) during price refresh or on items screen load (if logo is null), UI falls back to network URL if not cached
 - Item add/edit dialog: type selector dropdown (Stock, ETF, Bond, MutualFund, Crypto, Other); auto-fills type when selecting existing ticker
 - Item detail card row 1 (big font): Total Shares, Total Value, Total Cost, Total G/L

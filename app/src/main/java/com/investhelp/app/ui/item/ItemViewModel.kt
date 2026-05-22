@@ -79,7 +79,8 @@ class ItemViewModel @Inject constructor(
     data class InvestingPerfPoint(
         val date: LocalDate,
         val price: Double,
-        val isTransaction: Boolean
+        val isTransaction: Boolean,
+        val isCurrentPrice: Boolean = false
     )
 
     private val _investingPerformance = MutableStateFlow<List<InvestingPerfPoint>>(emptyList())
@@ -91,7 +92,7 @@ class ItemViewModel @Inject constructor(
     private val _investingPerfError = MutableStateFlow<String?>(null)
     val investingPerfError: StateFlow<String?> = _investingPerfError.asStateFlow()
 
-    fun loadInvestingPerformance(ticker: String) {
+    fun loadInvestingPerformance(ticker: String, currentPrice: Double? = null) {
         viewModelScope.launch {
             _isLoadingInvestingPerf.value = true
             _investingPerfError.value = null
@@ -134,6 +135,11 @@ class ItemViewModel @Inject constructor(
                         points.add(InvestingPerfPoint(txDate, tx.pricePerShare, true))
                     }
                 }
+
+                if (currentPrice != null && currentPrice > 0.0) {
+                    points.add(InvestingPerfPoint(LocalDate.now(), currentPrice, isTransaction = false, isCurrentPrice = true))
+                }
+
                 _investingPerformance.value = points.sortedBy { it.date }
             } catch (e: Exception) {
                 _investingPerfError.value = "Failed to load performance: ${e.message}"

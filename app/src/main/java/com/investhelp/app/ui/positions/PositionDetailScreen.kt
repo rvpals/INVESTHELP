@@ -100,7 +100,7 @@ private fun PositionTable(
     val currencyFormat = NumberFormat.getCurrencyInstance(Locale.US)
     val sharesFormat = DecimalFormat("#,##0.##")
     val priceFormat = DecimalFormat("#,##0.00")
-    val dividerColor = MaterialTheme.colorScheme.outlineVariant
+    val dividerColor = MaterialTheme.colorScheme.outline
 
     var sortField by rememberSaveable { mutableStateOf(PositionSortField.VALUE.name) }
     var sortAsc by rememberSaveable { mutableStateOf(false) }
@@ -178,7 +178,8 @@ private fun PositionTable(
                 }
                 HorizontalDivider(thickness = 2.dp, color = dividerColor)
 
-                sortedItems.forEach { item ->
+                val altColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+                sortedItems.forEachIndexed { index, item ->
                     val changeAmt = item.value - item.cost
                     val changePct = if (item.cost != 0.0) changeAmt / item.cost * 100.0 else 0.0
                     val changeColor = if (changeAmt >= 0) Color(0xFF2E7D32) else Color(0xFFC62828)
@@ -189,6 +190,7 @@ private fun PositionTable(
                     Row(
                         modifier = Modifier
                             .height(IntrinsicSize.Min)
+                            .background(if (index % 2 == 1) altColor else Color.Transparent)
                             .clickable { onItemClick(item.ticker) }
                             .padding(vertical = 6.dp),
                         verticalAlignment = Alignment.CenterVertically
@@ -533,7 +535,7 @@ private fun AnalysisPieChartWithTable(
         Spacer(modifier = Modifier.height(16.dp))
 
         // Data table
-        val dividerColor = MaterialTheme.colorScheme.outlineVariant
+        val dividerColor = MaterialTheme.colorScheme.outline
         Column(modifier = Modifier.fillMaxWidth()) {
             HorizontalDivider(color = dividerColor)
             Row(
@@ -577,12 +579,14 @@ private fun AnalysisPieChartWithTable(
             }
             HorizontalDivider(thickness = 2.dp, color = dividerColor)
 
+            val altColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
             sortedItems.forEachIndexed { index, item ->
                 val pct = if (totalValue > 0) item.value / totalValue * 100 else 0.0
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(IntrinsicSize.Min)
+                        .background(if (index % 2 == 1) altColor else Color.Transparent)
                         .clickable { onItemClick(item.ticker) }
                         .padding(vertical = 6.dp),
                     verticalAlignment = Alignment.CenterVertically

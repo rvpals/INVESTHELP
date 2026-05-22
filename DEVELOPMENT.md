@@ -67,6 +67,8 @@ Current version: **24**
 ### UI Patterns
 - All dashboard sections use `CollapsibleCard` with per-card pin persistence
 - Tables use both horizontal and vertical gridlines (`HorizontalDivider` + `VerticalDivider`)
+- Table dividers use `outline` color (not `outlineVariant`) for better visibility
+- All tables use alternating row background colors (`surfaceVariant.copy(alpha = 0.3f)` on odd rows)
 - Color-coded gain/loss: green (`0xFF2E7D32`) for positive, red (`0xFFC62828`) for negative
 - 3D icons (`Icon3D`, `TickerIcon3D`) use gradient-filled rounded boxes with shadow
 - Charts are custom Canvas-drawn (no external chart library)
