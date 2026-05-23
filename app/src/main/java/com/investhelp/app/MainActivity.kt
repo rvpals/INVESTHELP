@@ -102,9 +102,7 @@ data class BottomNavItem(
 val bottomNavItems = listOf(
     BottomNavItem("Dashboard", Icons.Default.Dashboard, DashboardRoute, Color(0xFF1E88E5)),
     BottomNavItem("Positions", Icons.Default.PieChart, PositionDetailRoute, Color(0xFF43A047)),
-    BottomNavItem("Performance", Icons.Default.ShowChart, AccountPerformanceRoute, Color(0xFF2E7D32)),
-    BottomNavItem("Transaction", Icons.Default.Receipt, TransactionListRoute, Color(0xFF8E24AA)),
-    BottomNavItem("Simulation", Icons.AutoMirrored.Filled.TrendingUp, SimulationRoute(), Color(0xFFE53935))
+    BottomNavItem("Transaction", Icons.Default.Receipt, TransactionListRoute, Color(0xFF8E24AA))
 )
 
 @AndroidEntryPoint
@@ -353,6 +351,24 @@ fun GlobalTopBar(navController: NavHostController) {
             }
         },
         actions = {
+            IconButton(
+                onClick = {
+                    navController.navigate(WatchListRoute) {
+                        popUpTo(DashboardRoute) { saveState = true }
+                        launchSingleTop = true
+                        restoreState = true
+                    }
+                },
+                modifier = Modifier.size(36.dp)
+            ) {
+                Icon3D(
+                    imageVector = Icons.Default.Star,
+                    contentDescription = "Watch List",
+                    baseColor = Color(0xFF7B1FA2),
+                    iconSize = 18.dp,
+                    boxSize = 30.dp
+                )
+            }
             IconButton(onClick = { menuExpanded = true }) {
                 Icon3D(
                     imageVector = Icons.Default.Menu,
@@ -379,16 +395,28 @@ fun GlobalTopBar(navController: NavHostController) {
                     leadingIcon = { Icon3D(Icons.Default.AccountBalance, null, Color(0xFF1565C0), iconSize = 16.dp, boxSize = 28.dp) }
                 )
                 DropdownMenuItem(
-                    text = { Text("Watch List") },
+                    text = { Text("Performance") },
                     onClick = {
                         menuExpanded = false
-                        navController.navigate(WatchListRoute) {
+                        navController.navigate(AccountPerformanceRoute) {
                             popUpTo(DashboardRoute) { saveState = true }
                             launchSingleTop = true
                             restoreState = true
                         }
                     },
-                    leadingIcon = { Icon3D(Icons.Default.Star, null, Color(0xFF7B1FA2), iconSize = 16.dp, boxSize = 28.dp) }
+                    leadingIcon = { Icon3D(Icons.Default.ShowChart, null, Color(0xFF2E7D32), iconSize = 16.dp, boxSize = 28.dp) }
+                )
+                DropdownMenuItem(
+                    text = { Text("Simulation") },
+                    onClick = {
+                        menuExpanded = false
+                        navController.navigate(SimulationRoute()) {
+                            popUpTo(DashboardRoute) { saveState = true }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    },
+                    leadingIcon = { Icon3D(Icons.AutoMirrored.Filled.TrendingUp, null, Color(0xFFE53935), iconSize = 16.dp, boxSize = 28.dp) }
                 )
                 DropdownMenuItem(
                     text = { Text("Settings") },

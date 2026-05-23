@@ -10,7 +10,8 @@ import java.time.LocalTime
 @Entity(
     tableName = "investment_transactions",
     indices = [
-        Index("ticker")
+        Index("ticker"),
+        Index(value = ["date", "action", "ticker", "totalAmount"], unique = true)
     ]
 )
 data class InvestmentTransactionEntity(

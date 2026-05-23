@@ -8,7 +8,8 @@
 - Tapping refreshes all prices and navigates to Dashboard
 - Spinner shown during price refresh
 - Refresh status bar: temporary bar below top bar showing "Updating [TICKER]" with price/share, change $ and change % (color-coded green/red); auto-hides when complete
-- Hamburger menu: Accounts, Watch List, Settings, SQL Explorer, Help, About
+- Watch List icon button (star, purple) for quick access to Watch Lists
+- Hamburger menu: Accounts, Performance, Simulation, Settings, SQL Explorer, Help, About
 
 ### Dashboard Portfolio Summary
 - Collapsible "Portfolio Summary" card with pin persistence
@@ -21,9 +22,10 @@
 - Click chart opens full-screen Change History dialog with zoomable multi-series chart (Total/ETF/Stock lines) + "Change Value This Week So Far" summary + grid data table with daily change columns
 
 ### Bottom Navigation
-- 5 tabs: Dashboard, Items, Performance, Transaction, Simulation
+- 3 tabs: Dashboard, Positions, Transaction
 - 3D gradient icons with shadow/elevation effect
 - Selected icon slightly larger than unselected
+- Performance and Simulation accessible via hamburger menu
 
 ## Dashboard
 
@@ -104,7 +106,10 @@ Four tabs: **Details**, **Price History**, **Analysis Info**, **Transactions** (
 
 ### Transactions Tab
 - "Transactions & Stats" collapsible panel (default expanded): date range filter with buy/sell statistics (avg/max/min), followed by transaction cards showing days since date and G/L
+- Each transaction card has a delete button (X) with confirmation dialog (respects "Warn before delete" setting)
 - "Investing Performance for <TICKER>" collapsible panel (default expanded): fetches Yahoo Finance closing prices 1 day before and 1 day after each transaction; current price added as last data point (tertiary color); line chart with price labels on each point, transaction prices as bold red dots, market prices as gray dots, current price as tertiary-colored dot; pinch-to-zoom (1x–5x) with pan, tap-to-select tooltip, double-tap to reset; data table below with highlighted transaction rows and alternating row colors
+- Investing Performance chart: fullscreen view button (opens chart in full-screen dialog at 400dp height)
+- Investing Performance chart: save-to-PNG button (renders chart as 1200x600 bitmap, saves to Pictures/InvestHelp/)
 
 ### Delete Item
 - Delete button (trash icon, red tint) in top app bar
@@ -115,7 +120,7 @@ Four tabs: **Details**, **Price History**, **Analysis Info**, **Transactions** (
 ### Transaction Form
 - Fields: date, time (optional), action (Buy/Sell), ticker (editable with filtered dropdown suggestions), shares, price, total, note
 - Transactions are not tied to accounts (account-independent)
-- Analyze Price button: current price, avg/max/min, historic high/low (week/month/year/max)
+- Analyze Price button: current price, avg/max/min, historic high/low (week/month/year/YTD/max)
 - View button: opens item detail for the ticker
 - Update/Create and Simulate buttons fixed at bottom of screen (not scrollable)
 - Simulate button: opens simulation from transaction date to today
@@ -135,6 +140,7 @@ Four tabs: **Details**, **Price History**, **Analysis Info**, **Transactions** (
 - Tap-to-select with tooltip (price + date)
 - Custom day ranges from transaction simulation (auto-runs)
 - Large ranges (5Y+) use weekly interval; MAX uses Yahoo Finance `range=max`
+- **Scenario Simulation** (collapsible card): enter shares, ticker, and buy date to calculate hypothetical gain/loss at today's price via Yahoo Finance historical lookup
 
 ## Accounts
 

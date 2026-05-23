@@ -1,5 +1,23 @@
 # Changelog
 
+## v1.34 (Build 35) - 2026-05-22
+
+### Added
+- Screen Registry: `SCREEN_REGISTRY.md` — numbered reference of all 19 screens and their components for quick communication
+- Item Detail Transactions tab: delete button (X) on each transaction card with confirmation dialog (respects "Warn before delete" setting)
+- Item Detail Investing Performance chart: fullscreen view button (opens chart in full-screen dialog at 400dp height)
+- Item Detail Investing Performance chart: save-to-PNG button (renders chart as 1200x600 bitmap, saves to Pictures/InvestHelp/)
+- Analyze Price: Year-To-Date (YTD) row added to Historic Prices table showing high/low since Jan 1
+- Simulation: "Scenario Simulation" collapsible card — enter shares, ticker, and buy date to calculate hypothetical gain/loss at today's price
+- Transaction table: unique constraint on (date, action, ticker, totalAmount) to prevent duplicate CSV imports
+- Transaction DAO: `insertTransactionIfNotExists()` method using IGNORE conflict strategy for CSV imports
+- G1 Top Bar: Watch List icon button (star, purple) for quick access to Watch Lists
+
+### Changed
+- Bottom navigation: reduced to 3 tabs (Dashboard, Positions, Transaction); Performance and Simulation moved to hamburger menu
+- Hamburger menu: added Performance and Simulation entries; removed Watch List (now accessible via top bar icon)
+- Database version bumped to 26 (migration v25→v26 adds unique index on investment_transactions)
+
 ## v1.33 (Build 34) - 2026-05-21
 
 ### Changed

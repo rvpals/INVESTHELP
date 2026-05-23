@@ -8,7 +8,7 @@ Android investment tracking app built with Kotlin, Jetpack Compose, and Material
 - **Min SDK:** 29, Target SDK: 35
 - **Architecture:** MVVM + Repository pattern
 - **DI:** Hilt (KSP)
-- **Database:** Room, version 24
+- **Database:** Room, version 26
 - **Navigation:** Compose Navigation (type-safe routes)
 - **Splash:** AndroidX SplashScreen API (core-splashscreen 1.0.1)
 - **Charts:** Custom Canvas-drawn (pie chart, line chart) — no external chart library
@@ -29,6 +29,7 @@ Android investment tracking app built with Kotlin, Jetpack Compose, and Material
 - Account current value: no longer per-account (items are not tied to accounts); portfolio value is sum of all items
 - Transaction table references ticker directly (no FK, no accountId) — simpler model
 - Transaction time is optional (nullable), totalAmount for verification, note field
+- Transaction table: unique constraint on (date, action, ticker, totalAmount) to prevent duplicate CSV imports; `insertTransactionIfNotExists()` uses IGNORE conflict strategy
 - Navigation routes use ticker strings (not Long IDs) for item detail, form, and statistics
 - DatabaseProvider pattern: DB opens lazily on first access
 - CASCADE deletes: removing account removes associated performance records (transactions and items are not tied to accounts)
@@ -41,9 +42,9 @@ Android investment tracking app built with Kotlin, Jetpack Compose, and Material
 - Auto-create InvestmentItem when transaction references a new ticker (defaults to Stock type, changeable via type selector)
 - Dates stored as epoch days for simple SQL range queries
 - Yahoo Finance v8/v10 API for live prices, historical data, and analysis info
-- Global top bar: portfolio value 3D button (refreshes all prices + navigates to Dashboard) + hamburger menu (Accounts, Performance, Watch List, Settings, SQL Explorer, Help, About)
+- Global top bar: portfolio value 3D button (refreshes all prices + navigates to Dashboard) + Watch List icon button (star, purple) + hamburger menu (Accounts, Performance, Simulation, Settings, SQL Explorer, Help, About)
 - Top bar shows spinner while refreshing prices; refresh status bar below top bar shows "Updating [TICKER]" with price, change $, change % (color-coded, auto-hides on completion)
-- Bottom nav: Dashboard, Items, Performance, Transaction, Simulation (3D gradient icons with shadow)
+- Bottom nav: Dashboard, Positions, Transaction (3D gradient icons with shadow)
 - Icon3D composable: renders icons inside gradient-filled rounded boxes with drop shadow; used for bottom nav and hamburger menu icons
 - Simulation time ranges: 1W, 2W, 1M, 3M, 6M, 1Y, 2Y, 5Y, 10Y, MAX (grouped in Week/Month/Year rows)
 - Simulation chart supports tap-to-select with tooltip (price + date)
@@ -51,7 +52,7 @@ Android investment tracking app built with Kotlin, Jetpack Compose, and Material
 - Dashboard pie chart shows all items by ticker with shares labels inside slices
 - Dashboard pie chart legend uses grid-line table with Ticker, Shares, % columns with both horizontal and vertical dividers; clicking a ticker row navigates to item detail
 - Transaction form: "Analyze Price" button next to Price field opens price analysis screen
-- Analyze Price screen: current price, transaction avg/max/min, historic high/low (week/month/year/max) with grid-line table (horizontal and vertical dividers) for historic prices
+- Analyze Price screen: current price, transaction avg/max/min, historic high/low (week/month/year/YTD/max) with grid-line table (horizontal and vertical dividers) for historic prices
 - Clicking a price in Analyze Price copies it back to the transaction form Price field
 - Transaction form: "View" button next to Ticker opens item detail; form state preserved via rememberSaveable
 - Transaction form: no account field (transactions are not tied to accounts)
@@ -60,7 +61,10 @@ Android investment tracking app built with Kotlin, Jetpack Compose, and Material
 - Item detail Price History tab: radio button timeframe selector (Hourly, Daily, Monthly, Yearly) with hint text below showing meaning; Hourly = today's market hours with interval selector (Every Hour/30m/15m/5m/1m in two rows), Daily = last 60 days, Monthly = last 13 months, Yearly = last 15 years; line chart with pinch-to-zoom/pan/tap-to-select; summary cards (Average, Max, Min) above grid table of prices
 - Item detail Analysis Info tab: auto-fetches Yahoo Finance quoteSummary on screen load; displays Key Metrics, Price Range, Financials, About sections directly (no collapsible wrapper); clickable metric labels show definition popup
 - Item detail Transactions tab: "Transactions & Stats" collapsible panel (default expanded) combining date range filter, buy/sell statistics, and per-transaction G/L cards
+- Item detail Transactions tab: delete button (X) on each transaction card with confirmation dialog (respects "Warn before delete" setting)
 - Item detail Transactions tab: "Investing Performance for <TICKER>" collapsible panel (default expanded); fetches Yahoo Finance prices 1 day before/after each transaction; current price added as last data point (tertiary color); line chart with price labels on each point, pinch-to-zoom (1x–5x) with pan, tap-to-select tooltip, double-tap to reset; bold red transaction dots vs gray market dots vs tertiary current price dot; data table with highlighted transaction rows and alternating row colors
+- Item detail Investing Performance chart: fullscreen view button (opens chart in full-screen dialog at 400dp height)
+- Item detail Investing Performance chart: save-to-PNG button (renders chart as 1200x600 bitmap, saves to Pictures/InvestHelp/)
 - All tables app-wide: alternating row background color (surfaceVariant alpha 0.3f on odd rows) for readability; HorizontalDivider uses `outline` color (not `outlineVariant`) for visible row separation
 - **Image loading:** Coil 2.7.0 for company logos; logos cached as BLOB in investment_items table, fetched from multiple CDN sources (companiesmarketcap.com, parqet.com, iexcloud) during price refresh or on items screen load (if logo is null), UI falls back to network URL if not cached
 - Item add/edit dialog: type selector dropdown (Stock, ETF, Bond, MutualFund, Crypto, Other); auto-fills type when selecting existing ticker
@@ -82,6 +86,7 @@ Android investment tracking app built with Kotlin, Jetpack Compose, and Material
 - Settings: Preferences tab scrollable to accommodate all content; "Themes" and "Dashboard Market Indices" sections in collapsible panels (default collapsed)
 - Transaction form: "Simulate" button calculates days since transaction date and opens simulation with custom range
 - Simulation: supports custom day ranges from transaction simulation (auto-runs on navigation)
+- Simulation: "Scenario Simulation" collapsible card — enter shares, ticker, and buy date to calculate hypothetical gain/loss at today's price via Yahoo Finance historical lookup
 - SQL Explorer: accessible from hamburger menu, runs raw SQL via Room's SupportSQLiteDatabase
 - SQL Explorer: detects SELECT/PRAGMA/EXPLAIN queries vs DML/DDL statements
 - SQL Explorer: CSV export via FileProvider + share intent
@@ -129,7 +134,9 @@ Android investment tracking app built with Kotlin, Jetpack Compose, and Material
 - Database migration v21 -> v22: adds dailyChangeEtf, dailyChangeStock, dailyChangeTotal columns to change_history
 - Database migration v22 -> v23: creates csv_named_mappings table (id, name, importType, mappingsJson, dateFormatJson)
 - Database migration v23 -> v24: adds lastUpdatedOn (INTEGER, epoch seconds) and lastValue (REAL) columns to investment_accounts
-- Database version 24
+- Database migration v24 -> v25: creates definitions table (term PK, definition TEXT) for metric definition popups
+- Database migration v25 -> v26: adds unique index on investment_transactions (date, action, ticker, totalAmount) to prevent duplicate CSV imports
+- Database version 26
 - Change History: `change_history` table records daily portfolio values by type (ETF, Stock, Total) plus daily change values (dailyChangeEtf, dailyChangeStock, dailyChangeTotal); one row per day, overwritten on re-refresh
 - Change History dialog: "Change Value This Week So Far" summary card above data table showing sum of daily changes for ETF, Stock, and Total since Monday; color-coded green/red
 - Settings: "Auto Update Change History when refresh" toggle (default: off) — when on, automatically records ETF/Stock/Total values to change_history after price refresh; overwrites existing entry for today

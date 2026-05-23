@@ -30,6 +30,9 @@ interface InvestmentTransactionDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertTransaction(transaction: InvestmentTransactionEntity): Long
 
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertTransactionIfNotExists(transaction: InvestmentTransactionEntity): Long
+
     @Update
     suspend fun updateTransaction(transaction: InvestmentTransactionEntity)
 

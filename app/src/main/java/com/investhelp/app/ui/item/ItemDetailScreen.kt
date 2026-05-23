@@ -81,7 +81,10 @@ import coil.request.ImageRequest
 import java.nio.ByteBuffer
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Fullscreen
 import androidx.compose.material.icons.filled.PlaylistAdd
+import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.OutlinedTextField
@@ -101,6 +104,14 @@ import java.time.ZoneId
 import java.time.temporal.ChronoUnit
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import android.content.ContentValues
+import android.graphics.Bitmap
+import android.os.Environment
+import android.provider.MediaStore
+import android.widget.Toast
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import androidx.compose.runtime.rememberCoroutineScope
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -403,7 +414,9 @@ fun ItemDetailScreen(
                     viewModel = viewModel,
                     investingPerformance = investingPerformance,
                     isLoadingInvestingPerf = isLoadingInvestingPerf,
-                    investingPerfError = investingPerfError
+                    investingPerfError = investingPerfError,
+                    warnBeforeDelete = warnBeforeDelete,
+                    onDeleteTransaction = { viewModel.deleteTransaction(it) }
                 )
             }
         }
@@ -562,10 +575,25 @@ private fun TransactionDetailsTab(
     viewModel: ItemViewModel,
     investingPerformance: List<ItemViewModel.InvestingPerfPoint>,
     isLoadingInvestingPerf: Boolean,
-    investingPerfError: String?
+    investingPerfError: String?,
+    warnBeforeDelete: Boolean = true,
+    onDeleteTransaction: (com.investhelp.app.data.local.entity.InvestmentTransactionEntity) -> Unit = {}
 ) {
     var expanded by remember { mutableStateOf(true) }
     var perfExpanded by remember { mutableStateOf(true) }
+    var transactionToDelete by remember { mutableStateOf<com.investhelp.app.data.local.entity.InvestmentTransactionEntity?>(null) }
+
+    if (transactionToDelete != null) {
+        ConfirmDeleteDialog(
+            title = "Delete Transaction",
+            message = "Delete this ${transactionToDelete!!.action.name} transaction for ${transactionToDelete!!.ticker}?",
+            onConfirm = {
+                onDeleteTransaction(transactionToDelete!!)
+                transactionToDelete = null
+            },
+            onDismiss = { transactionToDelete = null }
+        )
+    }
 
     LaunchedEffect(ticker, item?.currentPrice) {
         viewModel.loadInvestingPerformance(ticker, item?.currentPrice)
@@ -691,33 +719,57 @@ private fun TransactionDetailsTab(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(12.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween
+                            .padding(start = 12.dp, top = 12.dp, bottom = 12.dp, end = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Column {
-                            Text(
-                                text = transaction.action.name,
-                                style = MaterialTheme.typography.labelLarge,
-                                color = if (transaction.action.name == "Buy")
-                                    MaterialTheme.colorScheme.primary
-                                else
-                                    MaterialTheme.colorScheme.error
-                            )
-                            Text(
-                                text = "${transaction.date.format(dateFormatter)}  (${daysSince}d)",
-                                style = MaterialTheme.typography.bodySmall
-                            )
+                        Column(modifier = Modifier.weight(1f)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Column {
+                                    Text(
+                                        text = transaction.action.name,
+                                        style = MaterialTheme.typography.labelLarge,
+                                        color = if (transaction.action.name == "Buy")
+                                            MaterialTheme.colorScheme.primary
+                                        else
+                                            MaterialTheme.colorScheme.error
+                                    )
+                                    Text(
+                                        text = "${transaction.date.format(dateFormatter)}  (${daysSince}d)",
+                                        style = MaterialTheme.typography.bodySmall
+                                    )
+                                }
+                                Column(horizontalAlignment = Alignment.End) {
+                                    Text(
+                                        text = "${transaction.numberOfShares} shares @ ${currencyFormat.format(transaction.pricePerShare)}",
+                                        style = MaterialTheme.typography.bodyMedium
+                                    )
+                                    Text(
+                                        text = "G/L: ${currencyFormat.format(gl)}",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = glColor
+                                    )
+                                }
+                            }
                         }
-                        Column(horizontalAlignment = Alignment.End) {
-                            Text(
-                                text = "${transaction.numberOfShares} shares @ ${currencyFormat.format(transaction.pricePerShare)}",
-                                style = MaterialTheme.typography.bodyMedium
-                            )
-                            Text(
-                                text = "G/L: ${currencyFormat.format(gl)}",
-                                style = MaterialTheme.typography.bodySmall,
-                                fontWeight = FontWeight.SemiBold,
-                                color = glColor
+                        IconButton(
+                            onClick = {
+                                if (warnBeforeDelete) {
+                                    transactionToDelete = transaction
+                                } else {
+                                    onDeleteTransaction(transaction)
+                                }
+                            },
+                            modifier = Modifier.size(32.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.Delete,
+                                contentDescription = "Delete transaction",
+                                modifier = Modifier.size(16.dp),
+                                tint = MaterialTheme.colorScheme.error
                             )
                         }
                     }
@@ -766,7 +818,8 @@ private fun TransactionDetailsTab(
                         modifier = Modifier.padding(16.dp)
                     )
                 } else if (investingPerformance.isNotEmpty()) {
-                    InvestingPerformanceChart(
+                    InvestingPerformanceChartWithControls(
+                        ticker = ticker,
                         points = investingPerformance,
                         currencyFormat = currencyFormat
                     )
@@ -796,9 +849,240 @@ private fun TransactionDetailsTab(
 }
 
 @Composable
-private fun InvestingPerformanceChart(
+private fun InvestingPerformanceChartWithControls(
+    ticker: String,
     points: List<ItemViewModel.InvestingPerfPoint>,
     currencyFormat: NumberFormat
+) {
+    var showFullscreen by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+
+    Column {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.End,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(
+                onClick = {
+                    scope.launch(Dispatchers.IO) {
+                        saveChartToPng(context, ticker, points, currencyFormat)
+                    }
+                },
+                modifier = Modifier.size(32.dp)
+            ) {
+                Icon(
+                    Icons.Default.Save,
+                    contentDescription = "Save chart as PNG",
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+            Spacer(modifier = Modifier.width(4.dp))
+            IconButton(
+                onClick = { showFullscreen = true },
+                modifier = Modifier.size(32.dp)
+            ) {
+                Icon(
+                    Icons.Default.Fullscreen,
+                    contentDescription = "Fullscreen",
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+        }
+
+        InvestingPerformanceChart(
+            points = points,
+            currencyFormat = currencyFormat
+        )
+    }
+
+    if (showFullscreen) {
+        InvestingPerformanceFullscreenDialog(
+            ticker = ticker,
+            points = points,
+            currencyFormat = currencyFormat,
+            onDismiss = { showFullscreen = false },
+            onSave = {
+                scope.launch(Dispatchers.IO) {
+                    saveChartToPng(context, ticker, points, currencyFormat)
+                }
+            }
+        )
+    }
+}
+
+@Composable
+private fun InvestingPerformanceFullscreenDialog(
+    ticker: String,
+    points: List<ItemViewModel.InvestingPerfPoint>,
+    currencyFormat: NumberFormat,
+    onDismiss: () -> Unit,
+    onSave: () -> Unit
+) {
+    androidx.compose.ui.window.Dialog(
+        onDismissRequest = onDismiss,
+        properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Scaffold(
+            topBar = {
+                @OptIn(ExperimentalMaterial3Api::class)
+                TopAppBar(
+                    title = { Text("$ticker Performance") },
+                    navigationIcon = {
+                        IconButton(onClick = onDismiss) {
+                            Icon(Icons.Default.Close, contentDescription = "Close")
+                        }
+                    },
+                    actions = {
+                        IconButton(onClick = onSave) {
+                            Icon(Icons.Default.Save, contentDescription = "Save as PNG")
+                        }
+                    }
+                )
+            }
+        ) { padding ->
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+                    .padding(8.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                InvestingPerformanceChart(
+                    points = points,
+                    currencyFormat = currencyFormat,
+                    chartHeight = 400
+                )
+            }
+        }
+    }
+}
+
+private fun saveChartToPng(
+    context: android.content.Context,
+    ticker: String,
+    points: List<ItemViewModel.InvestingPerfPoint>,
+    currencyFormat: NumberFormat
+) {
+    val width = 1200
+    val height = 600
+    val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+    val canvas = android.graphics.Canvas(bitmap)
+    canvas.drawColor(android.graphics.Color.WHITE)
+
+    val prices = points.map { it.price }
+    val minPrice = prices.min()
+    val maxPrice = prices.max()
+    val priceRange = (maxPrice - minPrice).coerceAtLeast(0.01)
+
+    val paddingLeft = 120f
+    val paddingRight = 40f
+    val paddingTop = 40f
+    val paddingBottom = 60f
+    val chartWidth = width - paddingLeft - paddingRight
+    val chartHeight = height - paddingTop - paddingBottom
+
+    val gridPaint = android.graphics.Paint().apply {
+        color = android.graphics.Color.LTGRAY
+        strokeWidth = 1f
+    }
+    val linePaint = android.graphics.Paint().apply {
+        color = android.graphics.Color.DKGRAY
+        strokeWidth = 3f
+        isAntiAlias = true
+        style = android.graphics.Paint.Style.STROKE
+    }
+    val txDotPaint = android.graphics.Paint().apply {
+        color = android.graphics.Color.RED
+        isAntiAlias = true
+    }
+    val marketDotPaint = android.graphics.Paint().apply {
+        color = android.graphics.Color.GRAY
+        isAntiAlias = true
+    }
+    val currentDotPaint = android.graphics.Paint().apply {
+        color = android.graphics.Color.rgb(0, 150, 136)
+        isAntiAlias = true
+    }
+    val labelPaint = android.graphics.Paint().apply {
+        color = android.graphics.Color.DKGRAY
+        textSize = 24f
+        isAntiAlias = true
+    }
+    val titlePaint = android.graphics.Paint().apply {
+        color = android.graphics.Color.BLACK
+        textSize = 28f
+        isAntiAlias = true
+        isFakeBoldText = true
+        textAlign = android.graphics.Paint.Align.CENTER
+    }
+
+    canvas.drawText("$ticker Investing Performance", width / 2f, 28f, titlePaint)
+
+    val dateFormat = java.time.format.DateTimeFormatter.ofPattern("MMM dd")
+    for (i in 0..4) {
+        val y = paddingTop + chartHeight * i / 4f
+        canvas.drawLine(paddingLeft, y, width - paddingRight, y, gridPaint)
+        val price = maxPrice - (priceRange * i / 4)
+        labelPaint.textAlign = android.graphics.Paint.Align.RIGHT
+        canvas.drawText(currencyFormat.format(price), paddingLeft - 8f, y + 8f, labelPaint)
+    }
+
+    val path = android.graphics.Path()
+    val spacing = chartWidth / (points.size - 1).coerceAtLeast(1)
+    for (i in points.indices) {
+        val x = paddingLeft + i * spacing
+        val y = paddingTop + chartHeight * (1f - ((prices[i] - minPrice) / priceRange).toFloat())
+        if (i == 0) path.moveTo(x, y) else path.lineTo(x, y)
+    }
+    canvas.drawPath(path, linePaint)
+
+    for (i in points.indices) {
+        val x = paddingLeft + i * spacing
+        val y = paddingTop + chartHeight * (1f - ((prices[i] - minPrice) / priceRange).toFloat())
+        val paint = when {
+            points[i].isCurrentPrice -> currentDotPaint
+            points[i].isTransaction -> txDotPaint
+            else -> marketDotPaint
+        }
+        val radius = if (points[i].isTransaction || points[i].isCurrentPrice) 10f else 6f
+        canvas.drawCircle(x, y, radius, paint)
+    }
+
+    labelPaint.textAlign = android.graphics.Paint.Align.CENTER
+    val labelCount = minOf(points.size, 6)
+    for (i in 0 until labelCount) {
+        val dataIdx = (i * (points.size - 1) / (labelCount - 1).coerceAtLeast(1)).coerceIn(0, points.size - 1)
+        val x = paddingLeft + dataIdx * spacing
+        canvas.drawText(points[dataIdx].date.format(dateFormat), x, height - 16f, labelPaint)
+    }
+
+    val timestamp = System.currentTimeMillis()
+    val filename = "${ticker}_performance_$timestamp.png"
+    val contentValues = ContentValues().apply {
+        put(MediaStore.Images.Media.DISPLAY_NAME, filename)
+        put(MediaStore.Images.Media.MIME_TYPE, "image/png")
+        put(MediaStore.Images.Media.RELATIVE_PATH, Environment.DIRECTORY_PICTURES + "/InvestHelp")
+    }
+
+    val uri = context.contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues)
+    uri?.let {
+        context.contentResolver.openOutputStream(it)?.use { outputStream ->
+            bitmap.compress(Bitmap.CompressFormat.PNG, 100, outputStream)
+        }
+        android.os.Handler(android.os.Looper.getMainLooper()).post {
+            Toast.makeText(context, "Chart saved to Pictures/InvestHelp/$filename", Toast.LENGTH_SHORT).show()
+        }
+    }
+    bitmap.recycle()
+}
+
+@Composable
+private fun InvestingPerformanceChart(
+    points: List<ItemViewModel.InvestingPerfPoint>,
+    currencyFormat: NumberFormat,
+    chartHeight: Int = 220
 ) {
     if (points.size < 2) return
 
@@ -831,7 +1115,7 @@ private fun InvestingPerformanceChart(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(220.dp)
+                .height(chartHeight.dp)
                 .padding(start = 48.dp, end = 8.dp, top = 8.dp, bottom = 24.dp)
                 .pointerInput(points) {
                     detectTransformGestures { _, pan, gestureZoom, _ ->

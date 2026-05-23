@@ -25,6 +25,8 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
@@ -35,7 +37,9 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -62,9 +66,12 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.investhelp.app.data.remote.HistoricalPrice
+import com.investhelp.app.ui.components.CollapsibleCard
 import java.text.NumberFormat
 import java.time.Instant
+import java.time.LocalDate
 import java.time.ZoneId
+import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import kotlin.math.abs
@@ -173,6 +180,10 @@ private fun MainSimulationTab(
             .verticalScroll(rememberScrollState())
     ) {
         Spacer(modifier = Modifier.height(12.dp))
+
+        ScenarioSimulationCard(viewModel = viewModel, currencyFormat = currencyFormat)
+
+        Spacer(modifier = Modifier.height(16.dp))
 
         OutlinedTextField(
             value = ticker,
@@ -589,6 +600,172 @@ private fun ResultRow(label: String, value: String) {
     ) {
         Text(text = label, style = MaterialTheme.typography.bodyMedium)
         Text(text = value, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ScenarioSimulationCard(
+    viewModel: SimulationViewModel,
+    currencyFormat: NumberFormat
+) {
+    var scenarioTicker by remember { mutableStateOf("") }
+    var scenarioShares by remember { mutableStateOf("") }
+    var scenarioDate by remember { mutableStateOf<LocalDate?>(null) }
+    var showDatePicker by remember { mutableStateOf(false) }
+    var pinned by remember { mutableStateOf(false) }
+
+    val scenarioResult by viewModel.scenarioResult.collectAsStateWithLifecycle()
+    val scenarioError by viewModel.scenarioError.collectAsStateWithLifecycle()
+    val scenarioLoading by viewModel.scenarioLoading.collectAsStateWithLifecycle()
+
+    val dateFormatter = remember { DateTimeFormatter.ofPattern("MMM dd, yyyy") }
+
+    if (showDatePicker) {
+        val datePickerState = rememberDatePickerState(
+            initialSelectedDateMillis = scenarioDate?.atStartOfDay(ZoneOffset.UTC)?.toInstant()?.toEpochMilli()
+        )
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    datePickerState.selectedDateMillis?.let { millis ->
+                        scenarioDate = Instant.ofEpochMilli(millis).atZone(ZoneOffset.UTC).toLocalDate()
+                    }
+                    showDatePicker = false
+                }) { Text("OK") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDatePicker = false }) { Text("Cancel") }
+            }
+        ) {
+            DatePicker(state = datePickerState)
+        }
+    }
+
+    CollapsibleCard(
+        title = "Scenario Simulation",
+        pinned = pinned,
+        onPinToggle = { pinned = it }
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(
+                "If I buy __ shares of __ on __, how much would I gain or lose today?",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            Spacer(modifier = Modifier.height(4.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                OutlinedTextField(
+                    value = scenarioShares,
+                    onValueChange = { scenarioShares = it },
+                    label = { Text("Shares") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    modifier = Modifier.weight(1f)
+                )
+                OutlinedTextField(
+                    value = scenarioTicker,
+                    onValueChange = { scenarioTicker = it.uppercase() },
+                    label = { Text("Ticker") },
+                    singleLine = true,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+
+            FilterChip(
+                selected = scenarioDate != null,
+                onClick = { showDatePicker = true },
+                label = {
+                    Text(
+                        scenarioDate?.format(dateFormatter) ?: "Select buy date"
+                    )
+                }
+            )
+
+            Button(
+                onClick = {
+                    val shares = scenarioShares.toDoubleOrNull()
+                    if (scenarioTicker.isNotBlank() && shares != null && scenarioDate != null) {
+                        val epochSeconds = scenarioDate!!.atStartOfDay(ZoneOffset.UTC).toEpochSecond()
+                        viewModel.runScenario(scenarioTicker.trim(), shares, epochSeconds)
+                    }
+                },
+                enabled = scenarioTicker.isNotBlank() &&
+                        scenarioShares.toDoubleOrNull() != null &&
+                        scenarioDate != null &&
+                        !scenarioLoading,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                if (scenarioLoading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(18.dp),
+                        strokeWidth = 2.dp,
+                        color = MaterialTheme.colorScheme.onPrimary
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                }
+                Text("Calculate")
+            }
+
+            if (scenarioError != null) {
+                Text(
+                    text = scenarioError!!,
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
+
+            scenarioResult?.let { result ->
+                val isGain = result.gainLoss >= 0
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = if (isGain)
+                            MaterialTheme.colorScheme.primaryContainer
+                        else
+                            MaterialTheme.colorScheme.errorContainer
+                    )
+                ) {
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Text(
+                            text = "If I bought ${result.shares.let { if (it % 1.0 == 0.0) it.toInt().toString() else it.toString() }} shares of ${result.ticker} on ${scenarioDate?.format(dateFormatter) ?: ""}",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "Buy price: ${currencyFormat.format(result.buyPrice)}/share",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                        Text(
+                            text = "Total cost: ${currencyFormat.format(result.totalCost)}",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                        Text(
+                            text = "Current price: ${currencyFormat.format(result.currentPrice)}/share",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                        Text(
+                            text = "Current value: ${currencyFormat.format(result.currentValue)}",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "Today I would ${if (isGain) "gain" else "lose"} ${currencyFormat.format(abs(result.gainLoss))} (${"%.2f".format(result.gainLossPct)}%)",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = if (isGain) MaterialTheme.colorScheme.primary
+                            else MaterialTheme.colorScheme.error
+                        )
+                    }
+                }
+            }
+        }
     }
 }
 

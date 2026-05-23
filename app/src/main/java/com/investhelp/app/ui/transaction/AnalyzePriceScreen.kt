@@ -145,6 +145,7 @@ fun AnalyzePriceScreen(
                 val hasAnyHistoric = uiState.highLastWeek != null || uiState.lowLastWeek != null ||
                         uiState.highLastMonth != null || uiState.lowLastMonth != null ||
                         uiState.highLastYear != null || uiState.lowLastYear != null ||
+                        uiState.highYtd != null || uiState.lowYtd != null ||
                         uiState.highMax != null || uiState.lowMax != null
 
                 if (hasAnyHistoric) {
@@ -184,7 +185,8 @@ fun AnalyzePriceScreen(
                     HistoricPriceRow("Last Week", uiState.highLastWeek, uiState.lowLastWeek, currencyFormat, onSelectPrice, histDividerColor, 0)
                     HistoricPriceRow("Last Month", uiState.highLastMonth, uiState.lowLastMonth, currencyFormat, onSelectPrice, histDividerColor, 1)
                     HistoricPriceRow("Last Year", uiState.highLastYear, uiState.lowLastYear, currencyFormat, onSelectPrice, histDividerColor, 2)
-                    HistoricPriceRow("Max", uiState.highMax, uiState.lowMax, currencyFormat, onSelectPrice, histDividerColor, 3)
+                    HistoricPriceRow("YTD", uiState.highYtd, uiState.lowYtd, currencyFormat, onSelectPrice, histDividerColor, 3)
+                    HistoricPriceRow("Max", uiState.highMax, uiState.lowMax, currencyFormat, onSelectPrice, histDividerColor, 4)
                 } else {
                     Text(
                         "Historical data unavailable",

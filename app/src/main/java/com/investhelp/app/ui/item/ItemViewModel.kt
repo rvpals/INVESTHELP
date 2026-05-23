@@ -332,6 +332,12 @@ class ItemViewModel @Inject constructor(
         }
     }
 
+    fun deleteTransaction(transaction: InvestmentTransactionEntity) {
+        viewModelScope.launch {
+            transactionRepository.deleteTransaction(transaction)
+        }
+    }
+
     // --- Delete item ---
     fun deleteItem(ticker: String) {
         viewModelScope.launch {

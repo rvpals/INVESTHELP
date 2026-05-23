@@ -36,7 +36,7 @@ import com.investhelp.app.data.local.entity.WatchListItemEntity
         ChangeHistoryEntity::class,
         DefinitionEntity::class
     ],
-    version = 25,
+    version = 26,
     exportSchema = true
 )
 @TypeConverters(Converters::class)

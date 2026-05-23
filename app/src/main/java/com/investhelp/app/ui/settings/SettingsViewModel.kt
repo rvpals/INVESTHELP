@@ -1206,7 +1206,7 @@ class SettingsViewModel @Inject constructor(
         val totalAmount = parseNumeric(fields["totalAmount"]) ?: 0.0
         val note = fields["note"]?.trim() ?: ""
 
-        transactionDao.insertTransaction(
+        transactionDao.insertTransactionIfNotExists(
             InvestmentTransactionEntity(
                 date = date, time = time, action = action,
                 ticker = ticker, numberOfShares = shares, pricePerShare = price,

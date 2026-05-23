@@ -10,6 +10,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import java.time.LocalDate
+import java.time.temporal.ChronoUnit
 import javax.inject.Inject
 
 data class AnalyzePriceUiState(
@@ -24,6 +26,8 @@ data class AnalyzePriceUiState(
     val lowLastMonth: Double? = null,
     val highLastYear: Double? = null,
     val lowLastYear: Double? = null,
+    val highYtd: Double? = null,
+    val lowYtd: Double? = null,
     val highMax: Double? = null,
     val lowMax: Double? = null,
     val error: String? = null
@@ -78,6 +82,16 @@ class AnalyzePriceViewModel @Inject constructor(
                     _uiState.value = _uiState.value.copy(
                         highLastYear = yearData.maxByOrNull { it.close }?.close,
                         lowLastYear = yearData.minByOrNull { it.close }?.close
+                    )
+                } catch (_: Exception) { }
+
+                try {
+                    val startOfYear = LocalDate.of(LocalDate.now().year, 1, 1)
+                    val ytdDays = ChronoUnit.DAYS.between(startOfYear, LocalDate.now()).toInt().coerceAtLeast(1)
+                    val ytdData = stockPriceService.fetchHistoricalPrices(ticker, ytdDays)
+                    _uiState.value = _uiState.value.copy(
+                        highYtd = ytdData.maxByOrNull { it.close }?.close,
+                        lowYtd = ytdData.minByOrNull { it.close }?.close
                     )
                 } catch (_: Exception) { }
 

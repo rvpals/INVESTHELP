@@ -198,4 +198,58 @@ class SimulationViewModel @Inject constructor(
         _results.value = emptyList()
         _error.value = null
     }
+
+    data class ScenarioResult(
+        val ticker: String,
+        val shares: Double,
+        val buyPrice: Double,
+        val totalCost: Double,
+        val currentPrice: Double,
+        val currentValue: Double,
+        val gainLoss: Double,
+        val gainLossPct: Double
+    )
+
+    private val _scenarioResult = MutableStateFlow<ScenarioResult?>(null)
+    val scenarioResult: StateFlow<ScenarioResult?> = _scenarioResult.asStateFlow()
+
+    private val _scenarioError = MutableStateFlow<String?>(null)
+    val scenarioError: StateFlow<String?> = _scenarioError.asStateFlow()
+
+    private val _scenarioLoading = MutableStateFlow(false)
+    val scenarioLoading: StateFlow<Boolean> = _scenarioLoading.asStateFlow()
+
+    fun runScenario(ticker: String, shares: Double, buyDateEpochSeconds: Long) {
+        viewModelScope.launch {
+            _scenarioLoading.value = true
+            _scenarioError.value = null
+            _scenarioResult.value = null
+            try {
+                val period1 = buyDateEpochSeconds
+                val period2 = period1 + 86400 * 3
+                val historicPrices = stockPriceService.fetchPriceHistoryByPeriod(ticker, period1, period2, "1d")
+                val buyPrice = historicPrices.firstOrNull()?.close
+                    ?: throw Exception("No price data found for $ticker on that date")
+                val currentPrice = stockPriceService.fetchPrice(ticker)
+                val totalCost = shares * buyPrice
+                val currentValue = shares * currentPrice
+                val gainLoss = currentValue - totalCost
+                val gainLossPct = if (totalCost > 0) gainLoss / totalCost * 100 else 0.0
+                _scenarioResult.value = ScenarioResult(
+                    ticker = ticker,
+                    shares = shares,
+                    buyPrice = buyPrice,
+                    totalCost = totalCost,
+                    currentPrice = currentPrice,
+                    currentValue = currentValue,
+                    gainLoss = gainLoss,
+                    gainLossPct = gainLossPct
+                )
+            } catch (e: Exception) {
+                _scenarioError.value = e.message ?: "Scenario failed"
+            } finally {
+                _scenarioLoading.value = false
+            }
+        }
+    }
 }
