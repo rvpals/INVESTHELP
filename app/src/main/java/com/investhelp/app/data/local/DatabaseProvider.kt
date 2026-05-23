@@ -24,7 +24,7 @@ class DatabaseProvider @Inject constructor(
     companion object {
         val MIGRATION_25_26 = object : Migration(25, 26) {
             override fun migrate(db: SupportSQLiteDatabase) {
-                db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_investment_transactions_unique ON investment_transactions(date, action, ticker, totalAmount)")
+                db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_investment_transactions_date_action_ticker_totalAmount ON investment_transactions(date, action, ticker, totalAmount)")
             }
         }
 

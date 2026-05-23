@@ -1,5 +1,10 @@
 # Changelog
 
+## v1.35 (Build 36) - 2026-05-22
+
+### Fixed
+- App crash on launch: Room database migration 25→26 created index with wrong name (`index_investment_transactions_unique` instead of expected `index_investment_transactions_date_action_ticker_totalAmount`), causing schema validation failure on startup
+
 ## v1.34 (Build 35) - 2026-05-22
 
 ### Added
