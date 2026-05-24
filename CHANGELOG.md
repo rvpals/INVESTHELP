@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.36 (Build 37) - 2026-05-23
+
+### Added
+- Settings Data Management: "Automatic Back Up when quitting" toggle — automatically exports a backup JSON file to the selected backup folder when exiting the app
+- Settings Data Management: "Number of automatic backup to keep" option (default: 10) — automatically deletes the oldest backup files when the count exceeds the configured limit
+- Auto-backup runs during activity `onStop()` when `isFinishing` is true, using the same export format as manual Export Data
+
 ## v1.35 (Build 36) - 2026-05-22
 
 ### Fixed

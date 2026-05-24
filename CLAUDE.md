@@ -141,6 +141,8 @@ Android investment tracking app built with Kotlin, Jetpack Compose, and Material
 - Change History dialog: "Change Value This Week So Far" summary card above data table showing sum of daily changes for ETF, Stock, and Total since Monday; color-coded green/red
 - Settings: "Auto Update Change History when refresh" toggle (default: off) — when on, automatically records ETF/Stock/Total values to change_history after price refresh; overwrites existing entry for today
 - Settings: "Auto Refresh All" toggle (default: off) — when on, shows interval dropdown (5 min, 30 min, 1 hr, 5 hr, Market close daily); uses WorkManager periodic background work with foreground notification; completion notification shows ticker count; respects "Auto Update Change History" setting
+- Settings Data Management: "Automatic Back Up when quitting" toggle (default: off) — when on, automatically exports backup JSON to selected backup folder on app exit (onStop + isFinishing); uses same format as Export Data
+- Settings Data Management: "Number of automatic backup to keep" (default: 10, shown when auto-backup enabled) — oldest `invest_help_backup_*.json` files deleted when count exceeds limit before writing new backup
 - CSV Import: reusable mapping system for Transaction, Position, Performance imports; mappings persisted in `csv_import_mappings` table; supports date format options per column
 - CSV Transaction Import: does NOT auto-update share counts on items; only creates item stub if ticker doesn't exist
 - Settings Data Management: 3 import types (Transaction Records, Position Details, Performance Records) each with "Define Mapping" and "Start Import" buttons; shared account selector

@@ -24,7 +24,7 @@ The app follows **MVVM + Repository** pattern with **Hilt** dependency injection
 
 ```
 com.investhelp.app/
-├── MainActivity.kt              # Single activity, top bar, bottom nav, navigation host
+├── MainActivity.kt              # Single activity, top bar, bottom nav, navigation host, auto-backup on exit
 ├── data/
 │   ├── local/
 │   │   ├── AppDatabase.kt       # Room database (version 26) with all DAOs and migrations

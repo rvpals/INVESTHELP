@@ -1,11 +1,14 @@
 package com.investhelp.app
 
+import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.documentfile.provider.DocumentFile
+import android.net.Uri
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -86,11 +89,25 @@ import com.investhelp.app.ui.navigation.WatchListRoute
 import com.investhelp.app.ui.navigation.PositionDetailRoute
 import com.investhelp.app.ui.navigation.HelpRoute
 import androidx.compose.material.icons.filled.HelpOutline
+import com.investhelp.app.data.local.dao.InvestmentAccountDao
+import com.investhelp.app.data.local.dao.InvestmentItemDao
+import com.investhelp.app.data.local.dao.InvestmentTransactionDao
+import com.investhelp.app.model.BackupAccount
+import com.investhelp.app.model.BackupData
+import com.investhelp.app.model.BackupItem
+import com.investhelp.app.model.BackupTransaction
+import com.investhelp.app.ui.settings.SettingsViewModel
 import com.investhelp.app.ui.theme.InvestHelpTheme
 import com.investhelp.app.ui.theme.ThemePreferences
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.json.Json
 import java.text.NumberFormat
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 import java.util.Locale
+import javax.inject.Inject
 
 data class BottomNavItem(
     val label: String,
@@ -108,7 +125,12 @@ val bottomNavItems = listOf(
 @AndroidEntryPoint
 class MainActivity : AppCompatActivity() {
 
+    @Inject lateinit var accountDao: InvestmentAccountDao
+    @Inject lateinit var itemDao: InvestmentItemDao
+    @Inject lateinit var transactionDao: InvestmentTransactionDao
+
     private var pendingTicker: String? = null
+    private val json = Json { prettyPrint = true }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
@@ -150,6 +172,85 @@ class MainActivity : AppCompatActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
+    }
+
+    override fun onStop() {
+        super.onStop()
+        if (isFinishing) {
+            val prefs = getSharedPreferences(SettingsViewModel.PREFS_NAME, Context.MODE_PRIVATE)
+            val autoBackup = prefs.getBoolean(SettingsViewModel.KEY_AUTO_BACKUP_ON_EXIT, false)
+            val folderUriStr = prefs.getString(SettingsViewModel.KEY_BACKUP_FOLDER_URI, null)
+            if (autoBackup && folderUriStr != null) {
+                val folderUri = Uri.parse(folderUriStr)
+                val keepCount = prefs.getInt(
+                    SettingsViewModel.KEY_AUTO_BACKUP_KEEP_COUNT,
+                    SettingsViewModel.DEFAULT_AUTO_BACKUP_KEEP_COUNT
+                )
+                runBlocking(Dispatchers.IO) {
+                    try {
+                        val accounts = accountDao.getAllAccountsSnapshot()
+                        val items = itemDao.getAllItemsSnapshot()
+                        val transactions = transactionDao.getAllTransactionsSnapshot()
+
+                        val backupData = BackupData(
+                            accounts = accounts.map {
+                                BackupAccount(it.id, it.name, it.description, it.initialValue)
+                            },
+                            items = items.map {
+                                BackupItem(
+                                    ticker = it.ticker,
+                                    name = it.name,
+                                    type = it.type.name,
+                                    currentPrice = it.currentPrice,
+                                    quantity = it.quantity,
+                                    cost = it.cost,
+                                    dayGainLoss = it.dayGainLoss,
+                                    totalGainLoss = it.totalGainLoss,
+                                    value = it.value,
+                                    dayHigh = it.dayHigh,
+                                    dayLow = it.dayLow
+                                )
+                            },
+                            transactions = transactions.map {
+                                BackupTransaction(
+                                    it.id, it.date.toEpochDay(), it.time?.toSecondOfDay(),
+                                    it.action.name, ticker = it.ticker,
+                                    numberOfShares = it.numberOfShares,
+                                    pricePerShare = it.pricePerShare,
+                                    totalAmount = it.totalAmount, note = it.note
+                                )
+                            }
+                        )
+
+                        val jsonString = json.encodeToString(BackupData.serializer(), backupData)
+                        val timestamp = LocalDateTime.now().format(
+                            DateTimeFormatter.ofPattern("yyyy-MM-dd_HHmmss")
+                        )
+                        val fileName = "invest_help_backup_$timestamp.json"
+
+                        val folder = DocumentFile.fromTreeUri(this@MainActivity, folderUri)
+                            ?: return@runBlocking
+
+                        val existingBackups = folder.listFiles()
+                            .filter { it.name?.startsWith("invest_help_backup_") == true && it.name?.endsWith(".json") == true }
+                            .sortedBy { it.name }
+
+                        val toDelete = existingBackups.size - keepCount + 1
+                        if (toDelete > 0) {
+                            existingBackups.take(toDelete).forEach { it.delete() }
+                        }
+
+                        val file = folder.createFile("application/json", fileName)
+                        file?.uri?.let { fileUri ->
+                            contentResolver.openOutputStream(fileUri)?.use { out ->
+                                out.write(jsonString.toByteArray())
+                            }
+                        }
+                    } catch (_: Exception) {
+                    }
+                }
+            }
+        }
     }
 }
 

@@ -836,6 +836,54 @@ private fun DataManagementTab(viewModel: SettingsViewModel, uiState: SettingsUiS
             }
         }
 
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    "Automatic Back Up when quitting",
+                    style = MaterialTheme.typography.bodyLarge
+                )
+                Text(
+                    "Turn this on to automatically backup the data when exiting the program",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Switch(
+                checked = uiState.autoBackupOnExit,
+                onCheckedChange = { viewModel.setAutoBackupOnExit(it) }
+            )
+        }
+
+        if (uiState.autoBackupOnExit) {
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    "Number of automatic backup to keep:",
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.weight(1f)
+                )
+                OutlinedTextField(
+                    value = uiState.autoBackupKeepCount.toString(),
+                    onValueChange = { value ->
+                        value.toIntOrNull()?.let { viewModel.setAutoBackupKeepCount(it) }
+                    },
+                    modifier = Modifier.width(80.dp),
+                    singleLine = true
+                )
+            }
+        }
+
         Spacer(modifier = Modifier.height(24.dp))
 
         Text("Restore", style = MaterialTheme.typography.titleMedium)
