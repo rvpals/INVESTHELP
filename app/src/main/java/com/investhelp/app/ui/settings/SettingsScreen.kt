@@ -882,6 +882,15 @@ private fun DataManagementTab(viewModel: SettingsViewModel, uiState: SettingsUiS
                     singleLine = true
                 )
             }
+
+            uiState.lastAutoBackupTime?.let { time ->
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "Last Auto Backup completed on $time",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
 
         Spacer(modifier = Modifier.height(24.dp))

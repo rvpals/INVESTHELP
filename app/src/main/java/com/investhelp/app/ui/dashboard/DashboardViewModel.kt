@@ -21,8 +21,10 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.time.LocalDate
@@ -181,16 +183,18 @@ class DashboardViewModel @Inject constructor(
 
     private fun fetchWatchLists() {
         viewModelScope.launch {
-            watchListRepository.getAllWatchLists().collect { lists ->
-                val dashboardLists = lists.take(2).map { watchList ->
-                    val items = watchListRepository.getItemsByWatchList(watchList.id).first()
-                    DashboardWatchList(
-                        id = watchList.id,
-                        name = watchList.name,
-                        items = items.take(5)
-                    )
+            watchListRepository.getAllWatchLists().collectLatest { lists ->
+                val itemFlows = lists.take(2).map { watchList ->
+                    watchListRepository.getItemsByWatchList(watchList.id)
+                        .map { items -> DashboardWatchList(watchList.id, watchList.name, items.take(5)) }
                 }
-                _dashboardWatchLists.value = dashboardLists
+                if (itemFlows.isEmpty()) {
+                    _dashboardWatchLists.value = emptyList()
+                } else {
+                    combine(itemFlows) { it.toList() }.collect { dashboardLists ->
+                        _dashboardWatchLists.value = dashboardLists
+                    }
+                }
             }
         }
     }

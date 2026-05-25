@@ -213,8 +213,9 @@ Four tabs: **Details**, **Price History**, **Analysis Info**, **Transactions** (
 - Backup folder selection (persisted)
 - Export to JSON (v4 format)
 - Restore from JSON (v1/v2/v3/v4 compatible)
-- **Automatic Back Up when quitting**: toggle (default: off); when on, automatically exports a backup JSON file when exiting the app
+- **Automatic Back Up when quitting**: toggle (default: off); when on, automatically exports a backup JSON file when the app goes to background (with 30-minute cooldown to prevent excessive backups)
 - **Number of automatic backup to keep**: configurable limit (default: 10); oldest auto-backup files are deleted when the count exceeds the limit
+- **Last Auto Backup completed on**: displays the date and time of the most recent successful auto backup
 
 ## SQL Explorer
 

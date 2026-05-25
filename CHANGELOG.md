@@ -1,5 +1,14 @@
 # Changelog
 
+## v1.37 (Build 38) - 2026-05-24
+
+### Fixed
+- Auto backup on exit never ran: `isFinishing` check is almost always false on modern Android (back button doesn't finish the activity since Android 12+); replaced with `onStop()` trigger with a 30-minute time guard to prevent excessive backups
+- Dashboard Watch List card not reflecting changes: used `.first()` (one-shot) for item loading instead of continuous Flow observation; now uses `collectLatest` + `combine` to reactively observe both watch list and item changes
+
+### Added
+- Settings Data Management: "Last Auto Backup completed on \<date & time\>" note shown below the auto backup options when a previous backup has been recorded
+
 ## v1.36 (Build 37) - 2026-05-23
 
 ### Added

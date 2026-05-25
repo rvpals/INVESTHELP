@@ -110,6 +110,7 @@ data class SettingsUiState(
     val autoRefreshInterval: String = "30m",
     val autoBackupOnExit: Boolean = false,
     val autoBackupKeepCount: Int = 10,
+    val lastAutoBackupTime: String? = null,
     val warnBeforeDelete: Boolean = true,
     val selectedTheme: AppTheme = AppTheme.Default,
     val enabledMarketIndices: Set<String> = SettingsViewModel.DEFAULT_MARKET_INDICES,
@@ -150,6 +151,7 @@ class SettingsViewModel @Inject constructor(
         const val KEY_AUTO_REFRESH_INTERVAL = "auto_refresh_interval"
         const val KEY_AUTO_BACKUP_ON_EXIT = "auto_backup_on_exit"
         const val KEY_AUTO_BACKUP_KEEP_COUNT = "auto_backup_keep_count"
+        const val KEY_LAST_AUTO_BACKUP_TIME = "last_auto_backup_time"
         const val DEFAULT_AUTO_BACKUP_KEEP_COUNT = 10
 
         data class MarketIndexConfig(
@@ -200,6 +202,7 @@ class SettingsViewModel @Inject constructor(
             autoRefreshInterval = prefs.getString(KEY_AUTO_REFRESH_INTERVAL, "30m") ?: "30m",
             autoBackupOnExit = prefs.getBoolean(KEY_AUTO_BACKUP_ON_EXIT, false),
             autoBackupKeepCount = prefs.getInt(KEY_AUTO_BACKUP_KEEP_COUNT, DEFAULT_AUTO_BACKUP_KEEP_COUNT),
+            lastAutoBackupTime = prefs.getString(KEY_LAST_AUTO_BACKUP_TIME, null),
             warnBeforeDelete = prefs.getBoolean(KEY_WARN_BEFORE_DELETE, true),
             selectedTheme = AppTheme.fromName(prefs.getString(KEY_THEME, AppTheme.Default.name) ?: AppTheme.Default.name),
             enabledMarketIndices = prefs.getStringSet(KEY_MARKET_INDICES, null)
