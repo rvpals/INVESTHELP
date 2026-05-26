@@ -67,8 +67,7 @@ class AutoRefreshWorker @AssistedInject constructor(
                             name = resolvedName,
                             currentPrice = quote.price,
                             value = newValue,
-                            dayGainLoss = dayChange,
-                            totalGainLoss = newValue - item.cost
+                            dayGainLoss = dayChange
                         )
                     )
                     successCount++

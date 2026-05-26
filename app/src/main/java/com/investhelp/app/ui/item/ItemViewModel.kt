@@ -164,18 +164,25 @@ class ItemViewModel @Inject constructor(
     private val _fetchedPrice = MutableStateFlow<Double?>(null)
     val fetchedPrice: StateFlow<Double?> = _fetchedPrice.asStateFlow()
 
+    private val _fetchedName = MutableStateFlow<String?>(null)
+    val fetchedName: StateFlow<String?> = _fetchedName.asStateFlow()
+
     fun fetchPriceForTicker(ticker: String) {
         viewModelScope.launch {
             try {
-                _fetchedPrice.value = stockPriceService.fetchPrice(ticker)
+                val quote = stockPriceService.fetchQuote(ticker)
+                _fetchedPrice.value = quote.price
+                _fetchedName.value = quote.shortName
             } catch (_: Exception) {
                 _fetchedPrice.value = null
+                _fetchedName.value = null
             }
         }
     }
 
     fun clearFetchedPrice() {
         _fetchedPrice.value = null
+        _fetchedName.value = null
     }
 
     // --- Position refresh state ---
@@ -269,8 +276,7 @@ class ItemViewModel @Inject constructor(
         name: String,
         type: InvestmentType,
         currentPrice: Double,
-        quantity: Double,
-        cost: Double
+        quantity: Double
     ) {
         viewModelScope.launch {
             val existing = itemRepository.getItemByTicker(ticker)
@@ -280,9 +286,7 @@ class ItemViewModel @Inject constructor(
                 type = type,
                 currentPrice = currentPrice,
                 quantity = quantity,
-                cost = cost,
                 dayGainLoss = existing?.dayGainLoss ?: 0.0,
-                totalGainLoss = existing?.totalGainLoss ?: 0.0,
                 value = existing?.value ?: (quantity * currentPrice),
                 dayHigh = existing?.dayHigh ?: 0.0,
                 dayLow = existing?.dayLow ?: 0.0
@@ -292,13 +296,10 @@ class ItemViewModel @Inject constructor(
     }
 
     // --- Save position (from add form) ---
-    fun savePosition(ticker: String, quantity: Double, cost: Double, type: InvestmentType? = null) {
+    fun savePosition(ticker: String, quantity: Double, type: InvestmentType? = null) {
         viewModelScope.launch {
             val existing = itemRepository.getItemByTicker(ticker)
             val resolvedType = type ?: existing?.type ?: InvestmentType.Stock
-            val value = existing?.value ?: 0.0
-            val dayGainLoss = existing?.dayGainLoss ?: 0.0
-            val totalGainLoss = value - cost
 
             itemRepository.upsertItem(
                 InvestmentItemEntity(
@@ -307,10 +308,8 @@ class ItemViewModel @Inject constructor(
                     type = resolvedType,
                     currentPrice = existing?.currentPrice ?: 0.0,
                     quantity = quantity,
-                    cost = cost,
-                    dayGainLoss = dayGainLoss,
-                    totalGainLoss = totalGainLoss,
-                    value = value,
+                    dayGainLoss = existing?.dayGainLoss ?: 0.0,
+                    value = existing?.value ?: 0.0,
                     dayHigh = existing?.dayHigh ?: 0.0,
                     dayLow = existing?.dayLow ?: 0.0
                 )
@@ -358,7 +357,6 @@ class ItemViewModel @Inject constructor(
                 itemRepository.upsertItem(item.copy(
                     currentPrice = quote.price,
                     value = newValue,
-                    totalGainLoss = newValue - item.cost,
                     dayGainLoss = dayChange,
                     dayHigh = quote.dayHigh,
                     dayLow = quote.dayLow
@@ -392,7 +390,6 @@ class ItemViewModel @Inject constructor(
                             currentPrice = quote.price,
                             value = newValue,
                             dayGainLoss = dayChange,
-                            totalGainLoss = newValue - item.cost,
                             dayHigh = quote.dayHigh,
                             dayLow = quote.dayLow
                         )
@@ -442,7 +439,6 @@ class ItemViewModel @Inject constructor(
                             currentPrice = quote.price,
                             value = newValue,
                             dayGainLoss = dayChange,
-                            totalGainLoss = newValue - item.cost,
                             dayHigh = quote.dayHigh,
                             dayLow = quote.dayLow
                         )

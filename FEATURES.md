@@ -4,7 +4,7 @@
 
 ### Global Top Bar
 - Portfolio value 3D button with daily change amount in parentheses (color-coded green/red)
-- Second row shows Day % and All-time % gain/loss (color-coded)
+- Second row shows Day % gain/loss (color-coded)
 - Tapping refreshes all prices and navigates to Dashboard
 - Spinner shown during price refresh
 - Refresh status bar: temporary bar below top bar showing "Updating [TICKER]" with price/share, change $ and change % (color-coded green/red); auto-hides when complete
@@ -55,7 +55,7 @@
 
 ### Position Details
 - Horizontally scrollable table with gridlines
-- Columns: Ticker (3D icon), Shares, Price, Cost, Value, Change $, Change %
+- Columns: Ticker (3D icon), Shares, Price, Value
 - Sortable column headers (click to sort asc/desc)
 - Clickable rows navigate to item detail
 - Wrapped in CollapsibleCard with pin persistence
@@ -68,7 +68,7 @@
 - Brokerage-style card rows with thin dividers (inspired by Chase app layout)
   - Left: 3D ticker icon + ticker (bold) + uppercase company name
   - Below ticker: current price with day change $ and % (color-coded)
-  - Right: total position value + gain/loss badge (green/red chip)
+  - Right: total position value + daily gain/loss badge (green/red chip)
 - Edit button per row; Delete available in Edit dialog
 - Add/edit via form with type selector (Stock, ETF, Bond, MutualFund, Crypto, Other); quantity field has up/down arrows for +1/-1 adjustment
 - Refresh All updates live prices for all items
@@ -80,7 +80,7 @@ Four tabs: **Details**, **Price History**, **Analysis Info**, **Transactions** (
 
 ### Details Tab
 - Header: company logo icon (48dp, cached from DB) + ticker (bold) + company name + type chip + current price
-- Card row 1 (large): Total Shares, Total Value, Total Cost, Total G/L
+- Card row 1 (large): Total Shares, Total Value
 - Card row 2 (medium): Daily G/L, Daily G/L/Share, Daily Min, Daily Max
 
 ### Price History Tab

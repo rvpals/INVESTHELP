@@ -682,16 +682,9 @@ private fun PortfolioSummaryRow(
     val previousValue = uiState.totalPortfolioValue - uiState.totalDayGainLoss
     val dailyPct = if (previousValue != 0.0)
         uiState.totalDayGainLoss / previousValue * 100.0 else 0.0
-    val allTimePct = if (uiState.totalCost != 0.0)
-        (uiState.totalPortfolioValue - uiState.totalCost) / uiState.totalCost * 100.0 else 0.0
     val dailyColor = when {
         dailyPct > 0 -> Color(0xFF2E7D32)
         dailyPct < 0 -> Color(0xFFC62828)
-        else -> MaterialTheme.colorScheme.onSurface
-    }
-    val allTimeColor = when {
-        allTimePct > 0 -> Color(0xFF2E7D32)
-        allTimePct < 0 -> Color(0xFFC62828)
         else -> MaterialTheme.colorScheme.onSurface
     }
     val sign = { v: Double -> if (v > 0) "+" else "" }
@@ -736,18 +729,8 @@ private fun PortfolioSummaryRow(
                     .height(140.dp)
                     .clickable { onChartClick() }
             )
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // All-time percentage below chart
-            Text(
-                text = "${sign(allTimePct)}${"%.2f".format(allTimePct)}% all time",
-                style = MaterialTheme.typography.bodyMedium,
-                color = allTimeColor,
-                modifier = Modifier.align(Alignment.CenterHorizontally)
-            )
         } else {
             Spacer(modifier = Modifier.height(12.dp))
-            // Show Day/All percentages inline if no chart
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.Start,
@@ -763,17 +746,6 @@ private fun PortfolioSummaryRow(
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Bold,
                     color = dailyColor
-                )
-                Text(
-                    text = "    All: ",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Text(
-                    text = "${sign(allTimePct)}${"%.2f".format(allTimePct)}%",
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = allTimeColor
                 )
             }
         }

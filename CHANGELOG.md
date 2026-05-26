@@ -1,5 +1,21 @@
 # Changelog
 
+## v1.38 (Build 39) - 2026-05-26
+
+### Changed
+- Renamed database table `investment_items` to `investment_positions`
+- Removed `cost` and `totalGainLoss` fields from positions table (no longer tracked at the position level)
+- Removed Total Cost, Total G/L, Change $, Change % columns from Dashboard Position Details table
+- Removed Total Cost and Total G/L cards from Item Detail screen
+- Item Detail card row 1 now shows: Total Shares, Total Value (2 cards)
+- Gain/loss badge on Items screen now shows daily gain/loss instead of total gain/loss
+- CSV Position Import: removed cost-related mappable fields (cost basis, gain/loss, unrealized g/l)
+- Database version bumped to 27 (migration v26→v27)
+
+### Fixed
+- Item Form screen broken when opening with a ticker not in the positions table: form fields were disabled and Save button permanently greyed out
+- Item Form now correctly handles non-existent tickers: auto-fetches price and name from Yahoo Finance, allows editing all fields, and saves as a new position
+
 ## v1.37 (Build 38) - 2026-05-24
 
 ### Fixed

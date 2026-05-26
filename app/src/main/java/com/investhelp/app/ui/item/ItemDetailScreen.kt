@@ -500,21 +500,6 @@ private fun ItemDetailContent(
                                     color = MaterialTheme.colorScheme.primary
                                 )
                             }
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text("Total Cost", style = MaterialTheme.typography.labelSmall)
-                                Text(
-                                    currencyFormat.format(inv.cost),
-                                    style = MaterialTheme.typography.titleMedium
-                                )
-                            }
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text("Total G/L", style = MaterialTheme.typography.labelSmall)
-                                Text(
-                                    currencyFormat.format(inv.totalGainLoss),
-                                    style = MaterialTheme.typography.titleMedium,
-                                    color = if (inv.totalGainLoss >= 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
-                                )
-                            }
                         }
                         Spacer(modifier = Modifier.height(8.dp))
                         val dailyChangePerShare = if (inv.quantity > 0) inv.dayGainLoss / inv.quantity else 0.0

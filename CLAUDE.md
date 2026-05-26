@@ -8,7 +8,7 @@ Android investment tracking app built with Kotlin, Jetpack Compose, and Material
 - **Min SDK:** 29, Target SDK: 35
 - **Architecture:** MVVM + Repository pattern
 - **DI:** Hilt (KSP)
-- **Database:** Room, version 26
+- **Database:** Room, version 27
 - **Navigation:** Compose Navigation (type-safe routes)
 - **Splash:** AndroidX SplashScreen API (core-splashscreen 1.0.1)
 - **Charts:** Custom Canvas-drawn (pie chart, line chart) — no external chart library
@@ -24,7 +24,7 @@ Android investment tracking app built with Kotlin, Jetpack Compose, and Material
 - `ui/components/` - Reusable UI components (CollapsibleCard, ConfirmDeleteDialog, DateRangePicker)
 
 ## Key Design Decisions
-- InvestmentItem is a unique entity with `ticker` as sole primary key (no accountId); one record per ticker
+- InvestmentItem entity stored in `investment_positions` table with `ticker` as sole primary key (no accountId); one record per ticker
 - Metadata (name, type, currentPrice) stored per ticker; `updatePriceByTicker` DAO query updates the single row
 - Account current value: no longer per-account (items are not tied to accounts); portfolio value is sum of all items
 - Transaction table references ticker directly (no FK, no accountId) — simpler model
@@ -35,7 +35,7 @@ Android investment tracking app built with Kotlin, Jetpack Compose, and Material
 - CASCADE deletes: removing account removes associated performance records (transactions and items are not tied to accounts)
 - Items screen combines pie chart + STOCK/ETF tabs with Refresh All toolbar action
 - Items screen: sort-by dropdown (Ticker, Total Value, Current Price) above items list; defaults to Total Value descending
-- Items screen: brokerage-style card rows with thin dividers; each row shows TickerIcon3D + ticker (bold) + uppercase company name on left, current price with day change $ and % below, total position value on right with colored gain/loss badge (green/red chip)
+- Items screen: brokerage-style card rows with thin dividers; each row shows TickerIcon3D + ticker (bold) + uppercase company name on left, current price with day change $ and % below, total position value on right with daily gain/loss badge (green/red chip)
 - Items screen: only Edit button per row (no Delete in table); Delete available in Edit dialog
 - TickerIcon3D: gradient-filled rounded-corner (10dp) box with shadow; color derived from ticker hash; white letter fallback; company logo overlay from companiesmarketcap.com CDN via Coil
 - Company full name fetched from Yahoo Finance `shortName` during price refresh
@@ -66,19 +66,20 @@ Android investment tracking app built with Kotlin, Jetpack Compose, and Material
 - Item detail Investing Performance chart: fullscreen view button (opens chart in full-screen dialog at 400dp height)
 - Item detail Investing Performance chart: save-to-PNG button (renders chart as 1200x600 bitmap, saves to Pictures/InvestHelp/)
 - All tables app-wide: alternating row background color (surfaceVariant alpha 0.3f on odd rows) for readability; HorizontalDivider uses `outline` color (not `outlineVariant`) for visible row separation
-- **Image loading:** Coil 2.7.0 for company logos; logos cached as BLOB in investment_items table, fetched from multiple CDN sources (companiesmarketcap.com, parqet.com, iexcloud) during price refresh or on items screen load (if logo is null), UI falls back to network URL if not cached
+- **Image loading:** Coil 2.7.0 for company logos; logos cached as BLOB in investment_positions table, fetched from multiple CDN sources (companiesmarketcap.com, parqet.com, iexcloud) during price refresh or on items screen load (if logo is null), UI falls back to network URL if not cached
 - Item add/edit dialog: type selector dropdown (Stock, ETF, Bond, MutualFund, Crypto, Other); auto-fills type when selecting existing ticker
-- Item detail card row 1 (big font): Total Shares, Total Value, Total Cost, Total G/L
+- Item Form screen: handles both existing positions (edit) and new tickers (create); auto-fetches price and name from Yahoo Finance for non-existent tickers; Save requires non-blank ticker and quantity > 0
+- Item detail card row 1 (big font): Total Shares, Total Value
 - Item detail card row 2 (medium font): Daily G/L, Daily G/L/Share, Daily Min Price, Daily Max Price
 - Item detail: dayHigh/dayLow fetched from Yahoo Finance `regularMarketDayHigh`/`regularMarketDayLow`
 - CollapsibleCard: reusable component (`ui/components/CollapsibleCard.kt`) with title, pin button (persisted to SharedPreferences), HorizontalDivider between header and content, and AnimatedVisibility collapse/expand; unpinned cards default collapsed, pinned cards default expanded
 - Dashboard cards (Market Indices, Daily Glance, Positions, Position Details) all use CollapsibleCard with per-card pin state persisted via `pin_card_*` keys
-- Dashboard "Position Details" card: horizontally scrollable table with ticker icon, shares, current price, total cost, total value, change $ and change %; change computed as currentValue - totalCost; clickable rows navigate to item detail
+- Dashboard "Position Details" card: horizontally scrollable table with ticker icon, shares, current price, total value; clickable rows navigate to item detail
 - Dashboard "Daily Glance" card: "Overall Daily" section at top showing Stock and ETF total daily change in $ and %, separated by HorizontalDivider; "By Per Share" checkbox toggles sorting and display between total value and per-share change; then top 5 gainers and top 5 losers today; each row shows ticker, name, gain/loss $ and %; clickable to item detail
 - Dashboard: no accounts section (removed account cards and FAB; accounts accessible via hamburger menu)
 - Dashboard positions pie chart: collapsible card, legend limited to top 20 with "More" button to show all
 - Top bar portfolio button: total value row shows daily change amount in parentheses (e.g. "(+$123.45)") color-coded green/red; hidden when zero
-- Top bar portfolio button: second row shows (Day: ±X.XX%  All: ±X.XX%) color-coded green/red
+- Top bar portfolio button: second row shows (Day: ±X.XX%) color-coded green/red
 - Dashboard: "Portfolio Summary" collapsible card with pin persistence; total value change in headlineLarge (3x bigger) bold centered; Day/All percentages in bodyMedium centered below; mini line chart of total_value from change_history (shown when 2+ records); click mini chart opens full-screen Change History dialog with zoomable multi-series chart (Total/ETF/Stock lines) + grid data table (Date, ETF, Stock, Total columns)
 - Settings: "Warn before delete" toggle (default: on) — when off, skips confirmation dialogs for delete actions
 - Settings: "Dashboard Market Indices" section with toggles for 8 indices (NASDAQ, S&P 500, Dow, Gold, Russell 2K, Silver, Oil, Bitcoin); default: first 4 enabled; up/down arrow buttons to reorder indices; order persisted via `market_indices_order` SharedPreferences key
@@ -136,7 +137,8 @@ Android investment tracking app built with Kotlin, Jetpack Compose, and Material
 - Database migration v23 -> v24: adds lastUpdatedOn (INTEGER, epoch seconds) and lastValue (REAL) columns to investment_accounts
 - Database migration v24 -> v25: creates definitions table (term PK, definition TEXT) for metric definition popups
 - Database migration v25 -> v26: adds unique index on investment_transactions (date, action, ticker, totalAmount) to prevent duplicate CSV imports
-- Database version 26
+- Database migration v26 -> v27: renames investment_items to investment_positions, removes cost and totalGainLoss columns
+- Database version 27
 - Change History: `change_history` table records daily portfolio values by type (ETF, Stock, Total) plus daily change values (dailyChangeEtf, dailyChangeStock, dailyChangeTotal); one row per day, overwritten on re-refresh
 - Change History dialog: "Change Value This Week So Far" summary card above data table showing sum of daily changes for ETF, Stock, and Total since Monday; color-coded green/red
 - Settings: "Auto Update Change History when refresh" toggle (default: off) — when on, automatically records ETF/Stock/Total values to change_history after price refresh; overwrites existing entry for today

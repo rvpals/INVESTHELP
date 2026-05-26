@@ -48,9 +48,9 @@ fun ItemFormScreen(
     onSaved: () -> Unit,
     onBack: () -> Unit
 ) {
-    val isEditing = !ticker.isNullOrBlank()
+    val hasTicker = !ticker.isNullOrBlank()
 
-    if (isEditing) {
+    if (hasTicker) {
         LaunchedEffect(ticker) {
             viewModel.loadItem(ticker!!)
         }
@@ -60,28 +60,42 @@ fun ItemFormScreen(
     val fetchedPrice by viewModel.fetchedPrice.collectAsStateWithLifecycle()
 
     var name by remember { mutableStateOf("") }
-    var tickerInput by remember { mutableStateOf("") }
+    var tickerInput by remember { mutableStateOf(ticker?.uppercase() ?: "") }
     var selectedType by remember { mutableStateOf(InvestmentType.Stock) }
     var currentPrice by remember { mutableStateOf("") }
     var quantity by remember { mutableStateOf("") }
-    var cost by remember { mutableStateOf("") }
     var typeExpanded by remember { mutableStateOf(false) }
     var initialized by remember { mutableStateOf(false) }
+    val isExistingPosition = existingItem != null
 
     LaunchedEffect(existingItem) {
-        if (isEditing && existingItem != null && !initialized) {
+        if (hasTicker && existingItem != null && !initialized) {
             name = existingItem!!.name
             tickerInput = existingItem!!.ticker
             selectedType = existingItem!!.type
             currentPrice = existingItem!!.currentPrice.toString()
             quantity = existingItem!!.quantity.toString()
-            cost = existingItem!!.cost.toString()
             initialized = true
         }
     }
 
+    // Auto-fetch price from Yahoo if ticker is provided but not in DB
+    LaunchedEffect(hasTicker, existingItem) {
+        if (hasTicker && existingItem == null && !initialized) {
+            tickerInput = ticker!!.uppercase()
+            viewModel.fetchPriceForTicker(ticker)
+            initialized = true
+        }
+    }
+
+    val fetchedName by viewModel.fetchedName.collectAsStateWithLifecycle()
+
     LaunchedEffect(fetchedPrice) {
         fetchedPrice?.let { currentPrice = it.toString() }
+    }
+
+    LaunchedEffect(fetchedName) {
+        fetchedName?.let { if (name.isBlank()) name = it }
     }
 
     DisposableEffect(Unit) {
@@ -91,7 +105,7 @@ fun ItemFormScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(if (isEditing) "Edit Item" else "New Item") },
+                title = { Text(if (isExistingPosition) "Edit Item" else "New Item") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -122,7 +136,7 @@ fun ItemFormScreen(
                 label = { Text("Ticker Symbol") },
                 placeholder = { Text("e.g. AAPL, MSFT") },
                 singleLine = true,
-                readOnly = isEditing,
+                readOnly = hasTicker,
                 modifier = Modifier.fillMaxWidth()
             )
 
@@ -222,42 +236,28 @@ fun ItemFormScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
-
-            OutlinedTextField(
-                value = cost,
-                onValueChange = { cost = it },
-                label = { Text("Cost (USD)") },
-                singleLine = true,
-                prefix = { Text("$") },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                modifier = Modifier.fillMaxWidth()
-            )
-
             Spacer(modifier = Modifier.height(24.dp))
 
             Button(
                 onClick = {
                     val price = currentPrice.toDoubleOrNull() ?: 0.0
-                    val qty = quantity.toDoubleOrNull() ?: existingItem?.quantity ?: 0.0
-                    val costVal = cost.toDoubleOrNull() ?: existingItem?.cost ?: 0.0
+                    val qty = quantity.toDoubleOrNull() ?: 0.0
                     val resolvedTicker = tickerInput.trim().uppercase()
-                    if (resolvedTicker.isNotBlank()) {
+                    if (resolvedTicker.isNotBlank() && qty > 0) {
                         viewModel.saveItem(
                             ticker = resolvedTicker,
-                            name = name,
+                            name = name.ifBlank { resolvedTicker },
                             type = selectedType,
                             currentPrice = price,
-                            quantity = qty,
-                            cost = costVal
+                            quantity = qty
                         )
                         onSaved()
                     }
                 },
                 modifier = Modifier.fillMaxWidth(),
-                enabled = name.isNotBlank() && tickerInput.isNotBlank()
+                enabled = tickerInput.isNotBlank() && (quantity.toDoubleOrNull() ?: 0.0) > 0.0
             ) {
-                Text(if (isEditing) "Update" else "Create")
+                Text(if (isExistingPosition) "Update" else "Save")
             }
         }
     }

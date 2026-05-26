@@ -19,7 +19,7 @@ enum class CsvImportType(
         label = "Position Details",
         mappableFields = listOf(
             "Skip", "ticker", "name", "type", "currentPrice",
-            "quantity", "cost", "dayGainLoss", "totalGainLoss", "value"
+            "quantity", "dayGainLoss", "value"
         ),
         requiredFields = listOf("ticker"),
         dateTimeFields = emptyList()

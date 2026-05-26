@@ -57,7 +57,6 @@ data class DashboardUiState(
     val accounts: List<AccountWithValue> = emptyList(),
     val totalPortfolioValue: Double = 0.0,
     val totalDayGainLoss: Double = 0.0,
-    val totalCost: Double = 0.0,
     val marketIndices: List<MarketIndexQuote> = emptyList(),
     val topGainers: List<DailyGlanceItem> = emptyList(),
     val topLosers: List<DailyGlanceItem> = emptyList(),
@@ -276,8 +275,7 @@ class DashboardViewModel @Inject constructor(
                                 name = resolvedName,
                                 currentPrice = quote.price,
                                 value = newValue,
-                                dayGainLoss = dayChange,
-                                totalGainLoss = newValue - item.cost
+                                dayGainLoss = dayChange
                             )
                         )
                         if (item.logo == null) {
@@ -390,7 +388,6 @@ class DashboardViewModel @Inject constructor(
             accounts = accounts,
             totalPortfolioValue = items.sumOf { it.value },
             totalDayGainLoss = items.sumOf { it.dayGainLoss },
-            totalCost = items.sumOf { it.cost },
             marketIndices = indices,
             topGainers = topGainers,
             topLosers = topLosers,

@@ -27,7 +27,7 @@ com.investhelp.app/
 ├── MainActivity.kt              # Single activity, top bar, bottom nav, navigation host, auto-backup on exit
 ├── data/
 │   ├── local/
-│   │   ├── AppDatabase.kt       # Room database (version 26) with all DAOs and migrations
+│   │   ├── AppDatabase.kt       # Room database (version 27) with all DAOs and migrations
 │   │   ├── DatabaseProvider.kt  # Lazy database initialization pattern
 │   │   ├── dao/                 # Room DAO interfaces
 │   │   └── entity/              # Room entity classes
@@ -59,13 +59,13 @@ com.investhelp.app/
 
 ## Database
 
-### Room Database (version 26)
+### Room Database (version 27)
 
 **Entities:**
 | Table | Primary Key | Description |
 |-------|-------------|-------------|
 | `investment_accounts` | `id` (auto) | Brokerage accounts (with lastValue/lastUpdatedOn) |
-| `investment_items` | `ticker` | Holdings (one per ticker, with cached logo BLOB) |
+| `investment_positions` | `ticker` | Holdings (one per ticker, with cached logo BLOB) |
 | `investment_transactions` | `id` (auto) | Buy/sell records |
 | `account_performance` | `id` (auto) | Account value snapshots |
 | `watch_lists` | `id` (auto) | Named watch list groups |
@@ -102,6 +102,7 @@ com.investhelp.app/
 - v23->v24: Add lastUpdatedOn and lastValue columns to investment_accounts
 - v24->v25: Add definitions table for metric definitions
 - v25->v26: Add unique index on investment_transactions (date, action, ticker, totalAmount)
+- v26->v27: Rename investment_items to investment_positions, remove cost and totalGainLoss columns
 
 ### DatabaseProvider
 Lazy initialization pattern: database opens on first access, not at app startup.

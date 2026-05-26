@@ -99,9 +99,7 @@ class TransactionViewModel @Inject constructor(
                         type = InvestmentType.Stock,
                         currentPrice = pricePerShare,
                         quantity = 0.0,
-                        cost = 0.0,
                         dayGainLoss = 0.0,
-                        totalGainLoss = 0.0,
                         value = 0.0,
                         dayHigh = 0.0,
                         dayLow = 0.0

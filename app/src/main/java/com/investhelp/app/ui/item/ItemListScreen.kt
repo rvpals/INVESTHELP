@@ -172,8 +172,8 @@ fun ItemListScreen(
                 showForm = false
                 editingItem = null
             },
-            onSave = { ticker, quantity, cost, type ->
-                viewModel.savePosition(ticker, quantity, cost, type)
+            onSave = { ticker, quantity, type ->
+                viewModel.savePosition(ticker, quantity, type)
                 showForm = false
                 editingItem = null
             },
@@ -456,16 +456,16 @@ private fun ItemsTable(
                             fontWeight = FontWeight.Bold
                         )
                         Spacer(modifier = Modifier.height(4.dp))
-                        val totalGl = item.totalGainLoss
-                        val totalGlColor = if (totalGl >= 0) Color(0xFF2E8540) else Color(0xFFCF2A2A)
-                        val totalGlBg = if (totalGl >= 0) Color(0xFFE6F4EA) else Color(0xFFFDE8E8)
+                        val dayGl = item.dayGainLoss
+                        val dayGlColor = if (dayGl >= 0) Color(0xFF2E8540) else Color(0xFFCF2A2A)
+                        val dayGlBg = if (dayGl >= 0) Color(0xFFE6F4EA) else Color(0xFFFDE8E8)
                         Text(
-                            text = "${if (totalGl >= 0) "+" else ""}${currencyFormat.format(totalGl)}",
+                            text = "${if (dayGl >= 0) "+" else ""}${currencyFormat.format(dayGl)}",
                             style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.Bold,
-                            color = totalGlColor,
+                            color = dayGlColor,
                             modifier = Modifier
-                                .background(totalGlBg, RoundedCornerShape(4.dp))
+                                .background(dayGlBg, RoundedCornerShape(4.dp))
                                 .padding(horizontal = 6.dp, vertical = 2.dp)
                         )
                     }
@@ -616,14 +616,13 @@ private fun ItemFormDialog(
     items: List<InvestmentItemEntity>,
     warnBeforeDelete: Boolean = true,
     onDismiss: () -> Unit,
-    onSave: (ticker: String, quantity: Double, cost: Double, type: InvestmentType) -> Unit,
+    onSave: (ticker: String, quantity: Double, type: InvestmentType) -> Unit,
     onDelete: (InvestmentItemEntity) -> Unit = {}
 ) {
     val distinctTickers = items.map { it.ticker }.toSet()
 
     var tickerInput by remember { mutableStateOf(existing?.ticker ?: "") }
     var quantity by remember { mutableStateOf(existing?.quantity?.toString() ?: "") }
-    var cost by remember { mutableStateOf(existing?.cost?.toString() ?: "") }
     var selectedType by remember { mutableStateOf(existing?.type ?: InvestmentType.Stock) }
     var tickerExpanded by remember { mutableStateOf(false) }
     var typeExpanded by remember { mutableStateOf(false) }
@@ -721,18 +720,6 @@ private fun ItemFormDialog(
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                Spacer(modifier = Modifier.height(12.dp))
-
-                OutlinedTextField(
-                    value = cost,
-                    onValueChange = { cost = it; error = null },
-                    label = { Text("Cost (USD)") },
-                    singleLine = true,
-                    prefix = { Text("$") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                    modifier = Modifier.fillMaxWidth()
-                )
-
                 if (error != null) {
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
@@ -747,13 +734,11 @@ private fun ItemFormDialog(
             TextButton(onClick = {
                 val ticker = tickerInput.trim().uppercase()
                 val qty = quantity.toDoubleOrNull()
-                val c = cost.toDoubleOrNull()
                 when {
                     ticker.isBlank() -> error = "Enter a ticker"
                     !isEditing && ticker in distinctTickers -> error = "$ticker already exists"
                     qty == null || qty <= 0 -> error = "Enter a valid quantity"
-                    c == null || c < 0 -> error = "Enter a valid cost"
-                    else -> onSave(ticker, qty, c, selectedType)
+                    else -> onSave(ticker, qty, selectedType)
                 }
             }) {
                 Text("Save")

@@ -89,7 +89,7 @@ fun PositionDetailScreen(
 }
 
 private enum class PositionSortField {
-    TICKER, SHARES, PRICE, COST, VALUE, CHANGE_AMT, CHANGE_PCT, DAY_GL
+    TICKER, SHARES, PRICE, VALUE, DAY_GL
 }
 
 @Composable
@@ -111,12 +111,7 @@ private fun PositionTable(
             PositionSortField.TICKER -> compareBy { it.ticker }
             PositionSortField.SHARES -> compareBy { it.quantity }
             PositionSortField.PRICE -> compareBy { it.currentPrice }
-            PositionSortField.COST -> compareBy { it.cost }
             PositionSortField.VALUE -> compareBy { it.value }
-            PositionSortField.CHANGE_AMT -> compareBy { it.value - it.cost }
-            PositionSortField.CHANGE_PCT -> compareBy {
-                if (it.cost != 0.0) (it.value - it.cost) / it.cost else 0.0
-            }
             PositionSortField.DAY_GL -> compareBy { it.dayGainLoss }
         }
         if (sortAsc) items.sortedWith(comparator) else items.sortedWith(comparator.reversed())
@@ -166,13 +161,7 @@ private fun PositionTable(
                     VerticalDivider(color = dividerColor)
                     SortableHeader("Price", PositionSortField.PRICE, currentSortField, sortAsc, 80, TextAlign.End) { onHeaderClick(it) }
                     VerticalDivider(color = dividerColor)
-                    SortableHeader("Cost", PositionSortField.COST, currentSortField, sortAsc, 90, TextAlign.End) { onHeaderClick(it) }
-                    VerticalDivider(color = dividerColor)
                     SortableHeader("Value", PositionSortField.VALUE, currentSortField, sortAsc, 90, TextAlign.End) { onHeaderClick(it) }
-                    VerticalDivider(color = dividerColor)
-                    SortableHeader("Change $", PositionSortField.CHANGE_AMT, currentSortField, sortAsc, 90, TextAlign.End) { onHeaderClick(it) }
-                    VerticalDivider(color = dividerColor)
-                    SortableHeader("Change %", PositionSortField.CHANGE_PCT, currentSortField, sortAsc, 80, TextAlign.End) { onHeaderClick(it) }
                     VerticalDivider(color = dividerColor)
                     SortableHeader("Day G/L", PositionSortField.DAY_GL, currentSortField, sortAsc, 90, TextAlign.End) { onHeaderClick(it) }
                 }
@@ -180,10 +169,6 @@ private fun PositionTable(
 
                 val altColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
                 sortedItems.forEachIndexed { index, item ->
-                    val changeAmt = item.value - item.cost
-                    val changePct = if (item.cost != 0.0) changeAmt / item.cost * 100.0 else 0.0
-                    val changeColor = if (changeAmt >= 0) Color(0xFF2E7D32) else Color(0xFFC62828)
-                    val changeSign = if (changeAmt > 0) "+" else ""
                     val dayColor = if (item.dayGainLoss >= 0) Color(0xFF2E7D32) else Color(0xFFC62828)
                     val daySign = if (item.dayGainLoss > 0) "+" else ""
 
@@ -226,34 +211,9 @@ private fun PositionTable(
                         )
                         VerticalDivider(color = dividerColor)
                         Text(
-                            text = currencyFormat.format(item.cost),
-                            style = MaterialTheme.typography.bodySmall,
-                            modifier = Modifier.width(90.dp),
-                            textAlign = TextAlign.End
-                        )
-                        VerticalDivider(color = dividerColor)
-                        Text(
                             text = currencyFormat.format(item.value),
                             style = MaterialTheme.typography.bodySmall,
                             modifier = Modifier.width(90.dp),
-                            textAlign = TextAlign.End
-                        )
-                        VerticalDivider(color = dividerColor)
-                        Text(
-                            text = "$changeSign${currencyFormat.format(changeAmt)}",
-                            style = MaterialTheme.typography.bodySmall,
-                            fontWeight = FontWeight.SemiBold,
-                            color = changeColor,
-                            modifier = Modifier.width(90.dp),
-                            textAlign = TextAlign.End
-                        )
-                        VerticalDivider(color = dividerColor)
-                        Text(
-                            text = "$changeSign${String.format("%.2f", changePct)}%",
-                            style = MaterialTheme.typography.bodySmall,
-                            fontWeight = FontWeight.SemiBold,
-                            color = changeColor,
-                            modifier = Modifier.width(80.dp),
                             textAlign = TextAlign.End
                         )
                         VerticalDivider(color = dividerColor)

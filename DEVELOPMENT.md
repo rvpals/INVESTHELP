@@ -55,7 +55,7 @@ When modifying the Room database schema:
 3. Register the migration in the database builder
 4. Update `CLAUDE.md` and `ISSUES.md` with migration notes
 
-Current version: **26**
+Current version: **27**
 
 ## Key Conventions
 
@@ -81,7 +81,7 @@ Current version: **26**
 
 ### Image Loading
 - Coil 2.7.0 for async image loading
-- Company logos cached as BLOB in `investment_items.logo` column (fetched from multiple CDN sources: companiesmarketcap.com, parqet.com, iexcloud)
+- Company logos cached as BLOB in `investment_positions.logo` column (fetched from multiple CDN sources: companiesmarketcap.com, parqet.com, iexcloud)
 - Logos auto-fetched on items screen load for any items missing logos
 - UI uses stored bytes when available; falls back to network URL
 - White letter fallback when logo unavailable

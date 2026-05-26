@@ -11,19 +11,19 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface InvestmentItemDao {
 
-    @Query("SELECT * FROM investment_items ORDER BY ticker ASC")
+    @Query("SELECT * FROM investment_positions ORDER BY ticker ASC")
     fun getAllItems(): Flow<List<InvestmentItemEntity>>
 
-    @Query("SELECT * FROM investment_items")
+    @Query("SELECT * FROM investment_positions")
     suspend fun getAllItemsSnapshot(): List<InvestmentItemEntity>
 
-    @Query("DELETE FROM investment_items")
+    @Query("DELETE FROM investment_positions")
     suspend fun deleteAll()
 
-    @Query("SELECT * FROM investment_items WHERE ticker = :ticker")
+    @Query("SELECT * FROM investment_positions WHERE ticker = :ticker")
     suspend fun getItemByTicker(ticker: String): InvestmentItemEntity?
 
-    @Query("SELECT * FROM investment_items WHERE ticker = :ticker")
+    @Query("SELECT * FROM investment_positions WHERE ticker = :ticker")
     fun observeItemByTicker(ticker: String): Flow<InvestmentItemEntity?>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -32,28 +32,28 @@ interface InvestmentItemDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertAll(items: List<InvestmentItemEntity>)
 
-    @Query("DELETE FROM investment_items WHERE ticker = :ticker")
+    @Query("DELETE FROM investment_positions WHERE ticker = :ticker")
     suspend fun deleteByTicker(ticker: String)
 
-    @Query("UPDATE investment_items SET currentPrice = :price WHERE ticker = :ticker")
+    @Query("UPDATE investment_positions SET currentPrice = :price WHERE ticker = :ticker")
     suspend fun updatePriceByTicker(ticker: String, price: Double)
 
-    @Query("UPDATE investment_items SET logo = :logo WHERE ticker = :ticker")
+    @Query("UPDATE investment_positions SET logo = :logo WHERE ticker = :ticker")
     suspend fun updateLogoByTicker(ticker: String, logo: ByteArray)
 
     @Query(
         """
-        UPDATE investment_items
+        UPDATE investment_positions
         SET name = :name, type = :type, currentPrice = :currentPrice
         WHERE ticker = :ticker
         """
     )
     suspend fun updateMetadataByTicker(ticker: String, name: String, type: InvestmentType, currentPrice: Double)
 
-    @Query("SELECT COALESCE(SUM(value), 0.0) FROM investment_items")
+    @Query("SELECT COALESCE(SUM(value), 0.0) FROM investment_positions")
     suspend fun sumAllValues(): Double
 
-    @Query("SELECT COALESCE(SUM(quantity), 0.0) FROM investment_items WHERE ticker = :ticker")
+    @Query("SELECT COALESCE(SUM(quantity), 0.0) FROM investment_positions WHERE ticker = :ticker")
     suspend fun sumQuantityByTicker(ticker: String): Double
 
     @Query(

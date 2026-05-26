@@ -397,9 +397,7 @@ class SettingsViewModel @Inject constructor(
                             type = it.type.name,
                             currentPrice = it.currentPrice,
                             quantity = it.quantity,
-                            cost = it.cost,
                             dayGainLoss = it.dayGainLoss,
-                            totalGainLoss = it.totalGainLoss,
                             value = it.value,
                             dayHigh = it.dayHigh,
                             dayLow = it.dayLow
@@ -479,9 +477,7 @@ class SettingsViewModel @Inject constructor(
                                 type = InvestmentType.valueOf(i.type),
                                 currentPrice = i.currentPrice,
                                 quantity = i.quantity,
-                                cost = i.cost,
                                 dayGainLoss = i.dayGainLoss,
-                                totalGainLoss = i.totalGainLoss,
                                 value = i.value,
                                 dayHigh = i.dayHigh,
                                 dayLow = i.dayLow
@@ -495,9 +491,7 @@ class SettingsViewModel @Inject constructor(
                                 type = InvestmentType.valueOf(i.type),
                                 currentPrice = i.currentPrice,
                                 quantity = i.numShares,
-                                cost = 0.0,
                                 dayGainLoss = 0.0,
-                                totalGainLoss = 0.0,
                                 value = i.numShares * i.currentPrice
                             )
                         )
@@ -568,14 +562,9 @@ class SettingsViewModel @Inject constructor(
                         "security" to "name",
                         "security name" to "name",
                         "symbol" to "ticker",
-                        "unrealized g/l amt." to "totalGainLoss",
-                        "unrealized g/l" to "totalGainLoss",
-                        "unrealized gain/loss" to "totalGainLoss",
-                        "gain/loss" to "totalGainLoss",
                         "today's value change" to "dayGainLoss",
                         "shares" to "quantity",
                         "qty" to "quantity",
-                        "cost basis" to "cost",
                         "market value" to "value",
                         "unit cost" to "currentPrice",
                         "number of shares" to "numberOfShares",
@@ -976,20 +965,16 @@ class SettingsViewModel @Inject constructor(
 
                     val newPrice = parseNumeric(fieldValues["currentPrice"])
                     val newQty = parseNumeric(fieldValues["quantity"])
-                    val newCost = parseNumeric(fieldValues["cost"])
                     val newName = fieldValues["name"]?.ifBlank { null }
                     val newValue = parseNumeric(fieldValues["value"])
                     val newDayGL = parseNumeric(fieldValues["dayGainLoss"])
-                    val newTotalGL = parseNumeric(fieldValues["totalGainLoss"])
 
                     if (existing != null) {
                         if (newPrice != null && newPrice != existing.currentPrice) changedFields.add("price: ${existing.currentPrice} → $newPrice")
                         if (newQty != null && newQty != existing.quantity) changedFields.add("qty: ${existing.quantity} → $newQty")
-                        if (newCost != null && newCost != existing.cost) changedFields.add("cost: ${existing.cost} → $newCost")
                         if (newName != null && newName != existing.name) changedFields.add("name: ${existing.name} → $newName")
                         if (newValue != null && newValue != existing.value) changedFields.add("value: ${existing.value} → $newValue")
                         if (newDayGL != null && newDayGL != existing.dayGainLoss) changedFields.add("dayG/L: ${existing.dayGainLoss} → $newDayGL")
-                        if (newTotalGL != null && newTotalGL != existing.totalGainLoss) changedFields.add("totalG/L: ${existing.totalGainLoss} → $newTotalGL")
                     }
 
                     val item = InvestmentItemEntity(
@@ -1000,9 +985,7 @@ class SettingsViewModel @Inject constructor(
                         } ?: existing?.type ?: InvestmentType.Stock,
                         currentPrice = newPrice ?: existing?.currentPrice ?: 0.0,
                         quantity = newQty ?: existing?.quantity ?: 0.0,
-                        cost = newCost ?: existing?.cost ?: 0.0,
                         dayGainLoss = newDayGL ?: existing?.dayGainLoss ?: 0.0,
-                        totalGainLoss = newTotalGL ?: existing?.totalGainLoss ?: 0.0,
                         value = newValue ?: existing?.value ?: 0.0,
                         dayHigh = existing?.dayHigh ?: 0.0,
                         dayLow = existing?.dayLow ?: 0.0
@@ -1021,7 +1004,7 @@ class SettingsViewModel @Inject constructor(
                         logEntries.add(ImportLogEntry(
                             ticker = ticker,
                             status = ImportStatus.IMPORTED,
-                            details = "New position: price=$newPrice, qty=$newQty, cost=$newCost"
+                            details = "New position: price=$newPrice, qty=$newQty"
                         ))
                     }
                 } catch (e: Exception) {
@@ -1070,14 +1053,9 @@ class SettingsViewModel @Inject constructor(
             "security" to "name",
             "security name" to "name",
             "symbol" to "ticker",
-            "unrealized g/l amt." to "totalGainLoss",
-            "unrealized g/l" to "totalGainLoss",
-            "unrealized gain/loss" to "totalGainLoss",
-            "gain/loss" to "totalGainLoss",
             "today's value change" to "dayGainLoss",
             "shares" to "quantity",
             "qty" to "quantity",
-            "cost basis" to "cost",
             "market value" to "value",
             "unit cost" to "currentPrice",
         )
@@ -1240,8 +1218,7 @@ class SettingsViewModel @Inject constructor(
                 InvestmentItemEntity(
                     ticker = ticker, name = ticker,
                     type = InvestmentType.Stock, currentPrice = price,
-                    quantity = 0.0, cost = 0.0, dayGainLoss = 0.0,
-                    totalGainLoss = 0.0, value = 0.0
+                    quantity = 0.0, dayGainLoss = 0.0, value = 0.0
                 )
             )
         }
@@ -1266,12 +1243,8 @@ class SettingsViewModel @Inject constructor(
                 ?: existing?.currentPrice ?: 0.0,
             quantity = parseNumeric(fields["quantity"])
                 ?: existing?.quantity ?: 0.0,
-            cost = parseNumeric(fields["cost"])
-                ?: existing?.cost ?: 0.0,
             dayGainLoss = parseNumeric(fields["dayGainLoss"])
                 ?: existing?.dayGainLoss ?: 0.0,
-            totalGainLoss = parseNumeric(fields["totalGainLoss"])
-                ?: existing?.totalGainLoss ?: 0.0,
             value = parseNumeric(fields["value"])
                 ?: existing?.value ?: 0.0,
             dayHigh = existing?.dayHigh ?: 0.0,

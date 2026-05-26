@@ -208,9 +208,7 @@ class MainActivity : AppCompatActivity() {
                                 type = it.type.name,
                                 currentPrice = it.currentPrice,
                                 quantity = it.quantity,
-                                cost = it.cost,
                                 dayGainLoss = it.dayGainLoss,
-                                totalGainLoss = it.totalGainLoss,
                                 value = it.value,
                                 dayHigh = it.dayHigh,
                                 dayLow = it.dayLow
