@@ -57,6 +57,7 @@ fun ItemFormScreen(
     }
 
     val existingItem by viewModel.selectedItem.collectAsStateWithLifecycle()
+    val itemLoaded by viewModel.itemLoaded.collectAsStateWithLifecycle()
     val fetchedPrice by viewModel.fetchedPrice.collectAsStateWithLifecycle()
 
     var name by remember { mutableStateOf("") }
@@ -68,8 +69,9 @@ fun ItemFormScreen(
     var initialized by remember { mutableStateOf(false) }
     val isExistingPosition = existingItem != null
 
-    LaunchedEffect(existingItem) {
-        if (hasTicker && existingItem != null && !initialized) {
+    // Wait for DB query to resolve before populating form
+    LaunchedEffect(itemLoaded, existingItem) {
+        if (hasTicker && itemLoaded && existingItem != null && !initialized) {
             name = existingItem!!.name
             tickerInput = existingItem!!.ticker
             selectedType = existingItem!!.type
@@ -80,8 +82,8 @@ fun ItemFormScreen(
     }
 
     // Auto-fetch price from Yahoo if ticker is provided but not in DB
-    LaunchedEffect(hasTicker, existingItem) {
-        if (hasTicker && existingItem == null && !initialized) {
+    LaunchedEffect(itemLoaded) {
+        if (hasTicker && itemLoaded && existingItem == null && !initialized) {
             tickerInput = ticker!!.uppercase()
             viewModel.fetchPriceForTicker(ticker)
             initialized = true
@@ -89,6 +91,10 @@ fun ItemFormScreen(
     }
 
     val fetchedName by viewModel.fetchedName.collectAsStateWithLifecycle()
+    val fetchedDayHigh by viewModel.fetchedDayHigh.collectAsStateWithLifecycle()
+    val fetchedDayLow by viewModel.fetchedDayLow.collectAsStateWithLifecycle()
+    val fetchedPreviousClose by viewModel.fetchedPreviousClose.collectAsStateWithLifecycle()
+    val fetchedLogo by viewModel.fetchedLogo.collectAsStateWithLifecycle()
 
     LaunchedEffect(fetchedPrice) {
         fetchedPrice?.let { currentPrice = it.toString() }
@@ -243,19 +249,23 @@ fun ItemFormScreen(
                     val price = currentPrice.toDoubleOrNull() ?: 0.0
                     val qty = quantity.toDoubleOrNull() ?: 0.0
                     val resolvedTicker = tickerInput.trim().uppercase()
-                    if (resolvedTicker.isNotBlank() && qty > 0) {
+                    if (resolvedTicker.isNotBlank()) {
                         viewModel.saveItem(
                             ticker = resolvedTicker,
                             name = name.ifBlank { resolvedTicker },
                             type = selectedType,
                             currentPrice = price,
-                            quantity = qty
+                            quantity = qty,
+                            dayHigh = fetchedDayHigh,
+                            dayLow = fetchedDayLow,
+                            previousClose = fetchedPreviousClose,
+                            logo = fetchedLogo
                         )
                         onSaved()
                     }
                 },
                 modifier = Modifier.fillMaxWidth(),
-                enabled = tickerInput.isNotBlank() && (quantity.toDoubleOrNull() ?: 0.0) > 0.0
+                enabled = tickerInput.isNotBlank()
             ) {
                 Text(if (isExistingPosition) "Update" else "Save")
             }

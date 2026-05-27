@@ -23,10 +23,16 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Analytics
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.ShowChart
+import androidx.compose.material.icons.filled.TrendingUp
+import androidx.compose.ui.graphics.vector.ImageVector
+import kotlin.math.cos
+import kotlin.math.sin
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -116,7 +122,12 @@ fun ItemListScreen(
     var selectedTab by rememberSaveable { mutableIntStateOf(0) }
     var sortOption by rememberSaveable { mutableStateOf(SortOption.TotalValue) }
 
-    val tabs = listOf("STOCK", "ETF")
+    data class TabInfo(val title: String, val icon: ImageVector)
+    val tabs = listOf(
+        TabInfo("STOCK", Icons.Default.ShowChart),
+        TabInfo("ETF", Icons.Default.TrendingUp),
+        TabInfo("Analysis", Icons.Default.Analytics)
+    )
     val filteredItems = when (selectedTab) {
         0 -> items.filter { it.type == InvestmentType.Stock }
         1 -> items.filter { it.type == InvestmentType.ETF }
@@ -228,54 +239,62 @@ fun ItemListScreen(
                 .padding(padding)
         ) {
             TabRow(selectedTabIndex = selectedTab) {
-                tabs.forEachIndexed { index, title ->
+                tabs.forEachIndexed { index, tab ->
                     Tab(
                         selected = selectedTab == index,
                         onClick = { selectedTab = index },
-                        text = { Text(title) }
+                        text = { Text(tab.title) },
+                        icon = { Icon(tab.icon, contentDescription = tab.title) }
                     )
                 }
             }
 
-            if (filteredItems.isEmpty()) {
-                Column(
-                    modifier = Modifier.fillMaxSize(),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
-                ) {
-                    Text("No ${tabs[selectedTab].lowercase()} items yet", style = MaterialTheme.typography.bodyLarge)
-                    Text("Tap + to add one", style = MaterialTheme.typography.bodyMedium)
-                }
-            } else {
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    if (tickerValues.isNotEmpty()) {
-                        item(key = "chart_section") {
-                            Spacer(modifier = Modifier.height(8.dp))
-                            ChartSection(tickerValues, currencyFormat)
+            when (selectedTab) {
+                0, 1 -> {
+                    if (filteredItems.isEmpty()) {
+                        Column(
+                            modifier = Modifier.fillMaxSize(),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            Text("No ${tabs[selectedTab].title.lowercase()} items yet", style = MaterialTheme.typography.bodyLarge)
+                            Text("Tap + to add one", style = MaterialTheme.typography.bodyMedium)
+                        }
+                    } else {
+                        LazyColumn(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(horizontal = 16.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            if (tickerValues.isNotEmpty()) {
+                                item(key = "chart_section") {
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    ChartSection(tickerValues, currencyFormat)
+                                }
+                            }
+
+                            item(key = "sort_bar") {
+                                SortBar(
+                                    selected = sortOption,
+                                    onSelect = { sortOption = it }
+                                )
+                            }
+
+                            item(key = "items_table") {
+                                ItemsTable(
+                                    items = sortedItems,
+                                    refreshingTickers = refreshingTickers,
+                                    currencyFormat = currencyFormat,
+                                    onItemClick = onNavigateToItem,
+                                    onEdit = { editingItem = it }
+                                )
+                            }
                         }
                     }
-
-                    item(key = "sort_bar") {
-                        SortBar(
-                            selected = sortOption,
-                            onSelect = { sortOption = it }
-                        )
-                    }
-
-                    item(key = "items_table") {
-                        ItemsTable(
-                            items = sortedItems,
-                            refreshingTickers = refreshingTickers,
-                            currencyFormat = currencyFormat,
-                            onItemClick = onNavigateToItem,
-                            onEdit = { editingItem = it }
-                        )
-                    }
+                }
+                2 -> {
+                    AnalysisTab(items = items, currencyFormat = currencyFormat)
                 }
             }
         }
@@ -496,6 +515,153 @@ private fun ItemsTable(
                 thickness = 0.5.dp,
                 color = MaterialTheme.colorScheme.outline.copy(alpha = 0.6f)
             )
+        }
+    }
+}
+
+// --- Analysis Tab ---
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun AnalysisTab(
+    items: List<InvestmentItemEntity>,
+    currencyFormat: NumberFormat
+) {
+    val stockItems = items.filter { it.type == InvestmentType.Stock && it.value > 0 }
+        .map { it.ticker to it.value }
+        .sortedByDescending { it.second }
+    val etfItems = items.filter { it.type == InvestmentType.ETF && it.value > 0 }
+        .map { it.ticker to it.value }
+        .sortedByDescending { it.second }
+
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        item { Spacer(modifier = Modifier.height(4.dp)) }
+
+        item {
+            ExplodingPieCard(
+                title = "Stock",
+                tickerValues = stockItems,
+                currencyFormat = currencyFormat
+            )
+        }
+
+        item {
+            ExplodingPieCard(
+                title = "ETF",
+                tickerValues = etfItems,
+                currencyFormat = currencyFormat
+            )
+        }
+
+        item { Spacer(modifier = Modifier.height(8.dp)) }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun ExplodingPieCard(
+    title: String,
+    tickerValues: List<Pair<String, Double>>,
+    currencyFormat: NumberFormat
+) {
+    val totalValue = tickerValues.sumOf { it.second }
+    val maxIndex = if (tickerValues.isNotEmpty()) tickerValues.indices.maxByOrNull { tickerValues[it].second } ?: 0 else 0
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+        )
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                "Total: ${currencyFormat.format(totalValue)}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            if (tickerValues.isEmpty()) {
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    "No $title positions",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            } else {
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Canvas(
+                    modifier = Modifier
+                        .fillMaxWidth(0.65f)
+                        .aspectRatio(1f)
+                        .align(Alignment.CenterHorizontally)
+                ) {
+                    val explodeOffset = 12.dp.toPx()
+                    val diameter = size.minDimension - explodeOffset * 2
+                    val center = Offset(size.width / 2f, size.height / 2f)
+                    var startAngle = -90f
+
+                    tickerValues.forEachIndexed { index, (_, value) ->
+                        val sweep = (value / totalValue * 360.0).toFloat()
+                        val midAngle = Math.toRadians((startAngle + sweep / 2).toDouble())
+
+                        val offset = if (index == maxIndex) {
+                            Offset(
+                                (cos(midAngle) * explodeOffset).toFloat(),
+                                (sin(midAngle) * explodeOffset).toFloat()
+                            )
+                        } else Offset.Zero
+
+                        val topLeft = Offset(
+                            center.x - diameter / 2f + offset.x,
+                            center.y - diameter / 2f + offset.y
+                        )
+
+                        drawArc(
+                            color = chartColors[index % chartColors.size],
+                            startAngle = startAngle,
+                            sweepAngle = sweep,
+                            useCenter = true,
+                            topLeft = topLeft,
+                            size = Size(diameter, diameter)
+                        )
+                        startAngle += sweep
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                FlowRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    tickerValues.forEachIndexed { index, (ticker, value) ->
+                        val pct = if (totalValue > 0) value / totalValue * 100 else 0.0
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .size(10.dp)
+                                    .clip(CircleShape)
+                                    .background(chartColors[index % chartColors.size])
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = "$ticker ${"%.1f".format(pct)}%",
+                                style = MaterialTheme.typography.bodySmall,
+                                fontWeight = if (index == maxIndex) FontWeight.Bold else FontWeight.Medium
+                            )
+                        }
+                    }
+                }
+            }
         }
     }
 }

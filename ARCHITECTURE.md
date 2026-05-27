@@ -32,7 +32,7 @@ com.investhelp.app/
 │   │   ├── dao/                 # Room DAO interfaces
 │   │   └── entity/              # Room entity classes
 │   ├── remote/
-│   │   └── StockPriceService.kt # Yahoo Finance v8/v10 API client
+│   │   └── StockPriceService.kt # Yahoo Finance v8/v10 API client (quotes, history, analysis, news, logos)
 │   └── repository/
 │       ├── *Repository.kt       # Repository interfaces
 │       └── *RepositoryImpl.kt   # Repository implementations

@@ -64,6 +64,9 @@ class ItemViewModel @Inject constructor(
     private val _selectedItem = MutableStateFlow<InvestmentItemEntity?>(null)
     val selectedItem: StateFlow<InvestmentItemEntity?> = _selectedItem.asStateFlow()
 
+    private val _itemLoaded = MutableStateFlow(false)
+    val itemLoaded: StateFlow<Boolean> = _itemLoaded.asStateFlow()
+
     private val _itemTransactions = MutableStateFlow<List<InvestmentTransactionEntity>>(emptyList())
     val itemTransactions: StateFlow<List<InvestmentTransactionEntity>> = _itemTransactions.asStateFlow()
 
@@ -167,15 +170,38 @@ class ItemViewModel @Inject constructor(
     private val _fetchedName = MutableStateFlow<String?>(null)
     val fetchedName: StateFlow<String?> = _fetchedName.asStateFlow()
 
+    private val _fetchedDayHigh = MutableStateFlow<Double?>(null)
+    val fetchedDayHigh: StateFlow<Double?> = _fetchedDayHigh.asStateFlow()
+
+    private val _fetchedDayLow = MutableStateFlow<Double?>(null)
+    val fetchedDayLow: StateFlow<Double?> = _fetchedDayLow.asStateFlow()
+
+    private val _fetchedPreviousClose = MutableStateFlow<Double?>(null)
+    val fetchedPreviousClose: StateFlow<Double?> = _fetchedPreviousClose.asStateFlow()
+
+    private val _fetchedLogo = MutableStateFlow<ByteArray?>(null)
+    val fetchedLogo: StateFlow<ByteArray?> = _fetchedLogo.asStateFlow()
+
     fun fetchPriceForTicker(ticker: String) {
         viewModelScope.launch {
             try {
                 val quote = stockPriceService.fetchQuote(ticker)
                 _fetchedPrice.value = quote.price
                 _fetchedName.value = quote.shortName
+                _fetchedDayHigh.value = quote.dayHigh
+                _fetchedDayLow.value = quote.dayLow
+                _fetchedPreviousClose.value = quote.previousClose
             } catch (_: Exception) {
                 _fetchedPrice.value = null
                 _fetchedName.value = null
+                _fetchedDayHigh.value = null
+                _fetchedDayLow.value = null
+                _fetchedPreviousClose.value = null
+            }
+            try {
+                _fetchedLogo.value = stockPriceService.fetchLogo(ticker)
+            } catch (_: Exception) {
+                _fetchedLogo.value = null
             }
         }
     }
@@ -183,6 +209,10 @@ class ItemViewModel @Inject constructor(
     fun clearFetchedPrice() {
         _fetchedPrice.value = null
         _fetchedName.value = null
+        _fetchedDayHigh.value = null
+        _fetchedDayLow.value = null
+        _fetchedPreviousClose.value = null
+        _fetchedLogo.value = null
     }
 
     // --- Position refresh state ---
@@ -194,6 +224,26 @@ class ItemViewModel @Inject constructor(
 
     fun clearMessage() {
         _message.value = null
+    }
+
+    // --- News ---
+    private val _newsArticles = MutableStateFlow<List<com.investhelp.app.data.remote.NewsArticle>>(emptyList())
+    val newsArticles: StateFlow<List<com.investhelp.app.data.remote.NewsArticle>> = _newsArticles.asStateFlow()
+
+    private val _isLoadingNews = MutableStateFlow(false)
+    val isLoadingNews: StateFlow<Boolean> = _isLoadingNews.asStateFlow()
+
+    fun fetchNews(ticker: String, count: Int = 5) {
+        viewModelScope.launch {
+            _isLoadingNews.value = true
+            try {
+                _newsArticles.value = stockPriceService.fetchNews(ticker, count)
+            } catch (_: Exception) {
+                _newsArticles.value = emptyList()
+            } finally {
+                _isLoadingNews.value = false
+            }
+        }
     }
 
     // --- Analysis ---
@@ -251,9 +301,11 @@ class ItemViewModel @Inject constructor(
 
     // --- Load item by ticker (for detail screen) ---
     fun loadItem(ticker: String) {
+        _itemLoaded.value = false
         viewModelScope.launch {
             itemRepository.observeItemByTicker(ticker).collect { item ->
                 _selectedItem.value = item
+                _itemLoaded.value = true
             }
         }
         viewModelScope.launch {
@@ -276,20 +328,31 @@ class ItemViewModel @Inject constructor(
         name: String,
         type: InvestmentType,
         currentPrice: Double,
-        quantity: Double
+        quantity: Double,
+        dayHigh: Double? = null,
+        dayLow: Double? = null,
+        previousClose: Double? = null,
+        logo: ByteArray? = null
     ) {
         viewModelScope.launch {
             val existing = itemRepository.getItemByTicker(ticker)
+            val resolvedDayHigh = dayHigh ?: existing?.dayHigh ?: 0.0
+            val resolvedDayLow = dayLow ?: existing?.dayLow ?: 0.0
+            val dayChange = if (previousClose != null && previousClose > 0.0)
+                (currentPrice - previousClose) * quantity
+            else
+                existing?.dayGainLoss ?: 0.0
             val item = InvestmentItemEntity(
                 ticker = ticker,
                 name = name,
                 type = type,
                 currentPrice = currentPrice,
                 quantity = quantity,
-                dayGainLoss = existing?.dayGainLoss ?: 0.0,
-                value = existing?.value ?: (quantity * currentPrice),
-                dayHigh = existing?.dayHigh ?: 0.0,
-                dayLow = existing?.dayLow ?: 0.0
+                dayGainLoss = dayChange,
+                value = quantity * currentPrice,
+                dayHigh = resolvedDayHigh,
+                dayLow = resolvedDayLow,
+                logo = logo ?: existing?.logo
             )
             itemRepository.upsertItem(item)
         }

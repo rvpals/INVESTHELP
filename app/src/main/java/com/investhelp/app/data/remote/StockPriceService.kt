@@ -27,6 +27,13 @@ data class StockQuote(
     val dayLow: Double = 0.0
 )
 
+data class NewsArticle(
+    val title: String,
+    val link: String,
+    val publisher: String,
+    val publishedAt: Long // epoch seconds
+)
+
 data class HistoricalPrice(
     val timestamp: Long, // epoch seconds
     val close: Double
@@ -344,6 +351,36 @@ class StockPriceService @Inject constructor() {
                 dayHigh = meta["regularMarketDayHigh"]?.jsonPrimitive?.doubleOrNull ?: 0.0,
                 dayLow = meta["regularMarketDayLow"]?.jsonPrimitive?.doubleOrNull ?: 0.0
             )
+        } finally {
+            connection.disconnect()
+        }
+    }
+
+    suspend fun fetchNews(ticker: String, count: Int = 5): List<NewsArticle> = withContext(Dispatchers.IO) {
+        val url = URL("https://query2.finance.yahoo.com/v1/finance/search?q=${ticker}&newsCount=${count}&quotesCount=0&listsCount=0")
+        val connection = url.openConnection() as HttpURLConnection
+        connection.instanceFollowRedirects = true
+        connection.setRequestProperty("User-Agent", "Mozilla/5.0")
+        connection.connectTimeout = 10_000
+        connection.readTimeout = 10_000
+
+        try {
+            if (connection.responseCode != 200) {
+                throw Exception("Yahoo Finance returned ${connection.responseCode}")
+            }
+
+            val body = connection.inputStream.bufferedReader().readText()
+            val root = json.parseToJsonElement(body) as JsonObject
+            val newsArray = root["news"]?.jsonArray ?: return@withContext emptyList()
+
+            newsArray.mapNotNull { element ->
+                val obj = element.jsonObject
+                val title = obj["title"]?.jsonPrimitive?.contentOrNull ?: return@mapNotNull null
+                val link = obj["link"]?.jsonPrimitive?.contentOrNull ?: return@mapNotNull null
+                val publisher = obj["publisher"]?.jsonPrimitive?.contentOrNull ?: "Unknown"
+                val publishedAt = obj["providerPublishTime"]?.jsonPrimitive?.longOrNull ?: 0L
+                NewsArticle(title = title, link = link, publisher = publisher, publishedAt = publishedAt)
+            }
         } finally {
             connection.disconnect()
         }

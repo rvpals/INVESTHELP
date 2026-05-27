@@ -369,11 +369,6 @@ fun ItemDetailScreen(
                 Tab(
                     selected = selectedTab == 2,
                     onClick = { selectedTab = 2 },
-                    text = { Text("Analysis Info") }
-                )
-                Tab(
-                    selected = selectedTab == 3,
-                    onClick = { selectedTab = 3 },
                     text = { Text("Transactions") }
                 )
             }
@@ -382,7 +377,12 @@ fun ItemDetailScreen(
                 0 -> ItemDetailContent(
                     ticker = ticker,
                     item = item,
-                    currencyFormat = currencyFormat
+                    currencyFormat = currencyFormat,
+                    viewModel = viewModel,
+                    analysisInfo = analysisInfo,
+                    isLoadingAnalysis = isLoadingAnalysis,
+                    analysisError = analysisError,
+                    definitions = definitions
                 )
                 1 -> PriceHistoryTab(
                     ticker = ticker,
@@ -392,15 +392,7 @@ fun ItemDetailScreen(
                     error = priceHistoryError,
                     currencyFormat = currencyFormat
                 )
-                2 -> AnalysisInfoTab(
-                    ticker = ticker,
-                    analysisInfo = analysisInfo,
-                    isLoadingAnalysis = isLoadingAnalysis,
-                    analysisError = analysisError,
-                    currencyFormat = currencyFormat,
-                    definitions = definitions
-                )
-                3 -> TransactionDetailsTab(
+                2 -> TransactionDetailsTab(
                     ticker = ticker,
                     item = item,
                     transactions = transactions,
@@ -427,8 +419,25 @@ fun ItemDetailScreen(
 private fun ItemDetailContent(
     ticker: String,
     item: com.investhelp.app.data.local.entity.InvestmentItemEntity?,
-    currencyFormat: NumberFormat
+    currencyFormat: NumberFormat,
+    viewModel: ItemViewModel,
+    analysisInfo: AnalysisInfo?,
+    isLoadingAnalysis: Boolean,
+    analysisError: String?,
+    definitions: List<DefinitionEntity>
 ) {
+    val context = LocalContext.current
+    val newsArticleCount = remember {
+        context.getSharedPreferences(SettingsViewModel.PREFS_NAME, android.content.Context.MODE_PRIVATE)
+            .getInt(SettingsViewModel.KEY_NEWS_ARTICLE_COUNT, SettingsViewModel.DEFAULT_NEWS_ARTICLE_COUNT)
+    }
+    val newsArticles by viewModel.newsArticles.collectAsStateWithLifecycle()
+    val isLoadingNews by viewModel.isLoadingNews.collectAsStateWithLifecycle()
+
+    LaunchedEffect(ticker, newsArticleCount) {
+        viewModel.fetchNews(ticker, newsArticleCount)
+    }
+
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
@@ -501,6 +510,14 @@ private fun ItemDetailContent(
                                 )
                             }
                         }
+                        if (inv.quantity == 0.0) {
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                "You don't own any shares of this ticker",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.error
+                            )
+                        }
                         Spacer(modifier = Modifier.height(8.dp))
                         val dailyChangePerShare = if (inv.quantity > 0) inv.dayGainLoss / inv.quantity else 0.0
                         Row(
@@ -538,6 +555,193 @@ private fun ItemDetailContent(
                                 )
                             }
                         }
+                    }
+                }
+            }
+        }
+
+        item {
+            Spacer(modifier = Modifier.height(8.dp))
+            AnalysisInfoCollapsibleCard(
+                ticker = ticker,
+                analysisInfo = analysisInfo,
+                isLoadingAnalysis = isLoadingAnalysis,
+                analysisError = analysisError,
+                currencyFormat = currencyFormat,
+                definitions = definitions
+            )
+        }
+
+        item {
+            Spacer(modifier = Modifier.height(8.dp))
+            NewsCollapsibleCard(
+                ticker = ticker,
+                newsArticles = newsArticles,
+                isLoading = isLoadingNews
+            )
+        }
+    }
+}
+
+@Composable
+private fun AnalysisInfoCollapsibleCard(
+    ticker: String,
+    analysisInfo: AnalysisInfo?,
+    isLoadingAnalysis: Boolean,
+    analysisError: String?,
+    currencyFormat: NumberFormat,
+    definitions: List<DefinitionEntity>
+) {
+    val context = LocalContext.current
+    val pinKey = "pin_card_analysis_$ticker"
+    val prefs = remember {
+        context.getSharedPreferences(SettingsViewModel.PREFS_NAME, android.content.Context.MODE_PRIVATE)
+    }
+    var pinned by rememberSaveable { mutableStateOf(prefs.getBoolean(pinKey, false)) }
+
+    com.investhelp.app.ui.components.CollapsibleCard(
+        title = "Analysis Info",
+        pinned = pinned,
+        onPinToggle = { newPinned ->
+            pinned = newPinned
+            prefs.edit().putBoolean(pinKey, newPinned).apply()
+        }
+    ) {
+        if (isLoadingAnalysis) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 12.dp),
+                horizontalArrangement = Arrangement.Center
+            ) {
+                CircularProgressIndicator(modifier = Modifier.size(24.dp))
+            }
+        } else if (analysisError != null) {
+            Text(
+                text = analysisError,
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.padding(vertical = 8.dp)
+            )
+        } else if (analysisInfo != null) {
+            AnalysisInfoContent(
+                ticker = ticker,
+                info = analysisInfo,
+                currencyFormat = currencyFormat,
+                definitions = definitions
+            )
+        } else {
+            Text(
+                "No analysis info available",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(vertical = 8.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun NewsCollapsibleCard(
+    ticker: String,
+    newsArticles: List<com.investhelp.app.data.remote.NewsArticle>,
+    isLoading: Boolean
+) {
+    val context = LocalContext.current
+    val pinKey = "pin_card_news_$ticker"
+    val prefs = remember {
+        context.getSharedPreferences(SettingsViewModel.PREFS_NAME, android.content.Context.MODE_PRIVATE)
+    }
+    var pinned by rememberSaveable { mutableStateOf(prefs.getBoolean(pinKey, false)) }
+
+    com.investhelp.app.ui.components.CollapsibleCard(
+        title = "News on $ticker",
+        pinned = pinned,
+        onPinToggle = { newPinned ->
+            pinned = newPinned
+            prefs.edit().putBoolean(pinKey, newPinned).apply()
+        }
+    ) {
+        if (isLoading) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 12.dp),
+                horizontalArrangement = Arrangement.Center
+            ) {
+                CircularProgressIndicator(modifier = Modifier.size(24.dp))
+            }
+        } else if (newsArticles.isEmpty()) {
+            Text(
+                "No news articles found.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(vertical = 8.dp)
+            )
+        } else {
+            Column(verticalArrangement = Arrangement.spacedBy(0.dp)) {
+                newsArticles.forEachIndexed { index, article ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                val intent = Intent(
+                                    Intent.ACTION_VIEW,
+                                    Uri.parse(article.link)
+                                )
+                                context.startActivity(intent)
+                            }
+                            .background(
+                                if (index % 2 == 1) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+                                else Color.Transparent
+                            )
+                            .padding(vertical = 10.dp, horizontal = 4.dp),
+                        verticalAlignment = Alignment.Top
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = article.title,
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Text(
+                                    text = article.publisher,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                                if (article.publishedAt > 0) {
+                                    val timeAgo = remember(article.publishedAt) {
+                                        val now = Instant.now().epochSecond
+                                        val diff = now - article.publishedAt
+                                        when {
+                                            diff < 3600 -> "${diff / 60}m ago"
+                                            diff < 86400 -> "${diff / 3600}h ago"
+                                            else -> "${diff / 86400}d ago"
+                                        }
+                                    }
+                                    Text(
+                                        text = timeAgo,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                        }
+                        Icon(
+                            Icons.Default.OpenInNew,
+                            contentDescription = "Open",
+                            modifier = Modifier
+                                .size(16.dp)
+                                .padding(top = 2.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    if (index < newsArticles.lastIndex) {
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outline)
                     }
                 }
             }
@@ -1661,59 +1865,6 @@ private fun PriceHistoryTab(
     }
 }
 
-@Composable
-private fun AnalysisInfoTab(
-    ticker: String,
-    analysisInfo: AnalysisInfo?,
-    isLoadingAnalysis: Boolean,
-    analysisError: String?,
-    currencyFormat: NumberFormat,
-    definitions: List<DefinitionEntity>
-) {
-    LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(horizontal = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        item {
-            Spacer(modifier = Modifier.height(8.dp))
-            if (isLoadingAnalysis) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(24.dp),
-                    horizontalArrangement = Arrangement.Center
-                ) {
-                    CircularProgressIndicator(modifier = Modifier.size(32.dp))
-                }
-            } else if (analysisError != null) {
-                Text(
-                    text = analysisError,
-                    color = MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.padding(16.dp)
-                )
-            } else if (analysisInfo != null) {
-                AnalysisInfoContent(
-                    ticker = ticker,
-                    info = analysisInfo,
-                    currencyFormat = currencyFormat,
-                    definitions = definitions
-                )
-            } else {
-                Text(
-                    "No analysis info available",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(16.dp)
-                )
-            }
-        }
-
-        item { Spacer(modifier = Modifier.height(16.dp)) }
-    }
-}
 
 @Composable
 private fun PriceLineChart(

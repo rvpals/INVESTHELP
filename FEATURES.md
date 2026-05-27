@@ -60,28 +60,48 @@
 - Clickable rows navigate to item detail
 - Wrapped in CollapsibleCard with pin persistence
 
-## Items
+## Items (Positions Screen)
 
-- Pie chart section (collapsible) showing allocation by ticker value
-- STOCK/ETF tabs filter by type
-- Sort dropdown: Ticker, Total Value (default), Current Price
-- Brokerage-style card rows with thin dividers (inspired by Chase app layout)
-  - Left: 3D ticker icon + ticker (bold) + uppercase company name
-  - Below ticker: current price with day change $ and % (color-coded)
-  - Right: total position value + daily gain/loss badge (green/red chip)
-- Edit button per row; Delete available in Edit dialog
-- Add/edit via form with type selector (Stock, ETF, Bond, MutualFund, Crypto, Other); quantity field has up/down arrows for +1/-1 adjustment
+- 3 tabs with modern icons: **STOCK** (ShowChart), **ETF** (TrendingUp), **Analysis** (Analytics)
+- STOCK/ETF tabs:
+  - Pie chart section (collapsible) showing allocation by ticker value
+  - Sort dropdown: Ticker, Total Value (default), Current Price
+  - Brokerage-style card rows with thin dividers (inspired by Chase app layout)
+    - Left: 3D ticker icon + ticker (bold) + uppercase company name
+    - Below ticker: current price with day change $ and % (color-coded)
+    - Right: total position value + daily gain/loss badge (green/red chip)
+  - Edit button per row; Delete available in Edit dialog
+- Analysis tab:
+  - Stock pie chart card with exploding slice (highest-value ticker offset outward)
+  - ETF pie chart card with exploding slice (highest-value ticker offset outward)
+  - Each card shows total value, pie chart with legend, and bold label on largest position
+- Add/edit via form with type selector (Stock, ETF, Bond, MutualFund, Crypto, Other); quantity field has up/down arrows for +1/-1 adjustment; allows saving with 0 shares
+- Item Form fetches full Yahoo Finance data (price, name, dayHigh, dayLow, previousClose, logo) when adding a new ticker
 - Refresh All updates live prices for all items
 - One record per ticker (ticker is sole primary key)
 
 ## Item Detail
 
-Four tabs: **Details**, **Price History**, **Analysis Info**, **Transactions** (ScrollableTabRow)
+Three tabs: **Details**, **Price History**, **Transactions** (ScrollableTabRow)
 
 ### Details Tab
 - Header: company logo icon (48dp, cached from DB) + ticker (bold) + company name + type chip + current price
 - Card row 1 (large): Total Shares, Total Value
+- "You don't own any shares of this ticker" indicator (red) when quantity is 0
 - Card row 2 (medium): Daily G/L, Daily G/L/Share, Daily Min, Daily Max
+- **Analysis Info** collapsible card (with pin persistence):
+  - Auto-fetches Yahoo Finance quoteSummary on screen load
+  - Key Metrics: Market Cap, Trailing P/E, Forward P/E, EPS, Dividend Yield
+  - Price Range: 52-Week High/Low, 50-Day Avg, 200-Day Avg
+  - Financials: Analyst Target, Revenue/Share, Profit Margins, Return on Equity
+  - About: long business summary
+  - Clickable metric labels show definition popup (from definitions table)
+- **News on \<TICKER\>** collapsible card (with pin persistence):
+  - Fetches news articles from Yahoo Finance search API
+  - Each article: title (bold), publisher (primary color), time ago
+  - Tap opens article link in browser
+  - Alternating row background colors, dividers between articles
+  - Max article count configurable in Settings (5, 10, or 20; default 5)
 
 ### Price History Tab
 - Timeframe radio buttons: Hourly, Daily, Monthly, Yearly
@@ -95,14 +115,6 @@ Four tabs: **Details**, **Price History**, **Analysis Info**, **Transactions** (
 - Summary cards: Average, Max, Min of the result prices
 - Line chart: Canvas-drawn with all data points; pinch-to-zoom (1x–5x) with pan; tap-to-select with tooltip (price + date); double-tap to reset; filled area under curve; Y-axis price labels, X-axis date labels
 - Grid table: row number, date/time, closing price with horizontal and vertical gridlines
-
-### Analysis Info Tab
-- Auto-fetches Yahoo Finance quoteSummary on screen load
-- Key Metrics: Market Cap, Trailing P/E, Forward P/E, EPS, Dividend Yield
-- Price Range: 52-Week High/Low, 50-Day Avg, 200-Day Avg
-- Financials: Analyst Target, Revenue/Share, Profit Margins, Return on Equity
-- About: long business summary
-- Clickable metric labels show definition popup (from definitions table)
 
 ### Transactions Tab
 - "Transactions & Stats" collapsible panel (default expanded): date range filter with buy/sell statistics (avg/max/min), followed by transaction cards showing days since date and G/L
@@ -192,6 +204,7 @@ Four tabs: **Details**, **Price History**, **Analysis Info**, **Transactions** (
   - Respects "Auto Update Change History" setting
 - Auto-update position shares toggle
 - Warn before delete toggle (default: on)
+- **Max # of News articles on ticker**: dropdown (5, 10, 20); controls how many news articles appear in Item Detail's News card
 - **Dashboard Market Indices** (collapsible panel): toggles for 8 indices, up/down arrow reorder
 
 ### Data Management

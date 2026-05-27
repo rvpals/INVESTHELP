@@ -1,5 +1,23 @@
 # Changelog
 
+## v1.39 (Build 40) - 2026-05-26
+
+### Added
+- **News on ticker**: collapsible card in Item Detail > Details tab showing news articles fetched from Yahoo Finance; each article shows title, publisher, time ago, and opens in browser on tap
+- **Analysis Info card**: moved Analysis Info from its own tab into a collapsible card in the Details tab for easier access alongside other item information
+- **Analysis tab on Positions screen**: third tab with Stock and ETF pie chart cards featuring exploding slice for the highest-value ticker
+- **Settings: Max # of News articles**: configurable count (5, 10, 20) in Preferences > General; defaults to 5
+- Modern icons on all 3 Positions screen tabs (ShowChart, TrendingUp, Analytics)
+
+### Changed
+- Item Detail screen reduced from 4 tabs to 3 tabs (Details, Price History, Transactions); Analysis Info content now lives as a collapsible card within the Details tab
+- Item Form: fetches full Yahoo Finance data (price, name, dayHigh, dayLow, previousClose, logo) when adding or searching for a new ticker
+- Item Form: allows saving a ticker with 0 shares
+- Item Detail: shows "You don't own any shares of this ticker" indicator when quantity is 0
+
+### Fixed
+- Item Form: quantity field showed blank when editing existing positions due to race condition between Flow emission timing and LaunchedEffect; added `itemLoaded` gate flag
+
 ## v1.38 (Build 39) - 2026-05-26
 
 ### Changed

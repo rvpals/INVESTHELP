@@ -33,7 +33,8 @@ Android investment tracking app built with Kotlin, Jetpack Compose, and Material
 - Navigation routes use ticker strings (not Long IDs) for item detail, form, and statistics
 - DatabaseProvider pattern: DB opens lazily on first access
 - CASCADE deletes: removing account removes associated performance records (transactions and items are not tied to accounts)
-- Items screen combines pie chart + STOCK/ETF tabs with Refresh All toolbar action
+- Items screen: 3 tabs with icons — STOCK (ShowChart), ETF (TrendingUp), Analysis (Analytics); STOCK/ETF tabs have pie chart + item list; Analysis tab has Stock and ETF exploding pie chart cards
+- Items screen: Refresh All toolbar action
 - Items screen: sort-by dropdown (Ticker, Total Value, Current Price) above items list; defaults to Total Value descending
 - Items screen: brokerage-style card rows with thin dividers; each row shows TickerIcon3D + ticker (bold) + uppercase company name on left, current price with day change $ and % below, total position value on right with daily gain/loss badge (green/red chip)
 - Items screen: only Edit button per row (no Delete in table); Delete available in Edit dialog
@@ -56,10 +57,11 @@ Android investment tracking app built with Kotlin, Jetpack Compose, and Material
 - Clicking a price in Analyze Price copies it back to the transaction form Price field
 - Transaction form: "View" button next to Ticker opens item detail; form state preserved via rememberSaveable
 - Transaction form: no account field (transactions are not tied to accounts)
-- Item detail: ScrollableTabRow with 4 tabs: "Details", "Price History", "Analysis Info", "Transactions"
-- Item detail Details tab: header card only (ticker info, prices, daily stats)
+- Item detail: ScrollableTabRow with 3 tabs: "Details", "Price History", "Transactions"
+- Item detail Details tab: header card (ticker info, prices, daily stats, 0-share indicator), "Analysis Info" collapsible card (with pin), "News on <TICKER>" collapsible card (with pin, configurable article count)
 - Item detail Price History tab: radio button timeframe selector (Hourly, Daily, Monthly, Yearly) with hint text below showing meaning; Hourly = today's market hours with interval selector (Every Hour/30m/15m/5m/1m in two rows), Daily = last 60 days, Monthly = last 13 months, Yearly = last 15 years; line chart with pinch-to-zoom/pan/tap-to-select; summary cards (Average, Max, Min) above grid table of prices
-- Item detail Analysis Info tab: auto-fetches Yahoo Finance quoteSummary on screen load; displays Key Metrics, Price Range, Financials, About sections directly (no collapsible wrapper); clickable metric labels show definition popup
+- Item detail Analysis Info card: auto-fetches Yahoo Finance quoteSummary on screen load; displays Key Metrics, Price Range, Financials, About sections; clickable metric labels show definition popup
+- Item detail News card: fetches news from Yahoo Finance search API; shows title, publisher, time ago; tap opens in browser; max article count from settings (default 5)
 - Item detail Transactions tab: "Transactions & Stats" collapsible panel (default expanded) combining date range filter, buy/sell statistics, and per-transaction G/L cards
 - Item detail Transactions tab: delete button (X) on each transaction card with confirmation dialog (respects "Warn before delete" setting)
 - Item detail Transactions tab: "Investing Performance for <TICKER>" collapsible panel (default expanded); fetches Yahoo Finance prices 1 day before/after each transaction; current price added as last data point (tertiary color); line chart with price labels on each point, pinch-to-zoom (1x–5x) with pan, tap-to-select tooltip, double-tap to reset; bold red transaction dots vs gray market dots vs tertiary current price dot; data table with highlighted transaction rows and alternating row colors
@@ -68,7 +70,7 @@ Android investment tracking app built with Kotlin, Jetpack Compose, and Material
 - All tables app-wide: alternating row background color (surfaceVariant alpha 0.3f on odd rows) for readability; HorizontalDivider uses `outline` color (not `outlineVariant`) for visible row separation
 - **Image loading:** Coil 2.7.0 for company logos; logos cached as BLOB in investment_positions table, fetched from multiple CDN sources (companiesmarketcap.com, parqet.com, iexcloud) during price refresh or on items screen load (if logo is null), UI falls back to network URL if not cached
 - Item add/edit dialog: type selector dropdown (Stock, ETF, Bond, MutualFund, Crypto, Other); auto-fills type when selecting existing ticker
-- Item Form screen: handles both existing positions (edit) and new tickers (create); auto-fetches price and name from Yahoo Finance for non-existent tickers; Save requires non-blank ticker and quantity > 0
+- Item Form screen: handles both existing positions (edit) and new tickers (create); auto-fetches full Yahoo data (price, name, dayHigh, dayLow, previousClose, logo) for non-existent tickers; Save requires non-blank ticker (0 shares allowed); `itemLoaded` flag gates LaunchedEffects to prevent race condition
 - Item detail card row 1 (big font): Total Shares, Total Value
 - Item detail card row 2 (medium font): Daily G/L, Daily G/L/Share, Daily Min Price, Daily Max Price
 - Item detail: dayHigh/dayLow fetched from Yahoo Finance `regularMarketDayHigh`/`regularMarketDayLow`
@@ -82,6 +84,7 @@ Android investment tracking app built with Kotlin, Jetpack Compose, and Material
 - Top bar portfolio button: second row shows (Day: ±X.XX%) color-coded green/red
 - Dashboard: "Portfolio Summary" collapsible card with pin persistence; total value change in headlineLarge (3x bigger) bold centered; Day/All percentages in bodyMedium centered below; mini line chart of total_value from change_history (shown when 2+ records); click mini chart opens full-screen Change History dialog with zoomable multi-series chart (Total/ETF/Stock lines) + grid data table (Date, ETF, Stock, Total columns)
 - Settings: "Warn before delete" toggle (default: on) — when off, skips confirmation dialogs for delete actions
+- Settings: "Max # of News articles on ticker" dropdown (5, 10, 20; default: 5) — controls how many news articles to fetch and display in Item Detail News card
 - Settings: "Dashboard Market Indices" section with toggles for 8 indices (NASDAQ, S&P 500, Dow, Gold, Russell 2K, Silver, Oil, Bitcoin); default: first 4 enabled; up/down arrow buttons to reorder indices; order persisted via `market_indices_order` SharedPreferences key
 - Dashboard Market Indices: long-press drag-and-drop reorder on index cards; swaps on half-slot-width threshold; persists order to SharedPreferences; syncs with Settings arrow reorder
 - Settings: Preferences tab scrollable to accommodate all content; "Themes" and "Dashboard Market Indices" sections in collapsible panels (default collapsed)

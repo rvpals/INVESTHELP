@@ -139,6 +139,7 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
 }
 
 @Composable
+@OptIn(ExperimentalMaterial3Api::class)
 private fun PreferencesTab(viewModel: SettingsViewModel, uiState: SettingsUiState) {
     Column(
         modifier = Modifier
@@ -330,6 +331,49 @@ private fun PreferencesTab(viewModel: SettingsViewModel, uiState: SettingsUiStat
                 checked = uiState.warnBeforeDelete,
                 onCheckedChange = { viewModel.setWarnBeforeDelete(it) }
             )
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                "Max # of News articles on ticker:",
+                style = MaterialTheme.typography.bodyLarge,
+                modifier = Modifier.weight(1f)
+            )
+            var newsCountExpanded by remember { mutableStateOf(false) }
+            ExposedDropdownMenuBox(
+                expanded = newsCountExpanded,
+                onExpandedChange = { newsCountExpanded = it },
+                modifier = Modifier.width(100.dp)
+            ) {
+                OutlinedTextField(
+                    value = uiState.newsArticleCount.toString(),
+                    onValueChange = {},
+                    readOnly = true,
+                    singleLine = true,
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = newsCountExpanded) },
+                    modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable)
+                )
+                ExposedDropdownMenu(
+                    expanded = newsCountExpanded,
+                    onDismissRequest = { newsCountExpanded = false }
+                ) {
+                    listOf(5, 10, 20).forEach { count ->
+                        DropdownMenuItem(
+                            text = { Text(count.toString()) },
+                            onClick = {
+                                viewModel.setNewsArticleCount(count)
+                                newsCountExpanded = false
+                            }
+                        )
+                    }
+                }
+            }
         }
 
         Spacer(modifier = Modifier.height(24.dp))

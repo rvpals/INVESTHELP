@@ -124,7 +124,8 @@ data class SettingsUiState(
     val pendingImportFileUri: Uri? = null,
     val accounts: List<InvestmentAccountEntity> = emptyList(),
     val dashboardCardOrder: List<String> = SettingsViewModel.DEFAULT_CARD_ORDER,
-    val watchListCardVisible: Boolean = true
+    val watchListCardVisible: Boolean = true,
+    val newsArticleCount: Int = SettingsViewModel.DEFAULT_NEWS_ARTICLE_COUNT
 )
 
 @HiltViewModel
@@ -172,6 +173,9 @@ class SettingsViewModel @Inject constructor(
 
         val DEFAULT_MARKET_INDICES = setOf("^IXIC", "^GSPC", "^DJI", "GC=F")
 
+        const val KEY_NEWS_ARTICLE_COUNT = "news_article_count"
+        const val DEFAULT_NEWS_ARTICLE_COUNT = 5
+
         const val KEY_CARD_VISIBLE_WATCH_LIST = "card_visible_watch_list"
         const val KEY_DASHBOARD_CARD_ORDER = "dashboard_card_order"
         val DEFAULT_CARD_ORDER = listOf(
@@ -215,7 +219,8 @@ class SettingsViewModel @Inject constructor(
             dashboardCardOrder = prefs.getString(KEY_DASHBOARD_CARD_ORDER, null)
                 ?.split(",")?.filter { it.isNotBlank() }
                 ?: DEFAULT_CARD_ORDER,
-            watchListCardVisible = prefs.getBoolean(KEY_CARD_VISIBLE_WATCH_LIST, true)
+            watchListCardVisible = prefs.getBoolean(KEY_CARD_VISIBLE_WATCH_LIST, true),
+            newsArticleCount = prefs.getInt(KEY_NEWS_ARTICLE_COUNT, DEFAULT_NEWS_ARTICLE_COUNT)
         )
     )
     val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
@@ -303,6 +308,11 @@ class SettingsViewModel @Inject constructor(
     fun setWarnBeforeDelete(enabled: Boolean) {
         prefs.edit().putBoolean(KEY_WARN_BEFORE_DELETE, enabled).apply()
         _uiState.value = _uiState.value.copy(warnBeforeDelete = enabled)
+    }
+
+    fun setNewsArticleCount(count: Int) {
+        prefs.edit().putInt(KEY_NEWS_ARTICLE_COUNT, count).apply()
+        _uiState.value = _uiState.value.copy(newsArticleCount = count)
     }
 
     fun setTheme(theme: AppTheme) {
