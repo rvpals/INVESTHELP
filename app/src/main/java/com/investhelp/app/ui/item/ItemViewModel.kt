@@ -53,7 +53,7 @@ class ItemViewModel @Inject constructor(
     // --- All items ---
     val allItems: StateFlow<List<InvestmentItemEntity>> =
         itemRepository.getAllItems()
-            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+            .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     // --- Accounts (for forms) ---
     val accounts: StateFlow<List<InvestmentAccountEntity>> =
