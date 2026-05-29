@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.41 (Build 42) - 2026-05-29
+
+### Fixed
+- Positions screen not showing all items: removed `quantity > 0` filter that excluded 0-share positions from Stock/ETF tabs
+- Entity `equals()` only compared `ticker` field, preventing Compose from detecting data changes (e.g. quantity updates); now compares all fields including `logo` via `contentEquals`
+- Positions screen not reflecting newly added items due to `SharingStarted.WhileSubscribed(5000)` disconnecting after navigation; changed to `SharingStarted.Eagerly`
+
 ## v1.39 (Build 40) - 2026-05-26
 
 ### Added

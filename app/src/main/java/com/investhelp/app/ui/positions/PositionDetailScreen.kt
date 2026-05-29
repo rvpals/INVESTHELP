@@ -53,10 +53,10 @@ fun PositionDetailScreen(
     val tabs = listOf("Stocks", "ETF", "Analysis")
 
     val stockItems = remember(allItems) {
-        allItems.filter { it.type == InvestmentType.Stock && it.quantity > 0 }
+        allItems.filter { it.type == InvestmentType.Stock }
     }
     val etfItems = remember(allItems) {
-        allItems.filter { it.type == InvestmentType.ETF && it.quantity > 0 }
+        allItems.filter { it.type == InvestmentType.ETF }
     }
 
     Column(modifier = Modifier.fillMaxSize()) {

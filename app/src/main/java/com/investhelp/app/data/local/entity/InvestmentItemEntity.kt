@@ -21,8 +21,25 @@ data class InvestmentItemEntity(
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (other !is InvestmentItemEntity) return false
-        return ticker == other.ticker
+        return ticker == other.ticker &&
+                name == other.name &&
+                type == other.type &&
+                currentPrice == other.currentPrice &&
+                quantity == other.quantity &&
+                dayGainLoss == other.dayGainLoss &&
+                value == other.value &&
+                dayHigh == other.dayHigh &&
+                dayLow == other.dayLow &&
+                logo.contentEquals(other.logo)
     }
 
-    override fun hashCode(): Int = ticker.hashCode()
+    override fun hashCode(): Int {
+        var result = ticker.hashCode()
+        result = 31 * result + name.hashCode()
+        result = 31 * result + type.hashCode()
+        result = 31 * result + currentPrice.hashCode()
+        result = 31 * result + quantity.hashCode()
+        result = 31 * result + value.hashCode()
+        return result
+    }
 }
