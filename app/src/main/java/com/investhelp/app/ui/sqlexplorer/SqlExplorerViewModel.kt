@@ -7,12 +7,16 @@ import androidx.core.content.FileProvider
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.investhelp.app.data.local.DatabaseProvider
+import com.investhelp.app.data.local.dao.SqlLibraryDao
+import com.investhelp.app.data.local.entity.SqlLibraryEntity
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -37,8 +41,29 @@ data class ColumnInfo(
 @HiltViewModel
 class SqlExplorerViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
-    private val dbProvider: DatabaseProvider
+    private val dbProvider: DatabaseProvider,
+    private val sqlLibraryDao: SqlLibraryDao
 ) : ViewModel() {
+
+    val sqlLibrary: StateFlow<List<SqlLibraryEntity>> =
+        sqlLibraryDao.getAll()
+            .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
+    val sqlCategories: StateFlow<List<String>> =
+        sqlLibraryDao.getCategories()
+            .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
+    fun saveToLibrary(name: String, description: String, category: String, sql: String) {
+        viewModelScope.launch {
+            sqlLibraryDao.insert(SqlLibraryEntity(name = name, description = description, category = category, sql = sql))
+        }
+    }
+
+    fun deleteFromLibrary(entry: SqlLibraryEntity) {
+        viewModelScope.launch {
+            sqlLibraryDao.delete(entry)
+        }
+    }
 
     private val _result = MutableStateFlow<QueryResult?>(null)
     val result: StateFlow<QueryResult?> = _result.asStateFlow()

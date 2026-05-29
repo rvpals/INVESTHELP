@@ -24,6 +24,7 @@ import com.investhelp.app.ui.performance.AccountPerformanceScreen
 import com.investhelp.app.ui.performance.AccountPerformanceViewModel
 import com.investhelp.app.ui.sqlexplorer.SqlExplorerScreen
 import com.investhelp.app.ui.sqlexplorer.SqlExplorerViewModel
+import com.investhelp.app.ui.sqlexplorer.SqlResultScreen
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.investhelp.app.ui.transaction.AnalyzePriceScreen
 import com.investhelp.app.ui.transaction.AnalyzePriceViewModel
@@ -208,7 +209,22 @@ fun InvestHelpNavHost(
 
         composable<SqlExplorerRoute> {
             val viewModel: SqlExplorerViewModel = hiltViewModel()
-            SqlExplorerScreen(viewModel = viewModel)
+            SqlExplorerScreen(
+                viewModel = viewModel,
+                onRunQuery = { sql ->
+                    navController.navigate(SqlResultRoute(sql))
+                }
+            )
+        }
+
+        composable<SqlResultRoute> { backStackEntry ->
+            val route = backStackEntry.toRoute<SqlResultRoute>()
+            val viewModel: SqlExplorerViewModel = hiltViewModel()
+            SqlResultScreen(
+                initialSql = route.sql,
+                viewModel = viewModel,
+                onBack = { navController.popBackStack() }
+            )
         }
 
         composable<AccountPerformanceRoute> {

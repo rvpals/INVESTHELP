@@ -1,40 +1,39 @@
 package com.investhelp.app.ui.sqlexplorer
 
-import android.content.Intent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Share
-import com.investhelp.app.ui.settings.SettingsViewModel
+import androidx.compose.material.icons.filled.Save
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.VerticalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -48,94 +47,143 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.investhelp.app.data.local.entity.SqlLibraryEntity
+import com.investhelp.app.ui.components.CollapsibleCard
+import com.investhelp.app.ui.settings.SettingsViewModel
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SqlExplorerScreen(viewModel: SqlExplorerViewModel) {
-    val result by viewModel.result.collectAsStateWithLifecycle()
-    val error by viewModel.error.collectAsStateWithLifecycle()
-    val isRunning by viewModel.isRunning.collectAsStateWithLifecycle()
+fun SqlExplorerScreen(
+    viewModel: SqlExplorerViewModel,
+    onRunQuery: (String) -> Unit
+) {
     val tables by viewModel.tables.collectAsStateWithLifecycle()
     val expandedTable by viewModel.expandedTable.collectAsStateWithLifecycle()
     val tableColumns by viewModel.tableColumns.collectAsStateWithLifecycle()
-    val context = LocalContext.current
+    val sqlLibrary by viewModel.sqlLibrary.collectAsStateWithLifecycle()
+    val sqlCategories by viewModel.sqlCategories.collectAsStateWithLifecycle()
 
     var sql by rememberSaveable { mutableStateOf("") }
-    var selectedRowIndex by remember { mutableStateOf<Int?>(null) }
+    var showSaveDialog by remember { mutableStateOf(false) }
     var tableToErase by remember { mutableStateOf<String?>(null) }
+
+    val context = androidx.compose.ui.platform.LocalContext.current
     val warnBeforeDelete = remember {
         context.getSharedPreferences(SettingsViewModel.PREFS_NAME, android.content.Context.MODE_PRIVATE)
             .getBoolean(SettingsViewModel.KEY_WARN_BEFORE_DELETE, true)
     }
 
-    Column(
+    if (showSaveDialog) {
+        SaveToLibraryDialog(
+            categories = sqlCategories,
+            onSave = { name, desc, category ->
+                viewModel.saveToLibrary(name, desc, category, sql)
+                showSaveDialog = false
+            },
+            onDismiss = { showSaveDialog = false }
+        )
+    }
+
+    if (tableToErase != null) {
+        AlertDialog(
+            onDismissRequest = { tableToErase = null },
+            title = { Text("Erase Table") },
+            text = { Text("This will delete ALL entries from \"${tableToErase}\". This action cannot be undone.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    viewModel.eraseTable(tableToErase!!)
+                    tableToErase = null
+                }) { Text("Erase", color = MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = {
+                TextButton(onClick = { tableToErase = null }) { Text("Cancel") }
+            }
+        )
+    }
+
+    LazyColumn(
         modifier = Modifier
             .fillMaxSize()
-            .padding(16.dp)
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        OutlinedTextField(
-            value = sql,
-            onValueChange = { sql = it },
-            label = { Text("SQL Query") },
-            placeholder = { Text("SELECT * FROM investment_items LIMIT 10") },
-            modifier = Modifier.fillMaxWidth(),
-            minLines = 3,
-            maxLines = 6,
-            textStyle = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Monospace)
-        )
+        item {
+            OutlinedTextField(
+                value = sql,
+                onValueChange = { sql = it },
+                label = { Text("SQL Query") },
+                placeholder = { Text("SELECT * FROM investment_positions LIMIT 10") },
+                modifier = Modifier.fillMaxWidth(),
+                minLines = 3,
+                maxLines = 6,
+                textStyle = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Monospace)
+            )
+        }
 
-        Spacer(modifier = Modifier.height(8.dp))
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Button(
-                onClick = { viewModel.executeQuery(sql) },
-                enabled = sql.isNotBlank() && !isRunning,
-                modifier = Modifier.weight(1f)
+        item {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                if (isRunning) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.height(18.dp).width(18.dp),
-                        strokeWidth = 2.dp,
-                        color = MaterialTheme.colorScheme.onPrimary
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                } else {
+                Button(
+                    onClick = { if (sql.isNotBlank()) onRunQuery(sql) },
+                    enabled = sql.isNotBlank()
+                ) {
                     Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.padding(end = 4.dp))
+                    Text("Run")
                 }
-                Text("Run")
-            }
-            OutlinedButton(
-                onClick = {
-                    viewModel.exportCsv()?.let { intent ->
-                        context.startActivity(Intent.createChooser(intent, "Export CSV"))
-                    }
-                },
-                enabled = result?.columns?.isNotEmpty() == true
-            ) {
-                Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.padding(end = 4.dp))
-                Text("Export CSV")
+                OutlinedButton(
+                    onClick = { showSaveDialog = true },
+                    enabled = sql.isNotBlank()
+                ) {
+                    Icon(Icons.Default.Save, contentDescription = null, modifier = Modifier.padding(end = 4.dp))
+                    Text("Save SQL to Library")
+                }
             }
         }
 
-        if (tables.isNotEmpty()) {
-            Spacer(modifier = Modifier.height(8.dp))
+        item {
+            var libraryPinned by rememberSaveable { mutableStateOf(false) }
+            CollapsibleCard(
+                title = "SQL Library",
+                pinned = libraryPinned,
+                onPinToggle = { libraryPinned = it }
+            ) {
+                SqlLibraryContent(
+                    entries = sqlLibrary,
+                    categories = sqlCategories,
+                    onSelect = { entry ->
+                        sql = entry.sql
+                    },
+                    onDelete = { entry ->
+                        viewModel.deleteFromLibrary(entry)
+                    },
+                    onRun = { entry ->
+                        onRunQuery(entry.sql)
+                    }
+                )
+            }
+        }
+
+        item {
             TableBrowser(
                 tables = tables,
                 expandedTable = expandedTable,
                 tableColumns = tableColumns,
                 onTableClick = viewModel::toggleTable,
+                onTableNameClick = { tableName ->
+                    sql = sql + tableName
+                },
+                onColumnNameClick = { columnName ->
+                    sql = sql + columnName
+                },
                 onOpenTable = { tableName ->
-                    sql = "SELECT * FROM $tableName"
-                    viewModel.executeQuery(sql)
+                    onRunQuery("SELECT * FROM $tableName")
                 },
                 onEraseTable = { tableName ->
                     if (warnBeforeDelete) {
@@ -147,172 +195,135 @@ fun SqlExplorerScreen(viewModel: SqlExplorerViewModel) {
             )
         }
 
-        if (error != null) {
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = error!!,
-                color = MaterialTheme.colorScheme.error,
-                style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace)
-            )
-        }
-
-        result?.let { qr ->
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Text(
-                text = if (qr.message != null) qr.message
-                else "${qr.rowCount} row${if (qr.rowCount != 1) "s" else ""} in ${qr.executionTimeMs}ms",
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-
-            if (qr.columns.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(8.dp))
-                ResultTable(qr) { index -> selectedRowIndex = index }
-            }
-        }
-
-        if (tableToErase != null) {
-            AlertDialog(
-                onDismissRequest = { tableToErase = null },
-                title = { Text("Erase Table") },
-                text = {
-                    Text("This will delete ALL entries from \"${tableToErase}\". This action cannot be undone.")
-                },
-                confirmButton = {
-                    TextButton(onClick = {
-                        viewModel.eraseTable(tableToErase!!)
-                        tableToErase = null
-                    }) {
-                        Text("Erase", color = MaterialTheme.colorScheme.error)
-                    }
-                },
-                dismissButton = {
-                    TextButton(onClick = { tableToErase = null }) {
-                        Text("Cancel")
-                    }
-                }
-            )
-        }
-
-        if (selectedRowIndex != null && result != null &&
-            selectedRowIndex!! < result!!.rows.size
-        ) {
-            RecordDetailDialog(
-                columns = result!!.columns,
-                row = result!!.rows[selectedRowIndex!!],
-                rowNumber = selectedRowIndex!! + 1,
-                onDismiss = { selectedRowIndex = null }
-            )
-        }
+        item { Spacer(modifier = Modifier.height(16.dp)) }
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun ResultTable(result: QueryResult, onRowClick: (Int) -> Unit) {
-    val horizontalScroll = rememberScrollState()
-    val columnWidth = 120.dp
-    val dividerColor = MaterialTheme.colorScheme.outline
+private fun SqlLibraryContent(
+    entries: List<SqlLibraryEntity>,
+    categories: List<String>,
+    onSelect: (SqlLibraryEntity) -> Unit,
+    onDelete: (SqlLibraryEntity) -> Unit,
+    onRun: (SqlLibraryEntity) -> Unit
+) {
+    var filterCategory by rememberSaveable { mutableStateOf("") }
+    var filterName by rememberSaveable { mutableStateOf("") }
 
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-        )
-    ) {
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxWidth()
-                .horizontalScroll(horizontalScroll)
-                .padding(8.dp)
+    Column {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            item(key = "header") {
-                Row(modifier = Modifier.height(IntrinsicSize.Min)) {
-                    result.columns.forEachIndexed { i, col ->
-                        if (i > 0) VerticalDivider(thickness = 1.dp, color = dividerColor)
-                        Text(
-                            text = col,
-                            style = MaterialTheme.typography.labelSmall.copy(
-                                fontWeight = FontWeight.Bold,
-                                fontFamily = FontFamily.Monospace
-                            ),
-                            modifier = Modifier.width(columnWidth).padding(4.dp),
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
+            var categoryExpanded by remember { mutableStateOf(false) }
+            ExposedDropdownMenuBox(
+                expanded = categoryExpanded,
+                onExpandedChange = { categoryExpanded = it },
+                modifier = Modifier.weight(1f)
+            ) {
+                OutlinedTextField(
+                    value = filterCategory.ifEmpty { "All" },
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text("Category") },
+                    singleLine = true,
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = categoryExpanded) },
+                    modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable),
+                    textStyle = MaterialTheme.typography.bodySmall
+                )
+                ExposedDropdownMenu(
+                    expanded = categoryExpanded,
+                    onDismissRequest = { categoryExpanded = false }
+                ) {
+                    DropdownMenuItem(
+                        text = { Text("All") },
+                        onClick = { filterCategory = ""; categoryExpanded = false }
+                    )
+                    categories.forEach { cat ->
+                        DropdownMenuItem(
+                            text = { Text(cat) },
+                            onClick = { filterCategory = cat; categoryExpanded = false }
                         )
                     }
                 }
-                HorizontalDivider(thickness = 2.dp, color = dividerColor)
             }
+            OutlinedTextField(
+                value = filterName,
+                onValueChange = { filterName = it },
+                label = { Text("Search") },
+                singleLine = true,
+                modifier = Modifier.weight(1f),
+                textStyle = MaterialTheme.typography.bodySmall
+            )
+        }
 
-            itemsIndexed(result.rows, key = { index, _ -> index }) { index, row ->
-                val rowBg = if (index % 2 == 1)
-                    MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.4f)
-                else
-                    Color.Transparent
+        Spacer(modifier = Modifier.height(8.dp))
+
+        val filtered = entries.filter { entry ->
+            (filterCategory.isEmpty() || entry.category == filterCategory) &&
+            (filterName.isEmpty() || entry.name.contains(filterName, ignoreCase = true))
+        }
+
+        if (filtered.isEmpty()) {
+            Text(
+                "No saved queries",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(vertical = 8.dp)
+            )
+        } else {
+            val altColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+            filtered.forEachIndexed { index, entry ->
                 Row(
                     modifier = Modifier
-                        .height(IntrinsicSize.Min)
-                        .background(rowBg)
-                        .clickable { onRowClick(index) }
+                        .fillMaxWidth()
+                        .background(if (index % 2 == 1) altColor else Color.Transparent)
+                        .clickable { onSelect(entry) }
+                        .padding(vertical = 6.dp, horizontal = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    row.forEachIndexed { i, cell ->
-                        if (i > 0) VerticalDivider(thickness = 1.dp, color = dividerColor)
+                    Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = cell,
-                            style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
-                            modifier = Modifier.width(columnWidth).padding(4.dp),
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis
+                            text = entry.name,
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Medium
+                        )
+                        if (entry.description.isNotBlank()) {
+                            Text(
+                                text = entry.description,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                        Text(
+                            text = "[${entry.category}]",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                    TextButton(onClick = { onRun(entry) }) {
+                        Text("Run", style = MaterialTheme.typography.labelSmall)
+                    }
+                    IconButton(
+                        onClick = { onDelete(entry) },
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.Delete,
+                            contentDescription = "Delete",
+                            tint = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.size(18.dp)
                         )
                     }
                 }
-                HorizontalDivider(color = dividerColor)
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
             }
         }
     }
-}
-
-@Composable
-private fun RecordDetailDialog(
-    columns: List<String>,
-    row: List<String>,
-    rowNumber: Int,
-    onDismiss: () -> Unit
-) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = {
-            Text("Row $rowNumber", style = MaterialTheme.typography.titleMedium)
-        },
-        text = {
-            Column(
-                modifier = Modifier.verticalScroll(rememberScrollState())
-            ) {
-                columns.zip(row).forEach { (col, value) ->
-                    Text(
-                        text = col,
-                        style = MaterialTheme.typography.labelSmall.copy(
-                            fontWeight = FontWeight.Bold
-                        ),
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                    Text(
-                        text = value,
-                        style = MaterialTheme.typography.bodySmall.copy(
-                            fontFamily = FontFamily.Monospace
-                        ),
-                        modifier = Modifier.padding(bottom = 8.dp)
-                    )
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Close")
-            }
-        }
-    )
 }
 
 @Composable
@@ -321,6 +332,8 @@ private fun TableBrowser(
     expandedTable: String?,
     tableColumns: List<ColumnInfo>,
     onTableClick: (String) -> Unit,
+    onTableNameClick: (String) -> Unit,
+    onColumnNameClick: (String) -> Unit,
     onOpenTable: (String) -> Unit,
     onEraseTable: (String) -> Unit
 ) {
@@ -356,12 +369,11 @@ private fun TableBrowser(
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
                             text = tableName,
-                            style = MaterialTheme.typography.bodyMedium.copy(
-                                fontFamily = FontFamily.Monospace
-                            ),
-                            fontWeight = if (expandedTable == tableName)
-                                FontWeight.Bold else FontWeight.Normal,
-                            modifier = Modifier.weight(1f)
+                            style = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Monospace),
+                            fontWeight = if (expandedTable == tableName) FontWeight.Bold else FontWeight.Normal,
+                            modifier = Modifier
+                                .weight(1f)
+                                .clickable { onTableNameClick(tableName) }
                         )
                         TextButton(
                             onClick = { onOpenTable(tableName) },
@@ -375,18 +387,16 @@ private fun TableBrowser(
                             modifier = Modifier.height(30.dp),
                             contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 8.dp, vertical = 0.dp)
                         ) {
-                            Text(
-                                "Erase",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.error
-                            )
+                            Text("Erase", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.error)
                         }
                     }
                     AnimatedVisibility(visible = expandedTable == tableName) {
                         Column(modifier = Modifier.padding(start = 24.dp, bottom = 4.dp)) {
                             tableColumns.forEach { col ->
                                 Row(
-                                    modifier = Modifier.padding(vertical = 2.dp),
+                                    modifier = Modifier
+                                        .padding(vertical = 2.dp)
+                                        .clickable { onColumnNameClick(col.name) },
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Text(
@@ -395,29 +405,20 @@ private fun TableBrowser(
                                             fontFamily = FontFamily.Monospace,
                                             fontWeight = FontWeight.SemiBold
                                         ),
+                                        color = MaterialTheme.colorScheme.primary,
                                         modifier = Modifier.width(140.dp)
                                     )
                                     Text(
-                                        text = col.type.ifEmpty { "\u2014" },
-                                        style = MaterialTheme.typography.bodySmall.copy(
-                                            fontFamily = FontFamily.Monospace
-                                        ),
+                                        text = col.type.ifEmpty { "—" },
+                                        style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         modifier = Modifier.width(80.dp)
                                     )
                                     if (col.pk) {
-                                        Text(
-                                            text = "PK",
-                                            style = MaterialTheme.typography.labelSmall,
-                                            color = MaterialTheme.colorScheme.primary
-                                        )
+                                        Text("PK", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
                                     }
                                     if (col.notNull && !col.pk) {
-                                        Text(
-                                            text = "NN",
-                                            style = MaterialTheme.typography.labelSmall,
-                                            color = MaterialTheme.colorScheme.tertiary
-                                        )
+                                        Text("NN", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.tertiary)
                                     }
                                 }
                             }
@@ -427,4 +428,78 @@ private fun TableBrowser(
             }
         }
     }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SaveToLibraryDialog(
+    categories: List<String>,
+    onSave: (name: String, description: String, category: String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    var name by rememberSaveable { mutableStateOf("") }
+    var description by rememberSaveable { mutableStateOf("") }
+    var category by rememberSaveable { mutableStateOf("") }
+    var categoryExpanded by remember { mutableStateOf(false) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Save SQL to Library") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text("Name") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = description,
+                    onValueChange = { description = it },
+                    label = { Text("Description") },
+                    minLines = 2,
+                    maxLines = 3,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                ExposedDropdownMenuBox(
+                    expanded = categoryExpanded,
+                    onExpandedChange = { categoryExpanded = it }
+                ) {
+                    OutlinedTextField(
+                        value = category,
+                        onValueChange = { category = it },
+                        label = { Text("Category") },
+                        singleLine = true,
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = categoryExpanded) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .menuAnchor(MenuAnchorType.PrimaryEditable)
+                    )
+                    if (categories.isNotEmpty()) {
+                        ExposedDropdownMenu(
+                            expanded = categoryExpanded,
+                            onDismissRequest = { categoryExpanded = false }
+                        ) {
+                            categories.forEach { cat ->
+                                DropdownMenuItem(
+                                    text = { Text(cat) },
+                                    onClick = { category = cat; categoryExpanded = false }
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = { onSave(name.trim(), description.trim(), category.trim()) },
+                enabled = name.isNotBlank() && category.isNotBlank()
+            ) { Text("Save") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        }
+    )
 }

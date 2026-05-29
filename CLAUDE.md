@@ -8,7 +8,7 @@ Android investment tracking app built with Kotlin, Jetpack Compose, and Material
 - **Min SDK:** 29, Target SDK: 35
 - **Architecture:** MVVM + Repository pattern
 - **DI:** Hilt (KSP)
-- **Database:** Room, version 27
+- **Database:** Room, version 28
 - **Navigation:** Compose Navigation (type-safe routes)
 - **Splash:** AndroidX SplashScreen API (core-splashscreen 1.0.1)
 - **Charts:** Custom Canvas-drawn (pie chart, line chart) — no external chart library
@@ -92,13 +92,12 @@ Android investment tracking app built with Kotlin, Jetpack Compose, and Material
 - Transaction form: "Simulate" button calculates days since transaction date and opens simulation with custom range
 - Simulation: supports custom day ranges from transaction simulation (auto-runs on navigation)
 - Simulation: "Scenario Simulation" collapsible card — enter shares, ticker, and buy date to calculate hypothetical gain/loss at today's price via Yahoo Finance historical lookup
-- SQL Explorer: accessible from hamburger menu, runs raw SQL via Room's SupportSQLiteDatabase
-- SQL Explorer: detects SELECT/PRAGMA/EXPLAIN queries vs DML/DDL statements
-- SQL Explorer: CSV export via FileProvider + share intent
-- SQL Explorer: table browser lists all database tables with expandable column details (name, type, PK/NN indicators)
-- SQL Explorer: result grid has both horizontal and vertical gridlines (VerticalDivider between columns, HorizontalDivider between rows) with alternating row colors
-- SQL Explorer: clicking a result row opens record detail dialog showing all field values untruncated
-- SQL Explorer: "Open" button on each table row runs `SELECT * FROM <table>` and shows results in grid
+- SQL Explorer: accessible from hamburger menu; SQL text box + Run button (navigates to SQL Result screen) + Save SQL to Library button
+- SQL Explorer: table browser lists all database tables with expandable column details (name, type, PK/NN indicators); clicking table/column name inserts into SQL text box
+- SQL Explorer: "SQL Library" collapsible card with saved queries, category filter, name search, Run/Delete per entry
+- SQL Explorer: "Open" button on each table row opens SQL Result screen with `SELECT * FROM <table>`
+- SQL Result screen: full screen with editable SQL query card, result grid (vertical+horizontal scroll, clickable cells for full-screen detail), Export to CSV button; auto-executes on load
+- SQL Library: `sql_library` table (id, name, description, category, sql) for persisting reusable queries
 - Settings: backup folder URI persisted to SharedPreferences; restored on ViewModel init
 - Backup format v3: items no longer include accountId; v1/v2 backward compat on restore
 - Transaction list: each card shows G/L = (currentPrice - pricePerShare) * numberOfShares; green for positive, red for negative
@@ -142,7 +141,8 @@ Android investment tracking app built with Kotlin, Jetpack Compose, and Material
 - Database migration v24 -> v25: creates definitions table (term PK, definition TEXT) for metric definition popups
 - Database migration v25 -> v26: adds unique index on investment_transactions (date, action, ticker, totalAmount) to prevent duplicate CSV imports
 - Database migration v26 -> v27: renames investment_items to investment_positions, removes cost and totalGainLoss columns
-- Database version 27
+- Database migration v27 -> v28: creates sql_library table (id, name, description, category, sql) for saved SQL queries
+- Database version 28
 - Change History: `change_history` table records daily portfolio values by type (ETF, Stock, Total) plus daily change values (dailyChangeEtf, dailyChangeStock, dailyChangeTotal); one row per day, overwritten on re-refresh
 - Change History dialog: "Change Value This Week So Far" summary card above data table showing sum of daily changes for ETF, Stock, and Total since Monday; color-coded green/red
 - Settings: "Auto Update Change History when refresh" toggle (default: off) — when on, automatically records ETF/Stock/Total values to change_history after price refresh; overwrites existing entry for today

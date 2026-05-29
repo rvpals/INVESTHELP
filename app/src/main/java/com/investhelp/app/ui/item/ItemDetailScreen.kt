@@ -769,6 +769,7 @@ private fun NewsCollapsibleCard(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun FullYahooReportDialog(
     ticker: String,
@@ -776,93 +777,128 @@ private fun FullYahooReportDialog(
     isLoading: Boolean,
     onDismiss: () -> Unit
 ) {
-    AlertDialog(
+    androidx.compose.ui.window.Dialog(
         onDismissRequest = onDismiss,
-        confirmButton = {
-            TextButton(onClick = onDismiss) { Text("Close") }
-        },
-        title = {
-            Text("Yahoo Finance Report: $ticker", fontWeight = FontWeight.Bold)
-        },
-        text = {
-            Box(modifier = Modifier.height(500.dp)) {
-                if (isLoading) {
-                    Column(
-                        modifier = Modifier.fillMaxSize(),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center
-                    ) {
-                        CircularProgressIndicator()
-                        Spacer(modifier = Modifier.height(12.dp))
-                        Text("Fetching data from Yahoo Finance...")
+        properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Scaffold(
+            topBar = {
+                TopAppBar(
+                    title = { Text("Yahoo Finance Detail") },
+                    navigationIcon = {
+                        IconButton(onClick = onDismiss) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        }
                     }
-                } else if (sections.isEmpty()) {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
+                )
+            }
+        ) { padding ->
+            if (isLoading) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(padding),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    CircularProgressIndicator()
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text("Fetching data from Yahoo Finance...")
+                }
+            } else if (sections.isEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(padding),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        "No data available",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            } else {
+                var selectedTab by remember { mutableIntStateOf(0) }
+
+                Column(modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+                ) {
+                    ScrollableTabRow(
+                        selectedTabIndex = selectedTab,
+                        edgePadding = 0.dp
                     ) {
-                        Text(
-                            "No data available",
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                        sections.forEachIndexed { index, section ->
+                            Tab(
+                                selected = selectedTab == index,
+                                onClick = { selectedTab = index },
+                                text = { Text(section.title) }
+                            )
+                        }
                     }
-                } else {
+
+                    val currentSection = sections[selectedTab]
                     LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
-                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 16.dp),
+                        verticalArrangement = Arrangement.spacedBy(0.dp)
                     ) {
-                        sections.forEach { section ->
-                            item {
-                                Text(
-                                    text = section.title,
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.padding(top = 12.dp, bottom = 4.dp)
-                                )
-                                HorizontalDivider(color = MaterialTheme.colorScheme.outline)
-                            }
-                            items(section.fields.size) { index ->
-                                val field = section.fields[index]
-                                val altColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
-                                Column(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .background(if (index % 2 == 1) altColor else Color.Transparent)
-                                        .padding(vertical = 6.dp, horizontal = 4.dp)
+                        item {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = currentSection.title,
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            HorizontalDivider(
+                                modifier = Modifier.padding(vertical = 8.dp),
+                                color = MaterialTheme.colorScheme.outline
+                            )
+                        }
+                        items(currentSection.fields.size) { index ->
+                            val field = currentSection.fields[index]
+                            val altColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .background(if (index % 2 == 1) altColor else Color.Transparent)
+                                    .padding(vertical = 8.dp, horizontal = 4.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween
                                 ) {
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.SpaceBetween
-                                    ) {
-                                        Text(
-                                            text = field.name,
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            fontWeight = FontWeight.Medium,
-                                            modifier = Modifier.weight(1f)
-                                        )
-                                        Text(
-                                            text = field.value,
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            fontWeight = FontWeight.Bold,
-                                            textAlign = TextAlign.End
-                                        )
-                                    }
                                     Text(
-                                        text = field.description,
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        modifier = Modifier.padding(top = 2.dp)
+                                        text = field.name,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.Medium,
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                    Text(
+                                        text = field.value,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        textAlign = TextAlign.End
                                     )
                                 }
+                                Text(
+                                    text = field.description,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(top = 2.dp)
+                                )
                             }
+                            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                         }
+                        item { Spacer(modifier = Modifier.height(16.dp)) }
                     }
                 }
             }
         }
-    )
+    }
 }
 
 @Composable

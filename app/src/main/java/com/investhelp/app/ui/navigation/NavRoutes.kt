@@ -16,6 +16,7 @@ import kotlinx.serialization.Serializable
 @Serializable data class SimulationRoute(val ticker: String = "", val shares: Double = 0.0, val customDays: Int = 0)
 @Serializable object SettingsRoute
 @Serializable object SqlExplorerRoute
+@Serializable data class SqlResultRoute(val sql: String)
 @Serializable object AccountPerformanceRoute
 @Serializable object WatchListRoute
 @Serializable object PositionDetailRoute

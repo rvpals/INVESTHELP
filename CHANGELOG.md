@@ -1,5 +1,19 @@
 # Changelog
 
+## v1.43 (Build 44) - 2026-05-29
+
+### Added
+- **SQL Result screen**: new full screen for viewing query results with editable SQL query card, result grid with both vertical and horizontal scroll, clickable cells for full-screen detail view, and "Export to CSV file" button
+- **SQL Library**: new `sql_library` table (name, description, category, sql) for saving reusable SQL queries; collapsible card in SQL Explorer with category filter dropdown and name search; Run/Delete actions per entry
+- **Save SQL to Library**: button in SQL Explorer prompts for name, description, and category (with autocomplete from existing categories)
+- **Table/Column click-to-insert**: clicking a table name or column name in the table browser inserts it into the SQL text box
+- Database migration v27→v28 (creates sql_library table)
+
+### Changed
+- SQL Explorer redesigned: Run button now navigates to dedicated SQL Result screen instead of showing results inline
+- Removed Export CSV button from SQL Explorer (moved to SQL Result screen)
+- Table browser column names now clickable (primary color) to insert into SQL text box
+
 ## v1.42 (Build 43) - 2026-05-29
 
 ### Added

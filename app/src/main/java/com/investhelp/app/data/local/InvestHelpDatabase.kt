@@ -17,6 +17,8 @@ import com.investhelp.app.data.local.entity.ChangeHistoryEntity
 import com.investhelp.app.data.local.entity.CsvImportMappingEntity
 import com.investhelp.app.data.local.entity.DefinitionEntity
 import com.investhelp.app.data.local.entity.NamedCsvMappingEntity
+import com.investhelp.app.data.local.entity.SqlLibraryEntity
+import com.investhelp.app.data.local.dao.SqlLibraryDao
 import com.investhelp.app.data.local.entity.InvestmentAccountEntity
 import com.investhelp.app.data.local.entity.InvestmentItemEntity
 import com.investhelp.app.data.local.entity.InvestmentTransactionEntity
@@ -34,9 +36,10 @@ import com.investhelp.app.data.local.entity.WatchListItemEntity
         CsvImportMappingEntity::class,
         NamedCsvMappingEntity::class,
         ChangeHistoryEntity::class,
-        DefinitionEntity::class
+        DefinitionEntity::class,
+        SqlLibraryEntity::class
     ],
-    version = 27,
+    version = 28,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -49,4 +52,5 @@ abstract class InvestHelpDatabase : RoomDatabase() {
     abstract fun csvImportMappingDao(): CsvImportMappingDao
     abstract fun changeHistoryDao(): ChangeHistoryDao
     abstract fun definitionDao(): DefinitionDao
+    abstract fun sqlLibraryDao(): SqlLibraryDao
 }

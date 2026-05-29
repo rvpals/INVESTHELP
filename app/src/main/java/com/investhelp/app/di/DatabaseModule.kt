@@ -9,6 +9,7 @@ import com.investhelp.app.data.local.dao.DefinitionDao
 import com.investhelp.app.data.local.dao.InvestmentAccountDao
 import com.investhelp.app.data.local.dao.InvestmentItemDao
 import com.investhelp.app.data.local.dao.InvestmentTransactionDao
+import com.investhelp.app.data.local.dao.SqlLibraryDao
 import com.investhelp.app.data.local.dao.WatchListDao
 import dagger.Module
 import dagger.Provides
@@ -66,5 +67,10 @@ object DatabaseModule {
     @Provides
     fun provideDefinitionDao(dbProvider: DatabaseProvider): DefinitionDao {
         return dbProvider.database.definitionDao()
+    }
+
+    @Provides
+    fun provideSqlLibraryDao(dbProvider: DatabaseProvider): SqlLibraryDao {
+        return dbProvider.database.sqlLibraryDao()
     }
 }

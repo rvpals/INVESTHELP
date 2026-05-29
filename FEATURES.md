@@ -247,12 +247,28 @@ Three tabs: **Details**, **Price History**, **Transactions** (ScrollableTabRow)
 
 ## SQL Explorer
 
-- Raw SQL query execution against Room database
-- Auto-detects query type (SELECT/PRAGMA vs DML/DDL)
-- Result table with horizontal and vertical gridlines and alternating row colors
-- CSV export via share intent
-- Table browser: list tables, expand column details, Open/Erase buttons
-- Row detail dialog for untruncated field values
+- SQL text box for composing queries (monospace font, multi-line)
+- Run button navigates to dedicated SQL Result screen
+- "Save SQL to Library" button: prompts for name, description, category (with autocomplete)
+- **SQL Library** collapsible card: displays saved queries with category filter dropdown and name search; Run/Delete actions per entry; clicking a query loads it into the SQL text box
+- **Table Browser**: list all tables, expand to show columns (name, type, PK/NN indicators)
+  - Clicking a table name inserts it into the SQL text box
+  - Clicking a column name inserts it into the SQL text box
+  - "Open" button runs `SELECT * FROM table` in SQL Result screen
+  - "Erase" button deletes all entries (with confirmation if warn-before-delete enabled)
+
+## SQL Result
+
+- Full screen for viewing query results (navigated from SQL Explorer)
+- **SQL Query** collapsible card: editable SQL text box + Run button to re-execute
+- **Result** collapsible card:
+  - Scrollable grid with both vertical and horizontal scroll (400dp height)
+  - Visible vertical and horizontal gridlines
+  - Alternating row colors for readability
+  - Clickable cells open full-screen detail view showing column name and full value
+  - Row count and execution time displayed
+  - "Export to CSV file" button: exports grid data with field names in first row, values enclosed in double quotes
+- Auto-executes the SQL query on screen load
 
 ## Help
 
