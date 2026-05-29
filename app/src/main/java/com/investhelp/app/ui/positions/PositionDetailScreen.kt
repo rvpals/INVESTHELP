@@ -140,11 +140,13 @@ private fun PositionTable(
             }
         } else {
             val horizontalScroll = rememberScrollState()
+            val verticalScroll = rememberScrollState()
             val currentSortField = PositionSortField.valueOf(sortField)
 
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .verticalScroll(verticalScroll)
                     .horizontalScroll(horizontalScroll)
             ) {
                 HorizontalDivider(color = dividerColor)

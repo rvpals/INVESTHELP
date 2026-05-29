@@ -182,6 +182,9 @@ class ItemViewModel @Inject constructor(
     private val _fetchedLogo = MutableStateFlow<ByteArray?>(null)
     val fetchedLogo: StateFlow<ByteArray?> = _fetchedLogo.asStateFlow()
 
+    private val _fetchedType = MutableStateFlow<InvestmentType?>(null)
+    val fetchedType: StateFlow<InvestmentType?> = _fetchedType.asStateFlow()
+
     fun fetchPriceForTicker(ticker: String) {
         viewModelScope.launch {
             try {
@@ -191,12 +194,19 @@ class ItemViewModel @Inject constructor(
                 _fetchedDayHigh.value = quote.dayHigh
                 _fetchedDayLow.value = quote.dayLow
                 _fetchedPreviousClose.value = quote.previousClose
+                _fetchedType.value = when (quote.quoteType?.uppercase()) {
+                    "ETF" -> InvestmentType.ETF
+                    "MUTUALFUND" -> InvestmentType.MutualFund
+                    "CRYPTOCURRENCY" -> InvestmentType.Crypto
+                    else -> InvestmentType.Stock
+                }
             } catch (_: Exception) {
                 _fetchedPrice.value = null
                 _fetchedName.value = null
                 _fetchedDayHigh.value = null
                 _fetchedDayLow.value = null
                 _fetchedPreviousClose.value = null
+                _fetchedType.value = null
             }
             try {
                 _fetchedLogo.value = stockPriceService.fetchLogo(ticker)
@@ -213,6 +223,7 @@ class ItemViewModel @Inject constructor(
         _fetchedDayLow.value = null
         _fetchedPreviousClose.value = null
         _fetchedLogo.value = null
+        _fetchedType.value = null
     }
 
     // --- Position refresh state ---
@@ -224,6 +235,26 @@ class ItemViewModel @Inject constructor(
 
     fun clearMessage() {
         _message.value = null
+    }
+
+    // --- Full Yahoo Report ---
+    private val _fullReport = MutableStateFlow<List<com.investhelp.app.data.remote.YahooReportSection>>(emptyList())
+    val fullReport: StateFlow<List<com.investhelp.app.data.remote.YahooReportSection>> = _fullReport.asStateFlow()
+
+    private val _isLoadingReport = MutableStateFlow(false)
+    val isLoadingReport: StateFlow<Boolean> = _isLoadingReport.asStateFlow()
+
+    fun fetchFullReport(ticker: String) {
+        viewModelScope.launch {
+            _isLoadingReport.value = true
+            try {
+                _fullReport.value = stockPriceService.fetchFullReport(ticker)
+            } catch (_: Exception) {
+                _fullReport.value = emptyList()
+            } finally {
+                _isLoadingReport.value = false
+            }
+        }
     }
 
     // --- News ---

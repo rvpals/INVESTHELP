@@ -95,6 +95,7 @@ fun ItemFormScreen(
     val fetchedDayLow by viewModel.fetchedDayLow.collectAsStateWithLifecycle()
     val fetchedPreviousClose by viewModel.fetchedPreviousClose.collectAsStateWithLifecycle()
     val fetchedLogo by viewModel.fetchedLogo.collectAsStateWithLifecycle()
+    val fetchedType by viewModel.fetchedType.collectAsStateWithLifecycle()
 
     LaunchedEffect(fetchedPrice) {
         fetchedPrice?.let { currentPrice = it.toString() }
@@ -102,6 +103,10 @@ fun ItemFormScreen(
 
     LaunchedEffect(fetchedName) {
         fetchedName?.let { if (name.isBlank()) name = it }
+    }
+
+    LaunchedEffect(fetchedType) {
+        fetchedType?.let { selectedType = it }
     }
 
     DisposableEffect(Unit) {

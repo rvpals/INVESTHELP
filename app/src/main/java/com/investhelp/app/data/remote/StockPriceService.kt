@@ -24,7 +24,8 @@ data class StockQuote(
     val previousClose: Double,
     val shortName: String? = null,
     val dayHigh: Double = 0.0,
-    val dayLow: Double = 0.0
+    val dayLow: Double = 0.0,
+    val quoteType: String? = null
 )
 
 data class NewsArticle(
@@ -57,6 +58,17 @@ data class AnalysisInfo(
     val profitMargins: Double?,
     val returnOnEquity: Double?,
     val longBusinessSummary: String?
+)
+
+data class YahooReportSection(
+    val title: String,
+    val fields: List<YahooReportField>
+)
+
+data class YahooReportField(
+    val name: String,
+    val value: String,
+    val description: String
 )
 
 @Singleton
@@ -349,7 +361,9 @@ class StockPriceService @Inject constructor() {
                 shortName = meta["shortName"]?.jsonPrimitive?.contentOrNull
                     ?: meta["longName"]?.jsonPrimitive?.contentOrNull,
                 dayHigh = meta["regularMarketDayHigh"]?.jsonPrimitive?.doubleOrNull ?: 0.0,
-                dayLow = meta["regularMarketDayLow"]?.jsonPrimitive?.doubleOrNull ?: 0.0
+                dayLow = meta["regularMarketDayLow"]?.jsonPrimitive?.doubleOrNull ?: 0.0,
+                quoteType = meta["instrumentType"]?.jsonPrimitive?.contentOrNull
+                    ?: meta["quoteType"]?.jsonPrimitive?.contentOrNull
             )
         } finally {
             connection.disconnect()
@@ -383,6 +397,226 @@ class StockPriceService @Inject constructor() {
             }
         } finally {
             connection.disconnect()
+        }
+    }
+
+    suspend fun fetchFullReport(ticker: String): List<YahooReportSection> = withContext(Dispatchers.IO) {
+        val sections = mutableListOf<YahooReportSection>()
+
+        // 1. Chart meta data
+        try {
+            val chartUrl = URL("https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?range=1d&interval=1d")
+            val chartConn = chartUrl.openConnection() as HttpURLConnection
+            chartConn.instanceFollowRedirects = true
+            chartConn.setRequestProperty("User-Agent", "Mozilla/5.0")
+            chartConn.connectTimeout = 10_000
+            chartConn.readTimeout = 10_000
+            try {
+                if (chartConn.responseCode == 200) {
+                    val body = chartConn.inputStream.bufferedReader().readText()
+                    val root = json.parseToJsonElement(body) as JsonObject
+                    val meta = root["chart"]!!.jsonObject["result"]!!.jsonArray[0].jsonObject["meta"]!!.jsonObject
+                    val fields = mutableListOf<YahooReportField>()
+                    meta["symbol"]?.jsonPrimitive?.contentOrNull?.let { fields.add(YahooReportField("Symbol", it, "Ticker symbol")) }
+                    meta["shortName"]?.jsonPrimitive?.contentOrNull?.let { fields.add(YahooReportField("Short Name", it, "Company short name")) }
+                    meta["longName"]?.jsonPrimitive?.contentOrNull?.let { fields.add(YahooReportField("Long Name", it, "Company full name")) }
+                    meta["instrumentType"]?.jsonPrimitive?.contentOrNull?.let { fields.add(YahooReportField("Instrument Type", it, "Security type (EQUITY, ETF, MUTUALFUND, etc.)")) }
+                    meta["quoteType"]?.jsonPrimitive?.contentOrNull?.let { fields.add(YahooReportField("Quote Type", it, "Quote classification")) }
+                    meta["currency"]?.jsonPrimitive?.contentOrNull?.let { fields.add(YahooReportField("Currency", it, "Trading currency")) }
+                    meta["exchangeName"]?.jsonPrimitive?.contentOrNull?.let { fields.add(YahooReportField("Exchange", it, "Exchange code")) }
+                    meta["fullExchangeName"]?.jsonPrimitive?.contentOrNull?.let { fields.add(YahooReportField("Full Exchange Name", it, "Full name of the exchange")) }
+                    meta["regularMarketPrice"]?.jsonPrimitive?.doubleOrNull?.let { fields.add(YahooReportField("Market Price", "%.2f".format(it), "Current regular market price")) }
+                    meta["chartPreviousClose"]?.jsonPrimitive?.doubleOrNull?.let { fields.add(YahooReportField("Previous Close", "%.2f".format(it), "Previous trading day closing price")) }
+                    meta["regularMarketDayHigh"]?.jsonPrimitive?.doubleOrNull?.let { fields.add(YahooReportField("Day High", "%.2f".format(it), "Highest price during current trading day")) }
+                    meta["regularMarketDayLow"]?.jsonPrimitive?.doubleOrNull?.let { fields.add(YahooReportField("Day Low", "%.2f".format(it), "Lowest price during current trading day")) }
+                    meta["regularMarketVolume"]?.jsonPrimitive?.longOrNull?.let { fields.add(YahooReportField("Volume", "%,d".format(it), "Number of shares traded today")) }
+                    meta["fiftyTwoWeekHigh"]?.jsonPrimitive?.doubleOrNull?.let { fields.add(YahooReportField("52-Week High", "%.2f".format(it), "Highest price in the last 52 weeks")) }
+                    meta["fiftyTwoWeekLow"]?.jsonPrimitive?.doubleOrNull?.let { fields.add(YahooReportField("52-Week Low", "%.2f".format(it), "Lowest price in the last 52 weeks")) }
+                    meta["timezone"]?.jsonPrimitive?.contentOrNull?.let { fields.add(YahooReportField("Timezone", it, "Market timezone abbreviation")) }
+                    meta["exchangeTimezoneName"]?.jsonPrimitive?.contentOrNull?.let { fields.add(YahooReportField("Timezone Name", it, "IANA timezone of the exchange")) }
+                    if (fields.isNotEmpty()) sections.add(YahooReportSection("Market Data", fields))
+                }
+            } finally {
+                chartConn.disconnect()
+            }
+        } catch (_: Exception) { }
+
+        // 2. Quote Summary modules
+        try {
+            ensureCrumb()
+            val modules = "summaryProfile,summaryDetail,financialData,defaultKeyStatistics,calendarEvents,recommendationTrend,earningsTrend,majorHoldersBreakdown,fundProfile,topHoldings"
+            val summaryUrl = URL("https://query2.finance.yahoo.com/v10/finance/quoteSummary/${ticker}?modules=$modules&crumb=${java.net.URLEncoder.encode(cachedCrumb!!, "UTF-8")}")
+            val summaryConn = summaryUrl.openConnection() as HttpURLConnection
+            summaryConn.instanceFollowRedirects = true
+            summaryConn.setRequestProperty("User-Agent", "Mozilla/5.0")
+            summaryConn.setRequestProperty("Cookie", cachedCookie!!)
+            summaryConn.connectTimeout = 15_000
+            summaryConn.readTimeout = 15_000
+            try {
+                if (summaryConn.responseCode == 200) {
+                    val body = summaryConn.inputStream.bufferedReader().readText()
+                    val root = json.parseToJsonElement(body) as JsonObject
+                    val result = root["quoteSummary"]!!.jsonObject["result"]!!.jsonArray[0].jsonObject
+
+                    // Summary Detail
+                    result["summaryDetail"]?.jsonObject?.let { detail ->
+                        val fields = mutableListOf<YahooReportField>()
+                        detail.rawDouble("marketCap")?.let { fields.add(YahooReportField("Market Cap", formatLargeNumber(it), "Total market value of outstanding shares")) }
+                        detail.rawDouble("trailingPE")?.let { fields.add(YahooReportField("Trailing P/E", "%.2f".format(it), "Price-to-earnings ratio based on last 12 months earnings")) }
+                        detail.rawDouble("forwardPE")?.let { fields.add(YahooReportField("Forward P/E", "%.2f".format(it), "Price-to-earnings ratio based on estimated future earnings")) }
+                        detail.rawDouble("priceToSalesTrailing12Months")?.let { fields.add(YahooReportField("Price/Sales", "%.2f".format(it), "Price-to-sales ratio over trailing 12 months")) }
+                        detail.rawDouble("priceToBook")?.let { fields.add(YahooReportField("Price/Book", "%.2f".format(it), "Market price per share divided by book value per share")) }
+                        detail.rawDouble("dividendRate")?.let { fields.add(YahooReportField("Dividend Rate", "%.2f".format(it), "Annual dividend payment per share in dollars")) }
+                        detail.rawDouble("dividendYield")?.let { fields.add(YahooReportField("Dividend Yield", "%.2f%%".format(it * 100), "Annual dividend as a percentage of current price")) }
+                        detail.rawDouble("trailingAnnualDividendRate")?.let { fields.add(YahooReportField("Trailing Annual Dividend", "%.2f".format(it), "Total dividends paid per share over the last year")) }
+                        detail.rawDouble("payoutRatio")?.let { fields.add(YahooReportField("Payout Ratio", "%.1f%%".format(it * 100), "Percentage of earnings paid as dividends")) }
+                        detail.rawDouble("beta")?.let { fields.add(YahooReportField("Beta", "%.2f".format(it), "Volatility relative to the market (1.0 = same as market)")) }
+                        detail.rawDouble("fiftyTwoWeekHigh")?.let { fields.add(YahooReportField("52-Week High", "%.2f".format(it), "Highest price in the last 52 weeks")) }
+                        detail.rawDouble("fiftyTwoWeekLow")?.let { fields.add(YahooReportField("52-Week Low", "%.2f".format(it), "Lowest price in the last 52 weeks")) }
+                        detail.rawDouble("fiftyDayAverage")?.let { fields.add(YahooReportField("50-Day Average", "%.2f".format(it), "Average closing price over the last 50 trading days")) }
+                        detail.rawDouble("twoHundredDayAverage")?.let { fields.add(YahooReportField("200-Day Average", "%.2f".format(it), "Average closing price over the last 200 trading days")) }
+                        detail.rawLong("averageVolume")?.let { fields.add(YahooReportField("Avg Volume", "%,d".format(it), "Average daily trading volume")) }
+                        detail.rawLong("averageVolume10days")?.let { fields.add(YahooReportField("Avg Volume (10d)", "%,d".format(it), "Average volume over the last 10 days")) }
+                        if (fields.isNotEmpty()) sections.add(YahooReportSection("Valuation & Trading", fields))
+                    }
+
+                    // Financial Data
+                    result["financialData"]?.jsonObject?.let { fin ->
+                        val fields = mutableListOf<YahooReportField>()
+                        fin.rawDouble("currentPrice")?.let { fields.add(YahooReportField("Current Price", "%.2f".format(it), "Most recent trading price")) }
+                        fin.rawDouble("targetHighPrice")?.let { fields.add(YahooReportField("Analyst Target High", "%.2f".format(it), "Highest analyst price target")) }
+                        fin.rawDouble("targetLowPrice")?.let { fields.add(YahooReportField("Analyst Target Low", "%.2f".format(it), "Lowest analyst price target")) }
+                        fin.rawDouble("targetMeanPrice")?.let { fields.add(YahooReportField("Analyst Target Mean", "%.2f".format(it), "Average analyst price target")) }
+                        fin.rawDouble("targetMedianPrice")?.let { fields.add(YahooReportField("Analyst Target Median", "%.2f".format(it), "Median analyst price target")) }
+                        fin["recommendationKey"]?.jsonPrimitive?.contentOrNull?.let { fields.add(YahooReportField("Recommendation", it.uppercase(), "Consensus analyst recommendation (buy/hold/sell)")) }
+                        fin.rawLong("numberOfAnalystOpinions")?.let { fields.add(YahooReportField("# of Analysts", it.toString(), "Number of analysts providing estimates")) }
+                        fin.rawDouble("totalRevenue")?.let { fields.add(YahooReportField("Total Revenue", formatLargeNumber(it), "Total revenue over the last 12 months")) }
+                        fin.rawDouble("revenuePerShare")?.let { fields.add(YahooReportField("Revenue/Share", "%.2f".format(it), "Revenue divided by outstanding shares")) }
+                        fin.rawDouble("revenueGrowth")?.let { fields.add(YahooReportField("Revenue Growth", "%.1f%%".format(it * 100), "Year-over-year revenue growth rate")) }
+                        fin.rawDouble("grossProfits")?.let { fields.add(YahooReportField("Gross Profits", formatLargeNumber(it), "Revenue minus cost of goods sold")) }
+                        fin.rawDouble("grossMargins")?.let { fields.add(YahooReportField("Gross Margin", "%.1f%%".format(it * 100), "Gross profit as percentage of revenue")) }
+                        fin.rawDouble("operatingMargins")?.let { fields.add(YahooReportField("Operating Margin", "%.1f%%".format(it * 100), "Operating income as percentage of revenue")) }
+                        fin.rawDouble("profitMargins")?.let { fields.add(YahooReportField("Profit Margin", "%.1f%%".format(it * 100), "Net income as percentage of revenue")) }
+                        fin.rawDouble("ebitda")?.let { fields.add(YahooReportField("EBITDA", formatLargeNumber(it), "Earnings before interest, taxes, depreciation, and amortization")) }
+                        fin.rawDouble("operatingCashflow")?.let { fields.add(YahooReportField("Operating Cash Flow", formatLargeNumber(it), "Cash generated from core business operations")) }
+                        fin.rawDouble("freeCashflow")?.let { fields.add(YahooReportField("Free Cash Flow", formatLargeNumber(it), "Operating cash flow minus capital expenditures")) }
+                        fin.rawDouble("totalCash")?.let { fields.add(YahooReportField("Total Cash", formatLargeNumber(it), "Cash and cash equivalents on balance sheet")) }
+                        fin.rawDouble("totalDebt")?.let { fields.add(YahooReportField("Total Debt", formatLargeNumber(it), "Sum of short-term and long-term debt")) }
+                        fin.rawDouble("debtToEquity")?.let { fields.add(YahooReportField("Debt/Equity", "%.2f".format(it), "Total debt divided by shareholder equity")) }
+                        fin.rawDouble("returnOnAssets")?.let { fields.add(YahooReportField("Return on Assets", "%.1f%%".format(it * 100), "Net income as percentage of total assets")) }
+                        fin.rawDouble("returnOnEquity")?.let { fields.add(YahooReportField("Return on Equity", "%.1f%%".format(it * 100), "Net income as percentage of shareholder equity")) }
+                        fin.rawDouble("earningsGrowth")?.let { fields.add(YahooReportField("Earnings Growth", "%.1f%%".format(it * 100), "Year-over-year earnings growth rate")) }
+                        if (fields.isNotEmpty()) sections.add(YahooReportSection("Financials", fields))
+                    }
+
+                    // Key Statistics
+                    result["defaultKeyStatistics"]?.jsonObject?.let { stats ->
+                        val fields = mutableListOf<YahooReportField>()
+                        stats.rawDouble("trailingEps")?.let { fields.add(YahooReportField("Trailing EPS", "%.2f".format(it), "Earnings per share over the last 12 months")) }
+                        stats.rawDouble("forwardEps")?.let { fields.add(YahooReportField("Forward EPS", "%.2f".format(it), "Estimated earnings per share for next 12 months")) }
+                        stats.rawDouble("pegRatio")?.let { fields.add(YahooReportField("PEG Ratio", "%.2f".format(it), "P/E ratio divided by earnings growth rate; <1 may indicate undervaluation")) }
+                        stats.rawDouble("bookValue")?.let { fields.add(YahooReportField("Book Value", "%.2f".format(it), "Net asset value per share")) }
+                        stats.rawDouble("enterpriseValue")?.let { fields.add(YahooReportField("Enterprise Value", formatLargeNumber(it), "Market cap + debt - cash; total cost to acquire the company")) }
+                        stats.rawDouble("enterpriseToRevenue")?.let { fields.add(YahooReportField("EV/Revenue", "%.2f".format(it), "Enterprise value divided by revenue")) }
+                        stats.rawDouble("enterpriseToEbitda")?.let { fields.add(YahooReportField("EV/EBITDA", "%.2f".format(it), "Enterprise value divided by EBITDA; common valuation metric")) }
+                        stats.rawLong("floatShares")?.let { fields.add(YahooReportField("Float Shares", "%,d".format(it), "Shares available for public trading")) }
+                        stats.rawLong("sharesOutstanding")?.let { fields.add(YahooReportField("Shares Outstanding", "%,d".format(it), "Total number of shares issued")) }
+                        stats.rawLong("sharesShort")?.let { fields.add(YahooReportField("Shares Short", "%,d".format(it), "Number of shares currently sold short")) }
+                        stats.rawDouble("shortRatio")?.let { fields.add(YahooReportField("Short Ratio", "%.2f".format(it), "Days to cover short positions based on average volume")) }
+                        stats.rawDouble("shortPercentOfFloat")?.let { fields.add(YahooReportField("Short % of Float", "%.1f%%".format(it * 100), "Percentage of float shares that are sold short")) }
+                        stats.rawDouble("heldPercentInsiders")?.let { fields.add(YahooReportField("% Held by Insiders", "%.1f%%".format(it * 100), "Percentage of shares held by company insiders")) }
+                        stats.rawDouble("heldPercentInstitutions")?.let { fields.add(YahooReportField("% Held by Institutions", "%.1f%%".format(it * 100), "Percentage of shares held by institutional investors")) }
+                        stats.rawDouble("52WeekChange")?.let { fields.add(YahooReportField("52-Week Change", "%.1f%%".format(it * 100), "Price change over the last 52 weeks")) }
+                        if (fields.isNotEmpty()) sections.add(YahooReportSection("Key Statistics", fields))
+                    }
+
+                    // Summary Profile
+                    result["summaryProfile"]?.jsonObject?.let { profile ->
+                        val fields = mutableListOf<YahooReportField>()
+                        profile["sector"]?.jsonPrimitive?.contentOrNull?.let { fields.add(YahooReportField("Sector", it, "Business sector classification")) }
+                        profile["industry"]?.jsonPrimitive?.contentOrNull?.let { fields.add(YahooReportField("Industry", it, "Specific industry within the sector")) }
+                        profile["fullTimeEmployees"]?.jsonPrimitive?.longOrNull?.let { fields.add(YahooReportField("Employees", "%,d".format(it), "Number of full-time employees")) }
+                        profile["country"]?.jsonPrimitive?.contentOrNull?.let { fields.add(YahooReportField("Country", it, "Country of headquarters")) }
+                        profile["city"]?.jsonPrimitive?.contentOrNull?.let { city ->
+                            val state = profile["state"]?.jsonPrimitive?.contentOrNull
+                            fields.add(YahooReportField("Location", if (state != null) "$city, $state" else city, "Headquarters location"))
+                        }
+                        profile["website"]?.jsonPrimitive?.contentOrNull?.let { fields.add(YahooReportField("Website", it, "Company website URL")) }
+                        profile["longBusinessSummary"]?.jsonPrimitive?.contentOrNull?.let { fields.add(YahooReportField("Business Summary", it, "Description of the company's business")) }
+                        if (fields.isNotEmpty()) sections.add(YahooReportSection("Company Profile", fields))
+                    }
+
+                    // Calendar Events
+                    result["calendarEvents"]?.jsonObject?.let { cal ->
+                        val fields = mutableListOf<YahooReportField>()
+                        cal["earnings"]?.jsonObject?.let { earnings ->
+                            earnings["earningsDate"]?.jsonArray?.firstOrNull()?.jsonObject?.get("raw")?.jsonPrimitive?.longOrNull?.let {
+                                val date = java.time.Instant.ofEpochSecond(it).atZone(java.time.ZoneId.systemDefault()).toLocalDate()
+                                fields.add(YahooReportField("Next Earnings Date", date.toString(), "Expected next earnings report date"))
+                            }
+                        }
+                        cal.rawLong("exDividendDate")?.let {
+                            val date = java.time.Instant.ofEpochSecond(it).atZone(java.time.ZoneId.systemDefault()).toLocalDate()
+                            fields.add(YahooReportField("Ex-Dividend Date", date.toString(), "Date after which new buyers won't receive the next dividend"))
+                        }
+                        cal.rawLong("dividendDate")?.let {
+                            val date = java.time.Instant.ofEpochSecond(it).atZone(java.time.ZoneId.systemDefault()).toLocalDate()
+                            fields.add(YahooReportField("Dividend Date", date.toString(), "Date the dividend is paid to shareholders"))
+                        }
+                        if (fields.isNotEmpty()) sections.add(YahooReportSection("Upcoming Events", fields))
+                    }
+
+                    // Recommendation Trend
+                    result["recommendationTrend"]?.jsonObject?.get("trend")?.jsonArray?.firstOrNull()?.jsonObject?.let { trend ->
+                        val fields = mutableListOf<YahooReportField>()
+                        trend["strongBuy"]?.jsonPrimitive?.longOrNull?.let { fields.add(YahooReportField("Strong Buy", it.toString(), "Analysts recommending Strong Buy")) }
+                        trend["buy"]?.jsonPrimitive?.longOrNull?.let { fields.add(YahooReportField("Buy", it.toString(), "Analysts recommending Buy")) }
+                        trend["hold"]?.jsonPrimitive?.longOrNull?.let { fields.add(YahooReportField("Hold", it.toString(), "Analysts recommending Hold")) }
+                        trend["sell"]?.jsonPrimitive?.longOrNull?.let { fields.add(YahooReportField("Sell", it.toString(), "Analysts recommending Sell")) }
+                        trend["strongSell"]?.jsonPrimitive?.longOrNull?.let { fields.add(YahooReportField("Strong Sell", it.toString(), "Analysts recommending Strong Sell")) }
+                        if (fields.isNotEmpty()) sections.add(YahooReportSection("Analyst Recommendations", fields))
+                    }
+
+                    // Fund Profile (ETFs)
+                    result["fundProfile"]?.jsonObject?.let { fund ->
+                        val fields = mutableListOf<YahooReportField>()
+                        fund["categoryName"]?.jsonPrimitive?.contentOrNull?.let { fields.add(YahooReportField("Category", it, "Fund category classification")) }
+                        fund["family"]?.jsonPrimitive?.contentOrNull?.let { fields.add(YahooReportField("Fund Family", it, "Asset management company")) }
+                        fund["legalType"]?.jsonPrimitive?.contentOrNull?.let { fields.add(YahooReportField("Legal Type", it, "Legal structure of the fund")) }
+                        fund["feesExpensesInvestment"]?.jsonObject?.let { fees ->
+                            fees.rawDouble("annualReportExpenseRatio")?.let { fields.add(YahooReportField("Expense Ratio", "%.2f%%".format(it * 100), "Annual fee charged by the fund as percentage of assets")) }
+                        }
+                        if (fields.isNotEmpty()) sections.add(YahooReportSection("Fund Profile", fields))
+                    }
+
+                    // Top Holdings (ETFs)
+                    result["topHoldings"]?.jsonObject?.let { holdings ->
+                        val fields = mutableListOf<YahooReportField>()
+                        holdings["holdings"]?.jsonArray?.take(10)?.forEach { holding ->
+                            val obj = holding.jsonObject
+                            val sym = obj["symbol"]?.jsonPrimitive?.contentOrNull ?: "N/A"
+                            val pct = obj["holdingPercent"]?.jsonObject?.get("raw")?.jsonPrimitive?.doubleOrNull
+                            val pctStr = if (pct != null) "%.2f%%".format(pct * 100) else "N/A"
+                            fields.add(YahooReportField(sym, pctStr, "Portfolio weight of this holding"))
+                        }
+                        if (fields.isNotEmpty()) sections.add(YahooReportSection("Top Holdings", fields))
+                    }
+                }
+            } finally {
+                summaryConn.disconnect()
+            }
+        } catch (_: Exception) { }
+
+        sections
+    }
+
+    private fun formatLargeNumber(value: Double): String {
+        return when {
+            value >= 1_000_000_000_000 -> "${"%.2f".format(value / 1_000_000_000_000)}T"
+            value >= 1_000_000_000 -> "${"%.2f".format(value / 1_000_000_000)}B"
+            value >= 1_000_000 -> "${"%.2f".format(value / 1_000_000)}M"
+            value >= 1_000 -> "${"%.0f".format(value)}"
+            else -> "%.2f".format(value)
         }
     }
 }

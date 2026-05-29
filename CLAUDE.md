@@ -70,7 +70,8 @@ Android investment tracking app built with Kotlin, Jetpack Compose, and Material
 - All tables app-wide: alternating row background color (surfaceVariant alpha 0.3f on odd rows) for readability; HorizontalDivider uses `outline` color (not `outlineVariant`) for visible row separation
 - **Image loading:** Coil 2.7.0 for company logos; logos cached as BLOB in investment_positions table, fetched from multiple CDN sources (companiesmarketcap.com, parqet.com, iexcloud) during price refresh or on items screen load (if logo is null), UI falls back to network URL if not cached
 - Item add/edit dialog: type selector dropdown (Stock, ETF, Bond, MutualFund, Crypto, Other); auto-fills type when selecting existing ticker
-- Item Form screen: handles both existing positions (edit) and new tickers (create); auto-fetches full Yahoo data (price, name, dayHigh, dayLow, previousClose, logo) for non-existent tickers; Save requires non-blank ticker (0 shares allowed); `itemLoaded` flag gates LaunchedEffects to prevent race condition
+- Item Form screen: handles both existing positions (edit) and new tickers (create); auto-fetches full Yahoo data (price, name, dayHigh, dayLow, previousClose, logo) for non-existent tickers; auto-detects type (Stock/ETF/MutualFund/Crypto) from Yahoo `quoteType`; Save requires non-blank ticker (0 shares allowed); `itemLoaded` flag gates LaunchedEffects to prevent race condition
+- Item detail: info button (ℹ) in top bar opens full Yahoo Finance report dialog with all available data (market data, valuation, financials, key stats, profile, events, analyst recs, fund profile/holdings for ETFs)
 - Item detail card row 1 (big font): Total Shares, Total Value
 - Item detail card row 2 (medium font): Daily G/L, Daily G/L/Share, Daily Min Price, Daily Max Price
 - Item detail: dayHigh/dayLow fetched from Yahoo Finance `regularMarketDayHigh`/`regularMarketDayLow`

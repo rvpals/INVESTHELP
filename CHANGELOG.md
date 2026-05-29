@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.42 (Build 43) - 2026-05-29
+
+### Added
+- **Yahoo Finance Full Report**: info button (ℹ) in Item Detail top bar fetches comprehensive data from Yahoo Finance and displays in a scrollable dialog with sections: Market Data, Valuation & Trading, Financials, Key Statistics, Company Profile, Upcoming Events, Analyst Recommendations, Fund Profile (ETFs), Top Holdings (ETFs); each field shows name, value, and description
+- **Auto-detect ticker type**: Item Form automatically sets type (Stock/ETF/MutualFund/Crypto) from Yahoo Finance `quoteType` when fetching a new ticker
+- **Positions screen vertical scroll**: Stock/ETF table now scrollable to show all items
+
+### Fixed
+- Positions screen not showing all items: removed `quantity > 0` filter that excluded 0-share positions
+- Entity `equals()` only compared ticker, preventing Compose from detecting data changes; now compares all fields
+- Positions screen not reflecting newly added items due to `WhileSubscribed(5000)` disconnecting; changed to `Eagerly`
+
 ## v1.41 (Build 42) - 2026-05-29
 
 ### Fixed

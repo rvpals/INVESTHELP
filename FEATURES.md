@@ -76,7 +76,7 @@
   - ETF pie chart card with exploding slice (highest-value ticker offset outward)
   - Each card shows total value, pie chart with legend, and bold label on largest position
 - Add/edit via form with type selector (Stock, ETF, Bond, MutualFund, Crypto, Other); quantity field has up/down arrows for +1/-1 adjustment; allows saving with 0 shares
-- Item Form fetches full Yahoo Finance data (price, name, dayHigh, dayLow, previousClose, logo) when adding a new ticker
+- Item Form fetches full Yahoo Finance data (price, name, dayHigh, dayLow, previousClose, logo) when adding a new ticker; auto-detects type (Stock/ETF/MutualFund/Crypto) from Yahoo `quoteType`
 - Refresh All updates live prices for all items
 - One record per ticker (ticker is sole primary key)
 
@@ -122,6 +122,21 @@ Three tabs: **Details**, **Price History**, **Transactions** (ScrollableTabRow)
 - "Investing Performance for <TICKER>" collapsible panel (default expanded): fetches Yahoo Finance closing prices 1 day before and 1 day after each transaction; current price added as last data point (tertiary color); line chart with price labels on each point, transaction prices as bold red dots, market prices as gray dots, current price as tertiary-colored dot; pinch-to-zoom (1x–5x) with pan, tap-to-select tooltip, double-tap to reset; data table below with highlighted transaction rows and alternating row colors
 - Investing Performance chart: fullscreen view button (opens chart in full-screen dialog at 400dp height)
 - Investing Performance chart: save-to-PNG button (renders chart as 1200x600 bitmap, saves to Pictures/InvestHelp/)
+
+### Yahoo Finance Full Report
+- Info button (ℹ) in top app bar fetches all available data from Yahoo Finance
+- Full-screen scrollable dialog with sections:
+  - Market Data: price, volume, day high/low, 52-week range, exchange, currency, type
+  - Valuation & Trading: P/E ratios, market cap, beta, dividend info, moving averages
+  - Financials: revenue, margins, EBITDA, cash flow, debt, ROE/ROA, analyst targets
+  - Key Statistics: EPS, PEG ratio, enterprise value, short interest, institutional holdings
+  - Company Profile: sector, industry, employees, location, website, business summary
+  - Upcoming Events: next earnings date, ex-dividend date
+  - Analyst Recommendations: strong buy/buy/hold/sell/strong sell counts
+  - Fund Profile (ETFs): category, fund family, expense ratio
+  - Top Holdings (ETFs): top 10 holdings with portfolio weight %
+- Each field shows name, value, and a description of what it means
+- Alternating row colors for readability
 
 ### Delete Item
 - Delete button (trash icon, red tint) in top app bar

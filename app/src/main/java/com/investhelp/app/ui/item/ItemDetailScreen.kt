@@ -83,9 +83,11 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Fullscreen
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.PlaylistAdd
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Star
+import com.investhelp.app.data.remote.YahooReportSection
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.TextButton
@@ -154,6 +156,9 @@ fun ItemDetailScreen(
             .getBoolean(SettingsViewModel.KEY_WARN_BEFORE_DELETE, true)
     }
     var showDeleteConfirm by remember { mutableStateOf(false) }
+    var showFullReport by remember { mutableStateOf(false) }
+    val fullReport by viewModel.fullReport.collectAsStateWithLifecycle()
+    val isLoadingReport by viewModel.isLoadingReport.collectAsStateWithLifecycle()
 
     var selectedTab by rememberSaveable { mutableIntStateOf(0) }
     var statsStartDate by remember { mutableStateOf(LocalDate.now().minusYears(1)) }
@@ -288,6 +293,15 @@ fun ItemDetailScreen(
         )
     }
 
+    if (showFullReport) {
+        FullYahooReportDialog(
+            ticker = ticker,
+            sections = fullReport,
+            isLoading = isLoadingReport,
+            onDismiss = { showFullReport = false }
+        )
+    }
+
     if (showDeleteConfirm) {
         ConfirmDeleteDialog(
             title = "Delete $ticker",
@@ -311,6 +325,12 @@ fun ItemDetailScreen(
                     }
                 },
                 actions = {
+                    IconButton(onClick = {
+                        viewModel.fetchFullReport(ticker)
+                        showFullReport = true
+                    }) {
+                        Icon(Icons.Default.Info, contentDescription = "Full Report")
+                    }
                     IconButton(onClick = onEditItem) {
                         Icon(Icons.Default.Edit, contentDescription = "Edit")
                     }
@@ -747,6 +767,102 @@ private fun NewsCollapsibleCard(
             }
         }
     }
+}
+
+@Composable
+private fun FullYahooReportDialog(
+    ticker: String,
+    sections: List<YahooReportSection>,
+    isLoading: Boolean,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text("Close") }
+        },
+        title = {
+            Text("Yahoo Finance Report: $ticker", fontWeight = FontWeight.Bold)
+        },
+        text = {
+            Box(modifier = Modifier.height(500.dp)) {
+                if (isLoading) {
+                    Column(
+                        modifier = Modifier.fillMaxSize(),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        CircularProgressIndicator()
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Text("Fetching data from Yahoo Finance...")
+                    }
+                } else if (sections.isEmpty()) {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            "No data available",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        sections.forEach { section ->
+                            item {
+                                Text(
+                                    text = section.title,
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.padding(top = 12.dp, bottom = 4.dp)
+                                )
+                                HorizontalDivider(color = MaterialTheme.colorScheme.outline)
+                            }
+                            items(section.fields.size) { index ->
+                                val field = section.fields[index]
+                                val altColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .background(if (index % 2 == 1) altColor else Color.Transparent)
+                                        .padding(vertical = 6.dp, horizontal = 4.dp)
+                                ) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Text(
+                                            text = field.name,
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            fontWeight = FontWeight.Medium,
+                                            modifier = Modifier.weight(1f)
+                                        )
+                                        Text(
+                                            text = field.value,
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            fontWeight = FontWeight.Bold,
+                                            textAlign = TextAlign.End
+                                        )
+                                    }
+                                    Text(
+                                        text = field.description,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.padding(top = 2.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    )
 }
 
 @Composable
