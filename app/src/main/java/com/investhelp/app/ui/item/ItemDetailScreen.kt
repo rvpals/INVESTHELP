@@ -83,6 +83,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Fullscreen
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.PlaylistAdd
 import androidx.compose.material.icons.filled.Save
@@ -122,6 +123,7 @@ fun ItemDetailScreen(
     viewModel: ItemViewModel,
     onEditItem: () -> Unit,
     onSimulate: (ticker: String, shares: Double) -> Unit,
+    onAi: (ticker: String) -> Unit,
     onBack: () -> Unit
 ) {
     LaunchedEffect(ticker) {
@@ -318,13 +320,16 @@ fun ItemDetailScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(item?.name ?: ticker) },
+                title = { },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
                 actions = {
+                    IconButton(onClick = { onAi(ticker) }) {
+                        Icon(Icons.Default.AutoAwesome, contentDescription = "AI")
+                    }
                     IconButton(onClick = {
                         viewModel.fetchFullReport(ticker)
                         showFullReport = true
@@ -499,15 +504,43 @@ private fun ItemDetailContent(
                             )
                         }
                         Spacer(modifier = Modifier.height(8.dp))
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.End,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = "Current Price: ${currencyFormat.format(inv.currentPrice)}",
-                                style = MaterialTheme.typography.titleMedium
+                        val priceGradient = Brush.linearGradient(
+                            colors = listOf(
+                                MaterialTheme.colorScheme.primary.copy(alpha = 0.85f),
+                                MaterialTheme.colorScheme.primary,
+                                MaterialTheme.colorScheme.primary.copy(
+                                    red = MaterialTheme.colorScheme.primary.red * 0.7f,
+                                    green = MaterialTheme.colorScheme.primary.green * 0.7f,
+                                    blue = MaterialTheme.colorScheme.primary.blue * 0.7f
+                                )
                             )
+                        )
+                        val timeText = remember {
+                            java.time.LocalTime.now().format(java.time.format.DateTimeFormatter.ofPattern("h:mm a"))
+                        }
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .shadow(6.dp, RoundedCornerShape(12.dp))
+                                .background(priceGradient, RoundedCornerShape(12.dp))
+                                .padding(horizontal = 16.dp, vertical = 10.dp)
+                        ) {
+                            Column(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Text(
+                                    text = currencyFormat.format(inv.currentPrice),
+                                    style = MaterialTheme.typography.headlineMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White
+                                )
+                                Text(
+                                    text = "per share · as of $timeText",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = Color.White.copy(alpha = 0.8f)
+                                )
+                            }
                         }
                         Spacer(modifier = Modifier.height(8.dp))
                         Row(
@@ -1541,12 +1574,31 @@ private fun InvestingPerformanceChart(
 
                     // Price label above/below each point
                     val labelY = if (y > chartHeight / 2) y - 10.dp.toPx() else y + 14.dp.toPx()
-                    drawContext.canvas.nativeCanvas.drawText(
-                        currencyFormat.format(prices[i]),
-                        x,
-                        labelY,
-                        priceLabelPaint
-                    )
+                    if (points[i].isTransaction && points[i].numberOfShares > 0) {
+                        val shares = points[i].numberOfShares
+                        val sharesLabel = if (shares == shares.toLong().toDouble())
+                            "${shares.toLong()} @ ${currencyFormat.format(prices[i])}"
+                        else
+                            "${"%.2f".format(shares)} @ ${currencyFormat.format(prices[i])}"
+                        drawContext.canvas.nativeCanvas.drawText(
+                            sharesLabel,
+                            x,
+                            labelY,
+                            android.graphics.Paint().apply {
+                                color = txColor.hashCode()
+                                textSize = 8.dp.toPx()
+                                textAlign = android.graphics.Paint.Align.CENTER
+                                isFakeBoldText = true
+                            }
+                        )
+                    } else {
+                        drawContext.canvas.nativeCanvas.drawText(
+                            currencyFormat.format(prices[i]),
+                            x,
+                            labelY,
+                            priceLabelPaint
+                        )
+                    }
                 }
 
                 // Selected point indicator

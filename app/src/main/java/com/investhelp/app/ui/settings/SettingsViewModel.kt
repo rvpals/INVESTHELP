@@ -125,7 +125,9 @@ data class SettingsUiState(
     val accounts: List<InvestmentAccountEntity> = emptyList(),
     val dashboardCardOrder: List<String> = SettingsViewModel.DEFAULT_CARD_ORDER,
     val watchListCardVisible: Boolean = true,
-    val newsArticleCount: Int = SettingsViewModel.DEFAULT_NEWS_ARTICLE_COUNT
+    val newsArticleCount: Int = SettingsViewModel.DEFAULT_NEWS_ARTICLE_COUNT,
+    val aiEnabled: Boolean = false,
+    val aiApiKey: String = SettingsViewModel.DEFAULT_AI_API_KEY
 )
 
 @HiltViewModel
@@ -175,6 +177,9 @@ class SettingsViewModel @Inject constructor(
 
         const val KEY_NEWS_ARTICLE_COUNT = "news_article_count"
         const val DEFAULT_NEWS_ARTICLE_COUNT = 5
+        const val KEY_AI_ENABLED = "ai_enabled"
+        const val KEY_AI_API_KEY = "ai_api_key"
+        const val DEFAULT_AI_API_KEY = ""
 
         const val KEY_CARD_VISIBLE_WATCH_LIST = "card_visible_watch_list"
         const val KEY_DASHBOARD_CARD_ORDER = "dashboard_card_order"
@@ -220,7 +225,9 @@ class SettingsViewModel @Inject constructor(
                 ?.split(",")?.filter { it.isNotBlank() }
                 ?: DEFAULT_CARD_ORDER,
             watchListCardVisible = prefs.getBoolean(KEY_CARD_VISIBLE_WATCH_LIST, true),
-            newsArticleCount = prefs.getInt(KEY_NEWS_ARTICLE_COUNT, DEFAULT_NEWS_ARTICLE_COUNT)
+            newsArticleCount = prefs.getInt(KEY_NEWS_ARTICLE_COUNT, DEFAULT_NEWS_ARTICLE_COUNT),
+            aiEnabled = prefs.getBoolean(KEY_AI_ENABLED, false),
+            aiApiKey = prefs.getString(KEY_AI_API_KEY, DEFAULT_AI_API_KEY) ?: DEFAULT_AI_API_KEY
         )
     )
     val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
@@ -313,6 +320,16 @@ class SettingsViewModel @Inject constructor(
     fun setNewsArticleCount(count: Int) {
         prefs.edit().putInt(KEY_NEWS_ARTICLE_COUNT, count).apply()
         _uiState.value = _uiState.value.copy(newsArticleCount = count)
+    }
+
+    fun setAiEnabled(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_AI_ENABLED, enabled).apply()
+        _uiState.value = _uiState.value.copy(aiEnabled = enabled)
+    }
+
+    fun setAiApiKey(key: String) {
+        prefs.edit().putString(KEY_AI_API_KEY, key).apply()
+        _uiState.value = _uiState.value.copy(aiApiKey = key)
     }
 
     fun setTheme(theme: AppTheme) {

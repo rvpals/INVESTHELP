@@ -17,11 +17,62 @@ class DatabaseProvider @Inject constructor(
             InvestHelpDatabase::class.java,
             "invest_help.db"
         )
-            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23, MIGRATION_23_24, MIGRATION_24_25, MIGRATION_25_26, MIGRATION_26_27, MIGRATION_27_28)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23, MIGRATION_23_24, MIGRATION_24_25, MIGRATION_25_26, MIGRATION_26_27, MIGRATION_27_28, MIGRATION_28_29)
             .build()
     }
 
     companion object {
+        val MIGRATION_28_29 = object : Migration(28, 29) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS ai_library (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        name TEXT NOT NULL,
+                        description TEXT NOT NULL,
+                        promptText TEXT NOT NULL
+                    )
+                """)
+                db.execSQL("""
+                    INSERT INTO ai_library (name, description, promptText) VALUES (
+                        'Forensic Ticker Deep-Dive',
+                        'Use this prompt when you want to look past a company''s marketing PR and look strictly at capital flows, potential red flags, and structural revenue.',
+                        'Act as a senior equity research analyst. Provide a "Deep Dive" forensic analysis for the ticker [TICKER] based on its most recent quarterly results and past 30 days of market news. Maintain a objective, highly analytical, and skeptical tone.
+
+Structure your response exactly using these sections:
+1. Narrative vs. Reality: Contrast the headline PR narrative with the actual underlying order flow, margin compression, or growth drivers.
+2. The Balance Sheet & Cash Flow: Highlight revenue vs. cash burn. Are they funding operations through organic profit, or is there a risk of share dilution/debt issuance?
+3. Ownership & Positioning: Detail institutional ownership vs. retail concentration, short interest, and recent insider trading activity.
+4. Bear, Bull, and Realistic Scenarios: Provide 3 clear near-term scenarios for the stock.
+5. Key Catalyst: Identify the single most critical upcoming date or event (earnings, regulatory ruling, product launch) that isn''t fully priced in yet.'
+                    )
+                """)
+                db.execSQL("""
+                    INSERT INTO ai_library (name, description, promptText) VALUES (
+                        '10-K/10-Q Earnings Summarizer',
+                        'Instead of reading through a 50-page SEC filing, you can paste this prompt right after an earnings release to extract management''s true forward guidance and hidden risks.',
+                        'Analyze the most recent earnings report and regulatory filings for [TICKER]. Do not give me generic corporate descriptions. Extract and summarize the following in concise bullet points:
+
+- Key Financial Metrics: (Revenue, EPS, EBITDA, and Free Cash Flow) vs. Wall Street expectations.
+- Management Guidance: Explicit forward-looking statements or changes to full-year outlooks.
+- Hidden Headwinds: Any mentioned supply chain issues, margin pressures, legal risks, or macro factors that could act as a drag on the stock.
+- The "Hook": What was the single biggest surprise or takeaway from the earnings call?'
+                    )
+                """)
+                db.execSQL("""
+                    INSERT INTO ai_library (name, description, promptText) VALUES (
+                        'ETF "Under the Hood" Deconstruction',
+                        'When evaluating an ETF, you want to know if it''s truly diversified or just carried by a few massive tech stocks, and how it handles market volatility.',
+                        'Act as an institutional portfolio manager. Analyze the ETF ticker [TICKER]. Provide a structured breakdown covering:
+
+1. Concentration Risk: What percentage of the fund is held by the top 5 and top 10 holdings? Is the fund top-heavy?
+2. Sector & Macro Exposure: What specific macroeconomic themes (e.g., rising interest rates, commodity cycles, tech adoption) is this ETF highly sensitive to?
+3. Expense Ratio & Liquidity: Evaluate its expense ratio against its core category peers and assess its average daily volume for slippage risks.
+4. Peer Comparison: Compare this ETF briefly to its top two direct competitors in terms of performance drag and structural strategy.'
+                    )
+                """)
+            }
+        }
+
         val MIGRATION_27_28 = object : Migration(27, 28) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("""

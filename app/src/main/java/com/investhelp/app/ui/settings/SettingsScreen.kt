@@ -127,12 +127,18 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
                     onClick = { selectedTab = 2 },
                     text = { Text("Definitions") }
                 )
+                Tab(
+                    selected = selectedTab == 3,
+                    onClick = { selectedTab = 3 },
+                    text = { Text("AI") }
+                )
             }
 
             when (selectedTab) {
                 0 -> PreferencesTab(viewModel, uiState)
                 1 -> DataManagementTab(viewModel, uiState)
                 2 -> DefinitionsTab(viewModel)
+                3 -> AiTab(viewModel, uiState)
             }
         }
     }
@@ -1720,6 +1726,61 @@ private fun PositionImportResultDialog(
         },
         dismissButton = {}
     )
+}
+
+@Composable
+private fun AiTab(viewModel: SettingsViewModel, uiState: SettingsUiState) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(24.dp)
+    ) {
+        Text("Artificial Intelligence", style = MaterialTheme.typography.titleMedium)
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    "Use Artificial Intelligence",
+                    style = MaterialTheme.typography.bodyLarge
+                )
+                Text(
+                    "Enable AI-powered features using Google Gemini",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Switch(
+                checked = uiState.aiEnabled,
+                onCheckedChange = { viewModel.setAiEnabled(it) }
+            )
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        OutlinedTextField(
+            value = uiState.aiApiKey,
+            onValueChange = { viewModel.setAiApiKey(it) },
+            label = { Text("API Key") },
+            singleLine = true,
+            enabled = uiState.aiEnabled,
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        if (uiState.aiEnabled) {
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                "Powered by Google Gemini",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
 }
 
 @Composable

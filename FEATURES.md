@@ -270,6 +270,21 @@ Three tabs: **Details**, **Price History**, **Transactions** (ScrollableTabRow)
   - "Export to CSV file" button: exports grid data with field names in first row, values enclosed in double quotes
 - Auto-executes the SQL query on screen load
 
+## AI (Artificial Intelligence)
+
+- Accessible via sparkle icon (✨) on Item Detail top bar
+- "Artificial Intelligence for \<TICKER\>" full screen
+- **AI Library** collapsible card: lists saved prompts (name + description); search box to filter
+  - Clicking an entry auto-fills prompt with `[TICKER]` replaced by the ticker in quotes
+- Multi-line prompt editor for composing or editing prompts
+- Selected prompt info card shows name and description
+- **"Send to Gemini"** button: opens Google Gemini web app in embedded WebView (500dp)
+  - JavaScript and DOM storage enabled for full Gemini functionality
+  - User signs into Google once, stays logged in
+- **AI Library table** (`ai_library`): id, name, description, promptText
+  - Pre-seeded with 3 prompts: Forensic Ticker Deep-Dive, 10-K/10-Q Earnings Summarizer, ETF "Under the Hood" Deconstruction
+- **Settings > AI tab**: toggle to enable/disable AI, API key field
+
 ## Help
 
 - HTML-based guide via WebView (assets/help.html)

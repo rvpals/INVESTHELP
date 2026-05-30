@@ -8,7 +8,7 @@ Android investment tracking app built with Kotlin, Jetpack Compose, and Material
 - **Min SDK:** 29, Target SDK: 35
 - **Architecture:** MVVM + Repository pattern
 - **DI:** Hilt (KSP)
-- **Database:** Room, version 28
+- **Database:** Room, version 29
 - **Navigation:** Compose Navigation (type-safe routes)
 - **Splash:** AndroidX SplashScreen API (core-splashscreen 1.0.1)
 - **Charts:** Custom Canvas-drawn (pie chart, line chart) — no external chart library
@@ -142,7 +142,8 @@ Android investment tracking app built with Kotlin, Jetpack Compose, and Material
 - Database migration v25 -> v26: adds unique index on investment_transactions (date, action, ticker, totalAmount) to prevent duplicate CSV imports
 - Database migration v26 -> v27: renames investment_items to investment_positions, removes cost and totalGainLoss columns
 - Database migration v27 -> v28: creates sql_library table (id, name, description, category, sql) for saved SQL queries
-- Database version 28
+- Database migration v28 -> v29: creates ai_library table (id, name, description, promptText) with 3 seed prompts for AI-powered ticker analysis
+- Database version 29
 - Change History: `change_history` table records daily portfolio values by type (ETF, Stock, Total) plus daily change values (dailyChangeEtf, dailyChangeStock, dailyChangeTotal); one row per day, overwritten on re-refresh
 - Change History dialog: "Change Value This Week So Far" summary card above data table showing sum of daily changes for ETF, Stock, and Total since Monday; color-coded green/red
 - Settings: "Auto Update Change History when refresh" toggle (default: off) — when on, automatically records ETF/Stock/Total values to change_history after price refresh; overwrites existing entry for today

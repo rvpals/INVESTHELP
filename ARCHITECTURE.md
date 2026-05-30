@@ -27,7 +27,7 @@ com.investhelp.app/
 ├── MainActivity.kt              # Single activity, top bar, bottom nav, navigation host, auto-backup on exit
 ├── data/
 │   ├── local/
-│   │   ├── AppDatabase.kt       # Room database (version 28) with all DAOs and migrations
+│   │   ├── AppDatabase.kt       # Room database (version 29) with all DAOs and migrations
 │   │   ├── DatabaseProvider.kt  # Lazy database initialization pattern
 │   │   ├── dao/                 # Room DAO interfaces
 │   │   └── entity/              # Room entity classes
@@ -59,7 +59,7 @@ com.investhelp.app/
 
 ## Database
 
-### Room Database (version 28)
+### Room Database (version 29)
 
 **Entities:**
 | Table | Primary Key | Description |

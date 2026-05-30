@@ -22,6 +22,8 @@ import com.investhelp.app.ui.simulation.SimulationScreen
 import com.investhelp.app.ui.simulation.SimulationViewModel
 import com.investhelp.app.ui.performance.AccountPerformanceScreen
 import com.investhelp.app.ui.performance.AccountPerformanceViewModel
+import com.investhelp.app.ui.ai.AiTickerScreen
+import com.investhelp.app.ui.ai.AiViewModel
 import com.investhelp.app.ui.sqlexplorer.SqlExplorerScreen
 import com.investhelp.app.ui.sqlexplorer.SqlExplorerViewModel
 import com.investhelp.app.ui.sqlexplorer.SqlResultScreen
@@ -117,6 +119,9 @@ fun InvestHelpNavHost(
                 },
                 onSimulate = { ticker, shares ->
                     navController.navigate(SimulationRoute(ticker = ticker, shares = shares))
+                },
+                onAi = { ticker ->
+                    navController.navigate(AiTickerRoute(ticker = ticker))
                 },
                 onBack = { navController.popBackStack() }
             )
@@ -223,6 +228,16 @@ fun InvestHelpNavHost(
             SqlResultScreen(
                 initialSql = route.sql,
                 viewModel = viewModel,
+                onBack = { navController.popBackStack() }
+            )
+        }
+
+        composable<AiTickerRoute> { backStackEntry ->
+            val route = backStackEntry.toRoute<AiTickerRoute>()
+            val aiViewModel: AiViewModel = hiltViewModel()
+            AiTickerScreen(
+                ticker = route.ticker,
+                viewModel = aiViewModel,
                 onBack = { navController.popBackStack() }
             )
         }

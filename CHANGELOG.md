@@ -1,5 +1,41 @@
 # Changelog
 
+## v1.45 (Build 46) - 2026-05-29
+
+### Added
+- **AI Screen**: "Artificial Intelligence for \<TICKER\>" with embedded WebView showing Gemini response in-app
+  - AI Library collapsible card with search; click entry to auto-fill prompt with `[TICKER]` substituted
+  - Multi-line prompt editor
+  - "Send to Gemini" button opens Gemini web app in embedded WebView (500dp card)
+  - User signs into Google once in WebView, stays logged in
+- **AI Library table** (`ai_library`): pre-seeded with 3 analysis prompts (Forensic Deep-Dive, Earnings Summarizer, ETF Deconstruction)
+- **AI Settings tab**: toggle to enable/disable AI, API key field
+- **Yahoo Finance 1-minute pricing**: `fetchQuote` now uses `interval=1m` for ~1-2 min delay during market hours
+- **Price display**: Item Detail header shows price in 3D gradient box with "per share · as of \<time\>"
+- **Investing Performance chart**: transaction points show "3 @ $299.00" (shares @ price)
+- Removed ticker title from Item Detail top bar
+- Database migration v28→v29 (creates ai_library table with 3 seed prompts)
+
+## v1.44 (Build 45) - 2026-05-29
+
+### Added
+- **AI Screen**: full-screen "Artificial Intelligence for \<TICKER\>" accessible via sparkle icon in Item Detail top bar
+  - AI Library collapsible card with search; clicking an entry auto-fills prompt with ticker substituted
+  - Multi-line prompt editor with Send button
+  - Progress bar + "Sending request to AI..." during request
+  - AI response card with ticker name highlighted (bold, primary color background)
+  - Powered by Google Gemini 2.0 Flash API
+- **AI Library table** (`ai_library`): name, description, promptText; pre-seeded with 3 prompts:
+  - Forensic Ticker Deep-Dive
+  - 10-K/10-Q Earnings Summarizer
+  - ETF "Under the Hood" Deconstruction
+- **AI Settings tab**: toggle to enable/disable AI, API key field (default pre-filled)
+- **Yahoo Finance real-time pricing**: changed `fetchQuote` to use 1-minute intervals for ~1-2 min delay during market hours
+- **Price display redesign**: Item Detail header shows current price in 3D gradient box with "per share · as of \<time\>" label
+- **Investing Performance chart**: transaction points now show "3 @ $299.00" (shares @ price) instead of just price
+- Removed ticker title from Item Detail top bar to save space
+- Database migration v28→v29 (creates ai_library table with 3 seed prompts)
+
 ## v1.43 (Build 44) - 2026-05-29
 
 ### Added

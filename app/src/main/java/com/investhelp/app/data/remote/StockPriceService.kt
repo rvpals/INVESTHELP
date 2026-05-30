@@ -337,7 +337,7 @@ class StockPriceService @Inject constructor() {
     }
 
     suspend fun fetchQuote(ticker: String): StockQuote = withContext(Dispatchers.IO) {
-        val url = URL("https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?range=1d&interval=1d")
+        val url = URL("https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?range=1d&interval=1m")
         val connection = url.openConnection() as HttpURLConnection
         connection.instanceFollowRedirects = true
         connection.setRequestProperty("User-Agent", "Mozilla/5.0")

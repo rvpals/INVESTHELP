@@ -83,7 +83,8 @@ class ItemViewModel @Inject constructor(
         val date: LocalDate,
         val price: Double,
         val isTransaction: Boolean,
-        val isCurrentPrice: Boolean = false
+        val isCurrentPrice: Boolean = false,
+        val numberOfShares: Double = 0.0
     )
 
     private val _investingPerformance = MutableStateFlow<List<InvestingPerfPoint>>(emptyList())
@@ -130,12 +131,12 @@ class ItemViewModel @Inject constructor(
                         if (beforePrice != null) {
                             points.add(InvestingPerfPoint(dayBefore, beforePrice, false))
                         }
-                        points.add(InvestingPerfPoint(txDate, tx.pricePerShare, true))
+                        points.add(InvestingPerfPoint(txDate, tx.pricePerShare, true, numberOfShares = tx.numberOfShares))
                         if (afterPrice != null) {
                             points.add(InvestingPerfPoint(dayAfter, afterPrice, false))
                         }
                     } catch (_: Exception) {
-                        points.add(InvestingPerfPoint(txDate, tx.pricePerShare, true))
+                        points.add(InvestingPerfPoint(txDate, tx.pricePerShare, true, numberOfShares = tx.numberOfShares))
                     }
                 }
 
