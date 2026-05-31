@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.49 (Build 50) - 2026-05-30
+
+### Added
+- **"Explanation" card** on Next-Day Actions screen: collapsible card explaining how each action type (STOP LOSS, TRIM PROFITS, REBALANCE, STRONG BUY, HOLD) is calculated, including formulas and logic
+- **"Detail on the Analysis" card** on Next-Day Actions screen: collapsible card showing per-ticker breakdown with actual numbers — current price, cost basis, return calculation, 20-day SMA, volume ratio, and which tier checks triggered or passed
+
 ## v1.48 (Build 49) - 2026-05-30
 
 ### Added

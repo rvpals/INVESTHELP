@@ -29,6 +29,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -36,7 +38,9 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.investhelp.app.ui.components.CollapsibleCard
 import java.text.NumberFormat
 import java.util.Locale
 
@@ -90,7 +94,95 @@ fun NextDayActionsScreen(
             Text(error!!, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
         }
 
+        Spacer(modifier = Modifier.height(12.dp))
+        var explanationPinned by rememberSaveable { mutableStateOf(false) }
+        CollapsibleCard(
+            title = "Explanation",
+            pinned = explanationPinned,
+            onPinToggle = { explanationPinned = it }
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                ExplanationSection(
+                    title = "STOP LOSS",
+                    color = actionColor(NextDayAction.STOP_LOSS),
+                    text = "Triggered when the current price closes BELOW the 20-day Simple Moving Average (SMA). " +
+                        "The 20-day SMA is calculated by averaging the closing prices of the last 20 trading days. " +
+                        "When price drops below this level, it signals a technical breakdown — the short-term trend " +
+                        "has turned bearish. Action: exit the position or tighten a protective stop-loss order immediately " +
+                        "at next market open."
+                )
+                ExplanationSection(
+                    title = "TRIM PROFITS",
+                    color = actionColor(NextDayAction.TRIM_PROFIT),
+                    text = "Triggered when Total Return % exceeds the Profit Target threshold (default 20%). " +
+                        "Total Return is calculated as: ((Current Price - Cost Basis) / Cost Basis) x 100. " +
+                        "Cost Basis is the weighted average price of all your Buy transactions for that ticker. " +
+                        "When a position has gained significantly, taking partial profits locks in gains and reduces " +
+                        "risk of giving back returns in a reversal. Action: sell a portion (e.g., 25-50%) at next open."
+                )
+                ExplanationSection(
+                    title = "REBALANCE",
+                    color = actionColor(NextDayAction.REBALANCE_TRIM),
+                    text = "Triggered when a single position's Allocation % exceeds the concentration cap " +
+                        "(default 10% for stocks, 25% for ETFs). Allocation % = (Position Value / Total Portfolio Value) x 100. " +
+                        "Over-concentration in one asset increases portfolio risk — if that one position drops sharply, " +
+                        "it disproportionately impacts your total wealth. Action: trim the position back to within the cap " +
+                        "by selling excess shares."
+                )
+                ExplanationSection(
+                    title = "STRONG BUY",
+                    color = actionColor(NextDayAction.STRONG_BUY),
+                    text = "Triggered when today's closing volume is 1.5x or more the 20-day average volume. " +
+                        "A volume spike indicates institutional accumulation — large players are actively buying. " +
+                        "When this occurs alongside a price holding above the 20-day SMA (not in breakdown), " +
+                        "it signals strong conviction buying and potential for continued upward momentum. " +
+                        "Action: consider adding to the position at next open, especially if price holds above yesterday's high."
+                )
+                ExplanationSection(
+                    title = "HOLD",
+                    color = actionColor(NextDayAction.HOLD),
+                    text = "Default state when no threshold is violated. The position is trading above its 20-day SMA, " +
+                        "return hasn't hit the profit target, allocation is within caps, and volume is normal. " +
+                        "No action required — continue monitoring."
+                )
+            }
+        }
+
         if (signals.isNotEmpty()) {
+            Spacer(modifier = Modifier.height(12.dp))
+            var detailPinned by rememberSaveable { mutableStateOf(false) }
+            CollapsibleCard(
+                title = "Detail on the Analysis",
+                pinned = detailPinned,
+                onPinToggle = { detailPinned = it }
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    signals.forEach { signal ->
+                        Card(
+                            colors = CardDefaults.cardColors(
+                                containerColor = actionColor(signal.action).copy(alpha = 0.05f)
+                            ),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(modifier = Modifier.padding(10.dp)) {
+                                Text(
+                                    "${signal.ticker} → ${signal.action.label}",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = actionColor(signal.action)
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = signal.detailLog,
+                                    style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
             Spacer(modifier = Modifier.height(12.dp))
 
             val actionCount = signals.groupBy { it.action }
@@ -259,6 +351,24 @@ private fun DataCell(
         textAlign = textAlign,
         color = color
     )
+}
+
+@Composable
+private fun ExplanationSection(title: String, color: Color, text: String) {
+    Column {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = FontWeight.Bold,
+            color = color
+        )
+        Spacer(modifier = Modifier.height(2.dp))
+        Text(
+            text = text,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
 }
 
 @Composable

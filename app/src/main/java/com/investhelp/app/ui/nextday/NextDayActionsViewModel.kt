@@ -38,7 +38,8 @@ data class ActionableSignal(
     val costBasis: Double,
     val totalReturnPct: Double,
     val action: NextDayAction,
-    val reasoning: String
+    val reasoning: String,
+    val detailLog: String = ""
 )
 
 @HiltViewModel
@@ -151,33 +152,60 @@ class NextDayActionsViewModel @Inject constructor(
     ): ActionableSignal {
         val action: NextDayAction
         val reasoning: String
+        val log = StringBuilder()
+
+        log.appendLine("=== ${item.ticker} (${item.type.name}) ===")
+        log.appendLine("Current Price: $${String.format(Locale.US, "%.2f", item.currentPrice)}")
+        log.appendLine("Shares: ${String.format(Locale.US, "%.4f", item.quantity)}")
+        log.appendLine("Position Value: $${String.format(Locale.US, "%.2f", item.value)}")
+        log.appendLine("Cost Basis (avg buy price): $${String.format(Locale.US, "%.2f", costBasis)}")
+        log.appendLine("Total Return: (${String.format(Locale.US, "%.2f", item.currentPrice)} - ${String.format(Locale.US, "%.2f", costBasis)}) / ${String.format(Locale.US, "%.2f", costBasis)} x 100 = ${String.format(Locale.US, "%+.2f", totalReturnPct)}%")
+        log.appendLine("Allocation: ${String.format(Locale.US, "%.2f", item.value)} / portfolio total x 100 = ${String.format(Locale.US, "%.2f", allocationPct)}%")
+        log.appendLine("")
+
+        if (scanData != null) {
+            log.appendLine("--- Yahoo Finance Scan Data ---")
+            log.appendLine("20-Day SMA: $${String.format(Locale.US, "%.2f", scanData.twentyDaySma)}")
+            log.appendLine("20-Day Avg Volume: ${String.format(Locale.US, "%,d", scanData.avgVolume20Day)}")
+            log.appendLine("Today's Closing Volume: ${String.format(Locale.US, "%,d", scanData.closingVolume)}")
+            val volumeRatio = if (scanData.avgVolume20Day > 0) scanData.closingVolume.toDouble() / scanData.avgVolume20Day else 0.0
+            log.appendLine("Volume Ratio: ${String.format(Locale.US, "%,d", scanData.closingVolume)} / ${String.format(Locale.US, "%,d", scanData.avgVolume20Day)} = ${String.format(Locale.US, "%.2f", volumeRatio)}x")
+            log.appendLine("")
+            log.appendLine("--- Tier A: Risk Check ---")
+            log.appendLine("Price vs 20-Day SMA: ${String.format(Locale.US, "%.2f", item.currentPrice)} ${if (item.currentPrice >= scanData.twentyDaySma) ">=" else "<"} ${String.format(Locale.US, "%.2f", scanData.twentyDaySma)} → ${if (item.currentPrice < scanData.twentyDaySma) "STOP LOSS TRIGGERED" else "OK"}")
+            log.appendLine("Return ${String.format(Locale.US, "%+.1f", totalReturnPct)}% vs Target +$profitTargetPct% → ${if (totalReturnPct >= profitTargetPct) "TRIM PROFIT TRIGGERED" else "OK"}")
+            log.appendLine("")
+            log.appendLine("--- Tier B: Concentration Check ---")
+            val cap = if (item.type == InvestmentType.ETF) etfCap else stockCap
+            log.appendLine("Allocation ${String.format(Locale.US, "%.1f", allocationPct)}% vs ${item.type.name} Cap $cap% → ${if (allocationPct > cap) "REBALANCE TRIGGERED" else "OK"}")
+            log.appendLine("")
+            log.appendLine("--- Tier C: Momentum Check ---")
+            log.appendLine("Volume Ratio ${String.format(Locale.US, "%.2f", volumeRatio)}x vs Threshold 1.50x → ${if (volumeRatio >= 1.5) "STRONG BUY TRIGGERED" else "OK"}")
+        } else {
+            log.appendLine("(Scan data unavailable — Yahoo Finance fetch failed)")
+        }
 
         when {
-            // Tier A: Stop Loss — price below 20-day SMA
             scanData != null && scanData.twentyDaySma > 0 && item.currentPrice < scanData.twentyDaySma -> {
                 action = NextDayAction.STOP_LOSS
                 reasoning = "Price ($${String.format(Locale.US, "%.2f", item.currentPrice)}) closed below 20-day SMA ($${String.format(Locale.US, "%.2f", scanData.twentyDaySma)})."
             }
 
-            // Tier A: Profit Taking
             totalReturnPct >= profitTargetPct -> {
                 action = NextDayAction.TRIM_PROFIT
                 reasoning = "Return +${String.format(Locale.US, "%.1f", totalReturnPct)}% exceeds target of +$profitTargetPct%."
             }
 
-            // Tier B: Stock concentration
             item.type == InvestmentType.Stock && allocationPct > stockCap -> {
                 action = NextDayAction.REBALANCE_TRIM
                 reasoning = "Stock allocation ${String.format(Locale.US, "%.1f", allocationPct)}% exceeds cap of $stockCap%."
             }
 
-            // Tier B: ETF concentration
             item.type == InvestmentType.ETF && allocationPct > etfCap -> {
                 action = NextDayAction.REBALANCE_TRIM
                 reasoning = "ETF allocation ${String.format(Locale.US, "%.1f", allocationPct)}% exceeds cap of $etfCap%."
             }
 
-            // Tier C: Volume spike (1.5x average)
             scanData != null && scanData.avgVolume20Day > 0 &&
                 scanData.closingVolume.toDouble() / scanData.avgVolume20Day >= 1.5 -> {
                 action = NextDayAction.STRONG_BUY
@@ -191,6 +219,9 @@ class NextDayActionsViewModel @Inject constructor(
             }
         }
 
+        log.appendLine("")
+        log.appendLine(">>> RESULT: ${action.label}")
+
         return ActionableSignal(
             ticker = item.ticker,
             type = item.type,
@@ -201,7 +232,8 @@ class NextDayActionsViewModel @Inject constructor(
             costBasis = costBasis,
             totalReturnPct = totalReturnPct,
             action = action,
-            reasoning = reasoning
+            reasoning = reasoning,
+            detailLog = log.toString()
         )
     }
 }
