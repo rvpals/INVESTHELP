@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.47 (Build 48) - 2026-05-30
+
+### Changed
+- AI screen: "Send to Gemini" now copies prompt to clipboard and launches installed Gemini app (or website fallback); removed embedded WebView approach
+- Investing Performance data table: added "Shares" column showing number of shares for transaction rows
+- Updated help.html with AI section and updated SQL Explorer section
+
 ## v1.45 (Build 46) - 2026-05-29
 
 ### Added

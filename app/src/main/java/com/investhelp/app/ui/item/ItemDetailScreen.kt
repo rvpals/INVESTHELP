@@ -1715,6 +1715,14 @@ private fun InvestingPerformanceTable(
                 )
                 VerticalDivider(color = dividerColor)
                 Text(
+                    text = "Shares",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.width(60.dp).padding(horizontal = 4.dp),
+                    textAlign = TextAlign.End
+                )
+                VerticalDivider(color = dividerColor)
+                Text(
                     text = "Type",
                     style = MaterialTheme.typography.labelSmall,
                     fontWeight = FontWeight.Bold,
@@ -1764,6 +1772,21 @@ private fun InvestingPerformanceTable(
                             pt.isTransaction -> MaterialTheme.colorScheme.error
                             else -> MaterialTheme.colorScheme.onSurface
                         }
+                    )
+                    VerticalDivider(color = dividerColor)
+                    Text(
+                        text = if (pt.isTransaction && pt.numberOfShares > 0) {
+                            if (pt.numberOfShares == pt.numberOfShares.toLong().toDouble())
+                                pt.numberOfShares.toLong().toString()
+                            else
+                                "%.2f".format(pt.numberOfShares)
+                        } else "",
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = if (pt.isTransaction) FontWeight.Bold else FontWeight.Normal,
+                        modifier = Modifier.width(60.dp).padding(horizontal = 4.dp),
+                        textAlign = TextAlign.End,
+                        color = if (pt.isTransaction) MaterialTheme.colorScheme.error
+                            else MaterialTheme.colorScheme.onSurface
                     )
                     VerticalDivider(color = dividerColor)
                     Text(

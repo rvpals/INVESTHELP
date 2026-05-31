@@ -1,8 +1,10 @@
 package com.investhelp.app.ui.ai
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import android.content.Intent
-import android.webkit.WebView
-import android.webkit.WebViewClient
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -39,7 +41,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.investhelp.app.ui.components.CollapsibleCard
 
@@ -117,7 +118,7 @@ fun AiTickerScreen(
                                     .fillMaxWidth()
                                     .background(if (index % 2 == 1) altColor else Color.Transparent)
                                     .clickable {
-                                        prompt = entry.promptText.replace("[TICKER]", "\"$ticker\"")
+                                        prompt = entry.promptText.replace("[TICKER]", ticker)
                                         selectedName = entry.name
                                         selectedDescription = entry.description
                                     }
@@ -180,45 +181,25 @@ fun AiTickerScreen(
             }
 
             item {
-                var showWebView by rememberSaveable { mutableStateOf(false) }
-                var geminiUrl by rememberSaveable { mutableStateOf("") }
-
                 Button(
                     onClick = {
-                        val encoded = android.net.Uri.encode(prompt)
-                        geminiUrl = "https://gemini.google.com/app?text=$encoded"
-                        showWebView = true
+                        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                        clipboard.setPrimaryClip(ClipData.newPlainText("AI Prompt", prompt))
+                        Toast.makeText(context, "Prompt copied to clipboard", Toast.LENGTH_SHORT).show()
+
+                        val geminiIntent = context.packageManager.getLaunchIntentForPackage("com.google.android.apps.bard")
+                        if (geminiIntent != null) {
+                            context.startActivity(geminiIntent)
+                        } else {
+                            val webIntent = Intent(Intent.ACTION_VIEW, android.net.Uri.parse("https://gemini.google.com/app"))
+                            context.startActivity(webIntent)
+                        }
                     },
                     enabled = prompt.isNotBlank(),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Icon(Icons.AutoMirrored.Filled.Send, contentDescription = null, modifier = Modifier.padding(end = 8.dp))
                     Text("Send to Gemini")
-                }
-
-                if (showWebView && geminiUrl.isNotBlank()) {
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(500.dp),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surface
-                        )
-                    ) {
-                        AndroidView(
-                            factory = { ctx ->
-                                WebView(ctx).apply {
-                                    webViewClient = WebViewClient()
-                                    settings.javaScriptEnabled = true
-                                    settings.domStorageEnabled = true
-                                    settings.userAgentString = "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Mobile Safari/537.36"
-                                    loadUrl(geminiUrl)
-                                }
-                            },
-                            modifier = Modifier.fillMaxSize()
-                        )
-                    }
                 }
             }
 

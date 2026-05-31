@@ -430,11 +430,27 @@
   <p>Power-user tool for direct database access.</p>
   <ul>
     <li>Run any SQL: SELECT, INSERT, UPDATE, DELETE, PRAGMA, EXPLAIN.</li>
-    <li><strong>Table browser:</strong> lists all tables with expandable column details (name, type, PK/NN indicators).</li>
-    <li>Tap <strong>"Open"</strong> on a table to run <span class="kbd">SELECT * FROM table</span>.</li>
-    <li>Result grid with horizontal/vertical gridlines and alternating row colors.</li>
-    <li>Tap a row to view all field values untruncated in a detail dialog.</li>
-    <li><strong>CSV Export:</strong> share query results via the system share sheet.</li>
+    <li><strong>Table browser:</strong> lists all tables with expandable column details (name, type, PK/NN indicators). Tap table/column names to insert into SQL text box.</li>
+    <li>Tap <strong>"Open"</strong> on a table to open SQL Result screen with <span class="kbd">SELECT * FROM table</span>.</li>
+    <li><strong>"Run"</strong> button navigates to dedicated SQL Result screen with auto-execution.</li>
+    <li><strong>"Save SQL to Library"</strong> saves queries with name, description, and category for reuse.</li>
+    <li><strong>SQL Library</strong> card: filter by category or search by name; Run or Delete saved queries.</li>
+    <li><strong>SQL Result screen:</strong> editable SQL card, result grid with vertical+horizontal scroll, clickable cells for full-screen detail, Export to CSV.</li>
+  </ul>
+</div>
+
+<div class="divider"></div>
+
+<!-- AI GUIDE -->
+<div class="section purple">
+  <h2>AI (Artificial Intelligence)</h2>
+  <p>AI-powered ticker analysis using Google Gemini.</p>
+  <ul>
+    <li>Access via the <strong>sparkle icon (&#x2728;)</strong> on any Item Detail screen.</li>
+    <li><strong>AI Library:</strong> pre-built analysis prompts (Forensic Deep-Dive, Earnings Summarizer, ETF Deconstruction). Tap to auto-fill with your ticker.</li>
+    <li>Edit the prompt text freely before sending.</li>
+    <li><strong>"Send to Gemini":</strong> copies the prompt to clipboard and launches the Gemini app (or website). Paste in Gemini to get your analysis.</li>
+    <li>Configure in <strong>Settings &gt; AI</strong> tab (enable/disable toggle, API key field).</li>
   </ul>
 </div>
 
