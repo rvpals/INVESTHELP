@@ -12,9 +12,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.Button
@@ -57,6 +56,7 @@ fun NextDayActionsScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .verticalScroll(rememberScrollState())
             .padding(16.dp)
     ) {
         Row(
@@ -236,38 +236,36 @@ private fun ActionGrid(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)
     ) {
-        LazyColumn(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .horizontalScroll(horizontalScroll)
                 .padding(4.dp)
         ) {
-            item(key = "header") {
-                HorizontalDivider(color = dividerColor)
-                Row(
-                    modifier = Modifier.height(IntrinsicSize.Min).padding(vertical = 6.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    HeaderCell("Ticker", 70)
-                    VerticalDivider(color = dividerColor)
-                    HeaderCell("Shares", 60)
-                    VerticalDivider(color = dividerColor)
-                    HeaderCell("Price", 80)
-                    VerticalDivider(color = dividerColor)
-                    HeaderCell("Value", 90)
-                    VerticalDivider(color = dividerColor)
-                    HeaderCell("Alloc %", 65)
-                    VerticalDivider(color = dividerColor)
-                    HeaderCell("Return %", 70)
-                    VerticalDivider(color = dividerColor)
-                    HeaderCell("Action", 110)
-                    VerticalDivider(color = dividerColor)
-                    HeaderCell("Reasoning", 220)
-                }
-                HorizontalDivider(thickness = 2.dp, color = dividerColor)
+            HorizontalDivider(color = dividerColor)
+            Row(
+                modifier = Modifier.height(IntrinsicSize.Min).padding(vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                HeaderCell("Ticker", 70)
+                VerticalDivider(color = dividerColor)
+                HeaderCell("Shares", 60)
+                VerticalDivider(color = dividerColor)
+                HeaderCell("Price", 80)
+                VerticalDivider(color = dividerColor)
+                HeaderCell("Value", 90)
+                VerticalDivider(color = dividerColor)
+                HeaderCell("Alloc %", 65)
+                VerticalDivider(color = dividerColor)
+                HeaderCell("Return %", 70)
+                VerticalDivider(color = dividerColor)
+                HeaderCell("Action", 110)
+                VerticalDivider(color = dividerColor)
+                HeaderCell("Reasoning", 220)
             }
+            HorizontalDivider(thickness = 2.dp, color = dividerColor)
 
-            itemsIndexed(signals, key = { _, s -> s.ticker }) { index, signal ->
+            signals.forEachIndexed { index, signal ->
                 val altColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
                 val rowBg = when {
                     signal.action == NextDayAction.STOP_LOSS -> Color(0xFFC62828).copy(alpha = 0.08f)

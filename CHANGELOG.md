@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.50 (Build 51) - 2026-05-30
+
+### Fixed
+- "Detail on the Analysis" card now shows all tickers (was only showing first due to non-scrollable outer Column)
+- Converted Next-Day Actions screen to verticalScroll layout so all content (Explanation, Detail, grid) scrolls properly
+
 ## v1.49 (Build 50) - 2026-05-30
 
 ### Added
