@@ -1,5 +1,18 @@
 # Changelog
 
+## v1.48 (Build 49) - 2026-05-30
+
+### Added
+- **Next-Day Actions screen**: post-market portfolio scanner accessible from hamburger menu
+  - Tier A (Risk): flags positions closing below 20-day SMA (stop loss) or exceeding profit target %
+  - Tier B (Concentration): flags stocks/ETFs exceeding allocation caps
+  - Tier C (Momentum): flags volume spikes (1.5x+ 20-day average volume)
+  - Color-coded action grid: STRONG BUY (green), TRIM PROFITS (orange), REBALANCE (blue), STOP LOSS (red), HOLD (gray)
+  - Summary chips showing count per action type
+  - Fetches 20-day price/volume data from Yahoo Finance for each position
+- **Configurable thresholds** in Settings > Preferences > "Next-Day Actions Thresholds": Trailing Stop %, Profit Target %, Stock Cap %, ETF Cap %
+- **fetchScanData()** in StockPriceService: 1-month daily data for 20-day SMA and volume analysis
+
 ## v1.47 (Build 48) - 2026-05-30
 
 ### Changed

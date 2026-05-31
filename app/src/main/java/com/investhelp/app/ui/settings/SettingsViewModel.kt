@@ -127,7 +127,11 @@ data class SettingsUiState(
     val watchListCardVisible: Boolean = true,
     val newsArticleCount: Int = SettingsViewModel.DEFAULT_NEWS_ARTICLE_COUNT,
     val aiEnabled: Boolean = false,
-    val aiApiKey: String = SettingsViewModel.DEFAULT_AI_API_KEY
+    val aiApiKey: String = SettingsViewModel.DEFAULT_AI_API_KEY,
+    val trailingStopPct: Int = SettingsViewModel.DEFAULT_TRAILING_STOP_PCT,
+    val profitTargetPct: Int = SettingsViewModel.DEFAULT_PROFIT_TARGET_PCT,
+    val stockConcentrationCap: Int = SettingsViewModel.DEFAULT_STOCK_CONCENTRATION_CAP,
+    val etfConcentrationCap: Int = SettingsViewModel.DEFAULT_ETF_CONCENTRATION_CAP
 )
 
 @HiltViewModel
@@ -181,6 +185,15 @@ class SettingsViewModel @Inject constructor(
         const val KEY_AI_API_KEY = "ai_api_key"
         const val DEFAULT_AI_API_KEY = ""
 
+        const val KEY_TRAILING_STOP_PCT = "trailing_stop_pct"
+        const val KEY_PROFIT_TARGET_PCT = "profit_target_pct"
+        const val KEY_STOCK_CONCENTRATION_CAP = "stock_concentration_cap"
+        const val KEY_ETF_CONCENTRATION_CAP = "etf_concentration_cap"
+        const val DEFAULT_TRAILING_STOP_PCT = 10
+        const val DEFAULT_PROFIT_TARGET_PCT = 20
+        const val DEFAULT_STOCK_CONCENTRATION_CAP = 10
+        const val DEFAULT_ETF_CONCENTRATION_CAP = 25
+
         const val KEY_CARD_VISIBLE_WATCH_LIST = "card_visible_watch_list"
         const val KEY_DASHBOARD_CARD_ORDER = "dashboard_card_order"
         val DEFAULT_CARD_ORDER = listOf(
@@ -227,7 +240,11 @@ class SettingsViewModel @Inject constructor(
             watchListCardVisible = prefs.getBoolean(KEY_CARD_VISIBLE_WATCH_LIST, true),
             newsArticleCount = prefs.getInt(KEY_NEWS_ARTICLE_COUNT, DEFAULT_NEWS_ARTICLE_COUNT),
             aiEnabled = prefs.getBoolean(KEY_AI_ENABLED, false),
-            aiApiKey = prefs.getString(KEY_AI_API_KEY, DEFAULT_AI_API_KEY) ?: DEFAULT_AI_API_KEY
+            aiApiKey = prefs.getString(KEY_AI_API_KEY, DEFAULT_AI_API_KEY) ?: DEFAULT_AI_API_KEY,
+            trailingStopPct = prefs.getInt(KEY_TRAILING_STOP_PCT, DEFAULT_TRAILING_STOP_PCT),
+            profitTargetPct = prefs.getInt(KEY_PROFIT_TARGET_PCT, DEFAULT_PROFIT_TARGET_PCT),
+            stockConcentrationCap = prefs.getInt(KEY_STOCK_CONCENTRATION_CAP, DEFAULT_STOCK_CONCENTRATION_CAP),
+            etfConcentrationCap = prefs.getInt(KEY_ETF_CONCENTRATION_CAP, DEFAULT_ETF_CONCENTRATION_CAP)
         )
     )
     val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
@@ -330,6 +347,26 @@ class SettingsViewModel @Inject constructor(
     fun setAiApiKey(key: String) {
         prefs.edit().putString(KEY_AI_API_KEY, key).apply()
         _uiState.value = _uiState.value.copy(aiApiKey = key)
+    }
+
+    fun setTrailingStopPct(pct: Int) {
+        prefs.edit().putInt(KEY_TRAILING_STOP_PCT, pct).apply()
+        _uiState.value = _uiState.value.copy(trailingStopPct = pct)
+    }
+
+    fun setProfitTargetPct(pct: Int) {
+        prefs.edit().putInt(KEY_PROFIT_TARGET_PCT, pct).apply()
+        _uiState.value = _uiState.value.copy(profitTargetPct = pct)
+    }
+
+    fun setStockConcentrationCap(pct: Int) {
+        prefs.edit().putInt(KEY_STOCK_CONCENTRATION_CAP, pct).apply()
+        _uiState.value = _uiState.value.copy(stockConcentrationCap = pct)
+    }
+
+    fun setEtfConcentrationCap(pct: Int) {
+        prefs.edit().putInt(KEY_ETF_CONCENTRATION_CAP, pct).apply()
+        _uiState.value = _uiState.value.copy(etfConcentrationCap = pct)
     }
 
     fun setTheme(theme: AppTheme) {

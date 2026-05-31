@@ -450,6 +450,26 @@ private fun PreferencesTab(viewModel: SettingsViewModel, uiState: SettingsUiStat
 
         Spacer(modifier = Modifier.height(24.dp))
 
+        SettingsCollapsibleSection(title = "Next-Day Actions Thresholds", defaultExpanded = false) {
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                "Configure thresholds for the post-market portfolio scan",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+
+            ThresholdRow("Trailing Stop Loss %", uiState.trailingStopPct) { viewModel.setTrailingStopPct(it) }
+            Spacer(modifier = Modifier.height(8.dp))
+            ThresholdRow("Profit Target %", uiState.profitTargetPct) { viewModel.setProfitTargetPct(it) }
+            Spacer(modifier = Modifier.height(8.dp))
+            ThresholdRow("Stock Concentration Cap %", uiState.stockConcentrationCap) { viewModel.setStockConcentrationCap(it) }
+            Spacer(modifier = Modifier.height(8.dp))
+            ThresholdRow("ETF Concentration Cap %", uiState.etfConcentrationCap) { viewModel.setEtfConcentrationCap(it) }
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
         SettingsCollapsibleSection(title = "Dashboard Cards", defaultExpanded = false) {
             Spacer(modifier = Modifier.height(4.dp))
 
@@ -1726,6 +1746,26 @@ private fun PositionImportResultDialog(
         },
         dismissButton = {}
     )
+}
+
+@Composable
+private fun ThresholdRow(label: String, value: Int, onValueChange: (Int) -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(label, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            IconButton(onClick = { if (value > 1) onValueChange(value - 1) }, modifier = Modifier.size(32.dp)) {
+                Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Decrease", modifier = Modifier.size(18.dp))
+            }
+            Text("$value%", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+            IconButton(onClick = { if (value < 99) onValueChange(value + 1) }, modifier = Modifier.size(32.dp)) {
+                Icon(Icons.Default.KeyboardArrowUp, contentDescription = "Increase", modifier = Modifier.size(18.dp))
+            }
+        }
+    }
 }
 
 @Composable

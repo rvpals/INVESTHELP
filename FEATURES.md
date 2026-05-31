@@ -270,6 +270,22 @@ Three tabs: **Details**, **Price History**, **Transactions** (ScrollableTabRow)
   - "Export to CSV file" button: exports grid data with field names in first row, values enclosed in double quotes
 - Auto-executes the SQL query on screen load
 
+## Next-Day Actions
+
+- Post-market portfolio scanner accessible from hamburger menu
+- **"Run Scan"** button fetches 20-day price/volume data for every position from Yahoo Finance
+- **Tier A — Risk Preservation:**
+  - Stop Loss: flags positions where current price closed below 20-day SMA
+  - Profit Taking: flags positions with total return % above configurable target (default 20%)
+- **Tier B — Position Sizing:**
+  - Concentration Cap: flags stocks exceeding configurable % (default 10%) or ETFs exceeding cap (default 25%)
+- **Tier C — Momentum:**
+  - Volume Spike: flags positions with closing volume ≥1.5x the 20-day average volume
+- Color-coded action grid: STRONG BUY (green), TRIM PROFITS (orange), REBALANCE (blue), STOP LOSS (red), HOLD (gray)
+- Summary chips at top showing count per action type
+- Grid columns: Ticker, Shares, Price, Value, Allocation %, Return %, Action, Reasoning
+- Configurable thresholds in Settings > Preferences > "Next-Day Actions Thresholds"
+
 ## AI (Artificial Intelligence)
 
 - Accessible via sparkle icon (✨) on Item Detail top bar

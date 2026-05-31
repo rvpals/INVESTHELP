@@ -24,6 +24,8 @@ import com.investhelp.app.ui.performance.AccountPerformanceScreen
 import com.investhelp.app.ui.performance.AccountPerformanceViewModel
 import com.investhelp.app.ui.ai.AiTickerScreen
 import com.investhelp.app.ui.ai.AiViewModel
+import com.investhelp.app.ui.nextday.NextDayActionsScreen
+import com.investhelp.app.ui.nextday.NextDayActionsViewModel
 import com.investhelp.app.ui.sqlexplorer.SqlExplorerScreen
 import com.investhelp.app.ui.sqlexplorer.SqlExplorerViewModel
 import com.investhelp.app.ui.sqlexplorer.SqlResultScreen
@@ -240,6 +242,11 @@ fun InvestHelpNavHost(
                 viewModel = aiViewModel,
                 onBack = { navController.popBackStack() }
             )
+        }
+
+        composable<NextDayActionsRoute> {
+            val viewModel: NextDayActionsViewModel = hiltViewModel()
+            NextDayActionsScreen(viewModel = viewModel)
         }
 
         composable<AccountPerformanceRoute> {

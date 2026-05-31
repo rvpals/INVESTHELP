@@ -18,6 +18,7 @@ import kotlinx.serialization.Serializable
 @Serializable object SqlExplorerRoute
 @Serializable data class SqlResultRoute(val sql: String)
 @Serializable data class AiTickerRoute(val ticker: String)
+@Serializable object NextDayActionsRoute
 @Serializable object AccountPerformanceRoute
 @Serializable object WatchListRoute
 @Serializable object PositionDetailRoute

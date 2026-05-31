@@ -82,6 +82,7 @@ import com.investhelp.app.ui.navigation.InvestHelpNavHost
 import com.investhelp.app.ui.navigation.ItemDetailRoute
 import com.investhelp.app.ui.navigation.AccountPerformanceRoute
 import com.investhelp.app.ui.navigation.SettingsRoute
+import com.investhelp.app.ui.navigation.NextDayActionsRoute
 import com.investhelp.app.ui.navigation.SqlExplorerRoute
 import com.investhelp.app.ui.navigation.SimulationRoute
 import com.investhelp.app.ui.navigation.TransactionListRoute
@@ -536,6 +537,18 @@ fun GlobalTopBar(navController: NavHostController) {
                         }
                     },
                     leadingIcon = { Icon3D(Icons.Default.Settings, null, Color(0xFF616161), iconSize = 16.dp, boxSize = 28.dp) }
+                )
+                DropdownMenuItem(
+                    text = { Text("Next-Day Actions") },
+                    onClick = {
+                        menuExpanded = false
+                        navController.navigate(NextDayActionsRoute) {
+                            popUpTo(DashboardRoute) { saveState = true }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    },
+                    leadingIcon = { Icon3D(Icons.AutoMirrored.Filled.TrendingUp, null, Color(0xFF00897B), iconSize = 16.dp, boxSize = 28.dp) }
                 )
                 DropdownMenuItem(
                     text = { Text("SQL Explorer") },

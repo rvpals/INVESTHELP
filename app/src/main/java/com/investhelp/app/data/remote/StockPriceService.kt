@@ -35,6 +35,15 @@ data class NewsArticle(
     val publishedAt: Long // epoch seconds
 )
 
+data class TickerScanData(
+    val twentyDaySma: Double,
+    val avgVolume20Day: Long,
+    val closingVolume: Long,
+    val dayHigh: Double,
+    val dayLow: Double,
+    val previousClose: Double
+)
+
 data class HistoricalPrice(
     val timestamp: Long, // epoch seconds
     val close: Double
@@ -397,6 +406,58 @@ class StockPriceService @Inject constructor() {
             }
         } finally {
             connection.disconnect()
+        }
+    }
+
+    suspend fun fetchScanData(ticker: String): TickerScanData? = withContext(Dispatchers.IO) {
+        try {
+            val url = URL("https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?range=1mo&interval=1d")
+            val connection = url.openConnection() as HttpURLConnection
+            connection.instanceFollowRedirects = true
+            connection.setRequestProperty("User-Agent", "Mozilla/5.0")
+            connection.connectTimeout = 10_000
+            connection.readTimeout = 10_000
+
+            try {
+                if (connection.responseCode != 200) return@withContext null
+
+                val body = connection.inputStream.bufferedReader().readText()
+                val root = json.parseToJsonElement(body) as JsonObject
+                val result = root["chart"]!!.jsonObject["result"]!!.jsonArray[0].jsonObject
+                val meta = result["meta"]!!.jsonObject
+                val indicators = result["indicators"]!!.jsonObject["quote"]!!.jsonArray[0].jsonObject
+                val closes = indicators["close"]!!.jsonArray
+                val volumes = indicators["volume"]!!.jsonArray
+
+                val closePrices = closes.mapNotNull { it.jsonPrimitive.doubleOrNull }
+                val volumeList = volumes.mapNotNull { it.jsonPrimitive.longOrNull }
+
+                if (closePrices.isEmpty() || volumeList.isEmpty()) return@withContext null
+
+                val last20Closes = closePrices.takeLast(20)
+                val last20Volumes = volumeList.takeLast(20)
+                val sma20 = last20Closes.average()
+                val avgVolume = last20Volumes.average().toLong()
+                val closingVolume = volumeList.last()
+
+                val dayHigh = meta["regularMarketDayHigh"]?.jsonPrimitive?.doubleOrNull ?: 0.0
+                val dayLow = meta["regularMarketDayLow"]?.jsonPrimitive?.doubleOrNull ?: 0.0
+                val previousClose = meta["chartPreviousClose"]?.jsonPrimitive?.doubleOrNull
+                    ?: meta["previousClose"]?.jsonPrimitive?.doubleOrNull ?: 0.0
+
+                TickerScanData(
+                    twentyDaySma = sma20,
+                    avgVolume20Day = avgVolume,
+                    closingVolume = closingVolume,
+                    dayHigh = dayHigh,
+                    dayLow = dayLow,
+                    previousClose = previousClose
+                )
+            } finally {
+                connection.disconnect()
+            }
+        } catch (_: Exception) {
+            null
         }
     }
 
