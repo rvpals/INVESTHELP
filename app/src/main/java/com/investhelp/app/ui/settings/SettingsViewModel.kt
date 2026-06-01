@@ -13,15 +13,31 @@ import com.investhelp.app.data.local.entity.InvestmentAccountEntity
 import com.investhelp.app.data.local.entity.InvestmentItemEntity
 import com.investhelp.app.data.local.entity.InvestmentTransactionEntity
 import com.investhelp.app.data.local.dao.AccountPerformanceDao
+import com.investhelp.app.data.local.dao.AiLibraryDao
+import com.investhelp.app.data.local.dao.ChangeHistoryDao
 import com.investhelp.app.data.local.dao.CsvImportMappingDao
+import com.investhelp.app.data.local.dao.SqlLibraryDao
+import com.investhelp.app.data.local.dao.WatchListDao
 import com.investhelp.app.data.local.entity.AccountPerformanceEntity
+import com.investhelp.app.data.local.entity.AiLibraryEntity
+import com.investhelp.app.data.local.entity.ChangeHistoryEntity
 import com.investhelp.app.data.local.entity.CsvImportMappingEntity
 import com.investhelp.app.data.local.entity.DefinitionEntity
 import com.investhelp.app.data.local.entity.NamedCsvMappingEntity
+import com.investhelp.app.data.local.entity.SqlLibraryEntity
+import com.investhelp.app.data.local.entity.WatchListEntity
+import com.investhelp.app.data.local.entity.WatchListItemEntity
 import com.investhelp.app.model.BackupAccount
+import com.investhelp.app.model.BackupAiLibrary
+import com.investhelp.app.model.BackupChangeHistory
 import com.investhelp.app.model.BackupData
+import com.investhelp.app.model.BackupDefinition
 import com.investhelp.app.model.BackupItem
+import com.investhelp.app.model.BackupPerformanceRecord
+import com.investhelp.app.model.BackupSqlLibrary
 import com.investhelp.app.model.BackupTransaction
+import com.investhelp.app.model.BackupWatchList
+import com.investhelp.app.model.BackupWatchListItem
 import com.investhelp.app.model.CsvImportType
 import com.investhelp.app.ui.theme.AppTheme
 import com.investhelp.app.ui.theme.ThemePreferences
@@ -142,7 +158,11 @@ class SettingsViewModel @Inject constructor(
     private val transactionDao: InvestmentTransactionDao,
     private val accountPerformanceDao: AccountPerformanceDao,
     private val csvMappingDao: CsvImportMappingDao,
-    private val definitionDao: DefinitionDao
+    private val definitionDao: DefinitionDao,
+    private val watchListDao: WatchListDao,
+    private val changeHistoryDao: ChangeHistoryDao,
+    private val sqlLibraryDao: SqlLibraryDao,
+    private val aiLibraryDao: AiLibraryDao
 ) : ViewModel() {
 
     companion object {
@@ -449,8 +469,16 @@ class SettingsViewModel @Inject constructor(
                 val accounts = accountDao.getAllAccountsSnapshot()
                 val items = itemDao.getAllItemsSnapshot()
                 val transactions = transactionDao.getAllTransactionsSnapshot()
+                val perfRecords = accountPerformanceDao.getAllRecordsSnapshot()
+                val watchLists = watchListDao.getAllWatchListsSnapshot()
+                val watchListItems = watchListDao.getAllItemsSnapshot()
+                val changeHistoryRecords = changeHistoryDao.getAllRecordsSnapshot()
+                val definitions = definitionDao.getAllDefinitionsSnapshot()
+                val sqlLibraryEntries = sqlLibraryDao.getAllSnapshot()
+                val aiLibraryEntries = aiLibraryDao.getAllSnapshot()
 
                 val backupData = BackupData(
+                    version = 5,
                     accounts = accounts.map {
                         BackupAccount(it.id, it.name, it.description, it.initialValue)
                     },
@@ -475,6 +503,33 @@ class SettingsViewModel @Inject constructor(
                             pricePerShare = it.pricePerShare,
                             totalAmount = it.totalAmount, note = it.note
                         )
+                    },
+                    performanceRecords = perfRecords.map {
+                        BackupPerformanceRecord(it.id, it.accountId, it.totalValue, it.date.toEpochDay(), it.note)
+                    },
+                    watchLists = watchLists.map {
+                        BackupWatchList(it.id, it.name)
+                    },
+                    watchListItems = watchListItems.map {
+                        BackupWatchListItem(
+                            it.id, it.watchListId, it.ticker, it.shares, it.priceWhenAdded,
+                            it.addedDate.toEpochDay(),
+                            it.reminderDateTime?.let { dt -> dt.atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli() },
+                            it.reminderMessage
+                        )
+                    },
+                    changeHistory = changeHistoryRecords.map {
+                        BackupChangeHistory(it.id, it.date.toEpochDay(), it.etfValue, it.stockValue, it.totalValue,
+                            it.dailyChangeEtf, it.dailyChangeStock, it.dailyChangeTotal)
+                    },
+                    definitions = definitions.map {
+                        BackupDefinition(it.id, it.name, it.description)
+                    },
+                    sqlLibrary = sqlLibraryEntries.map {
+                        BackupSqlLibrary(it.id, it.name, it.description, it.category, it.sql)
+                    },
+                    aiLibrary = aiLibraryEntries.map {
+                        BackupAiLibrary(it.id, it.name, it.description, it.promptText)
                     }
                 )
 
@@ -521,6 +576,13 @@ class SettingsViewModel @Inject constructor(
                 val backupData = json.decodeFromString(BackupData.serializer(), jsonString)
 
                 // Delete in reverse dependency order
+                aiLibraryDao.deleteAll()
+                sqlLibraryDao.deleteAll()
+                definitionDao.deleteAll()
+                changeHistoryDao.deleteAll()
+                watchListDao.deleteAllItems()
+                watchListDao.deleteAllLists()
+                accountPerformanceDao.deleteAll()
                 transactionDao.deleteAll()
                 itemDao.deleteAll()
                 accountDao.deleteAll()
@@ -574,9 +636,49 @@ class SettingsViewModel @Inject constructor(
                         )
                     )
                 }
+                for (p in backupData.performanceRecords) {
+                    accountPerformanceDao.insertRecord(
+                        AccountPerformanceEntity(p.id, p.accountId, p.totalValue, LocalDate.ofEpochDay(p.dateEpochDay), p.note)
+                    )
+                }
+                for (wl in backupData.watchLists) {
+                    watchListDao.insertWatchList(WatchListEntity(wl.id, wl.name))
+                }
+                for (wli in backupData.watchListItems) {
+                    watchListDao.insertItem(
+                        WatchListItemEntity(
+                            wli.id, wli.watchListId, wli.ticker, wli.shares, wli.priceWhenAdded,
+                            LocalDate.ofEpochDay(wli.addedDateEpochDay),
+                            wli.reminderDateTimeEpochMs?.let { LocalDateTime.ofInstant(java.time.Instant.ofEpochMilli(it), java.time.ZoneId.systemDefault()) },
+                            wli.reminderMessage
+                        )
+                    )
+                }
+                for (ch in backupData.changeHistory) {
+                    changeHistoryDao.upsertRecord(
+                        ChangeHistoryEntity(ch.id, LocalDate.ofEpochDay(ch.dateEpochDay), ch.etfValue, ch.stockValue, ch.totalValue,
+                            ch.dailyChangeEtf, ch.dailyChangeStock, ch.dailyChangeTotal)
+                    )
+                }
+                for (d in backupData.definitions) {
+                    definitionDao.insertDefinition(DefinitionEntity(d.id, d.name, d.description))
+                }
+                for (s in backupData.sqlLibrary) {
+                    sqlLibraryDao.insert(SqlLibraryEntity(s.id, s.name, s.description, s.category, s.sql))
+                }
+                for (a in backupData.aiLibrary) {
+                    aiLibraryDao.insert(AiLibraryEntity(a.id, a.name, a.description, a.promptText))
+                }
+
+                val extraCounts = mutableListOf<String>()
+                if (backupData.performanceRecords.isNotEmpty()) extraCounts.add("${backupData.performanceRecords.size} perf records")
+                if (backupData.watchLists.isNotEmpty()) extraCounts.add("${backupData.watchLists.size} watch lists")
+                if (backupData.changeHistory.isNotEmpty()) extraCounts.add("${backupData.changeHistory.size} history records")
+
                 _uiState.value = _uiState.value.copy(
                     isRestoring = false,
-                    message = "Restored ${backupData.accounts.size} accounts, ${backupData.items.size} items, ${backupData.transactions.size} transactions."
+                    message = "Restored ${backupData.accounts.size} accounts, ${backupData.items.size} items, ${backupData.transactions.size} transactions" +
+                        if (extraCounts.isNotEmpty()) ", ${extraCounts.joinToString(", ")}" else "" + "."
                 )
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(

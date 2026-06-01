@@ -15,6 +15,9 @@ interface DefinitionDao {
     @Query("SELECT * FROM definitions ORDER BY name ASC")
     fun getAllDefinitions(): Flow<List<DefinitionEntity>>
 
+    @Query("SELECT * FROM definitions ORDER BY name ASC")
+    suspend fun getAllDefinitionsSnapshot(): List<DefinitionEntity>
+
     @Query("SELECT * FROM definitions WHERE id = :id")
     suspend fun getDefinitionById(id: Long): DefinitionEntity?
 

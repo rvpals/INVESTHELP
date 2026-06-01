@@ -13,6 +13,9 @@ interface AiLibraryDao {
     @Query("SELECT * FROM ai_library ORDER BY name")
     fun getAll(): Flow<List<AiLibraryEntity>>
 
+    @Query("SELECT * FROM ai_library ORDER BY name")
+    suspend fun getAllSnapshot(): List<AiLibraryEntity>
+
     @Insert
     suspend fun insert(entry: AiLibraryEntity)
 
@@ -21,4 +24,7 @@ interface AiLibraryDao {
 
     @Query("DELETE FROM ai_library WHERE id = :id")
     suspend fun deleteById(id: Long)
+
+    @Query("DELETE FROM ai_library")
+    suspend fun deleteAll()
 }

@@ -16,6 +16,12 @@ interface WatchListDao {
     @Query("SELECT * FROM watch_lists ORDER BY name ASC")
     fun getAllWatchLists(): Flow<List<WatchListEntity>>
 
+    @Query("SELECT * FROM watch_lists ORDER BY name ASC")
+    suspend fun getAllWatchListsSnapshot(): List<WatchListEntity>
+
+    @Query("SELECT * FROM watch_list_items ORDER BY addedDate DESC")
+    suspend fun getAllItemsSnapshot(): List<WatchListItemEntity>
+
     @Query("SELECT * FROM watch_list_items WHERE watchListId = :watchListId ORDER BY addedDate DESC")
     fun getItemsByWatchList(watchListId: Long): Flow<List<WatchListItemEntity>>
 
@@ -39,4 +45,10 @@ interface WatchListDao {
 
     @Delete
     suspend fun deleteItem(item: WatchListItemEntity)
+
+    @Query("DELETE FROM watch_list_items")
+    suspend fun deleteAllItems()
+
+    @Query("DELETE FROM watch_lists")
+    suspend fun deleteAllLists()
 }

@@ -1,0 +1,6 @@
+node_modules
+server/investhelp.db
+*.db
+package-lock.json
+server/investhelp.db-wal
+server/investhelp.db-shm

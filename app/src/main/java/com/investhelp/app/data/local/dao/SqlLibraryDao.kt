@@ -13,6 +13,9 @@ interface SqlLibraryDao {
     @Query("SELECT * FROM sql_library ORDER BY category, name")
     fun getAll(): Flow<List<SqlLibraryEntity>>
 
+    @Query("SELECT * FROM sql_library ORDER BY category, name")
+    suspend fun getAllSnapshot(): List<SqlLibraryEntity>
+
     @Query("SELECT DISTINCT category FROM sql_library ORDER BY category")
     fun getCategories(): Flow<List<String>>
 
@@ -24,4 +27,7 @@ interface SqlLibraryDao {
 
     @Query("DELETE FROM sql_library WHERE id = :id")
     suspend fun deleteById(id: Long)
+
+    @Query("DELETE FROM sql_library")
+    suspend fun deleteAll()
 }
