@@ -15,6 +15,9 @@
 - Deprecation warning: `Icons.Filled.HelpOutline` should use `Icons.AutoMirrored.Filled.HelpOutline` (MainActivity.kt)
 - Deprecation warning: `statusBarColor` deprecated in Java (Theme.kt:51)
 
+## Resolved
+- Android backup format (v1-v4) only exported accounts, positions, and transactions — missing 7 tables added in later migrations (performance records, watch lists, change history, definitions, SQL/AI library). Fixed in v5 backup format.
+
 ## Notes
 - Build requires JAVA_HOME set to JDK 17+ (system default is JDK 8)
 - Migration 16->17 drops bank_transfers table (Bank Transfer feature removed); existing bank transfer data is lost on upgrade
@@ -29,5 +32,6 @@
 - Migration 14->15 removes accountId from investment_items, makes ticker sole PK; merges duplicate tickers by summing quantity/cost/value and taking MAX of dayHigh/dayLow
 - Migration 15->16 recreates account_performance table: converts dateTime (epoch seconds) to date (epoch days), adds unique index on (accountId, date)
 - Yahoo Finance API (v8/v10) is undocumented and may change without notice; no API key required
+- Yahoo Finance may be unreachable from some networks; PWA app has configurable proxy setting (Settings > Preferences > Yahoo Finance Proxy)
 - Yahoo Finance historical data for large ranges (5Y+) uses weekly interval to reduce data volume
 - Encryption removed: existing users with an SQLCipher-encrypted database must uninstall and reinstall, then restore from a JSON backup

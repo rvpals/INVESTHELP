@@ -222,6 +222,13 @@
 - [x] Item detail: "Analysis Info" converted from button+bottom sheet to inline collapsible panel with auto-fetch on screen load
 - [x] Item detail: removed "Analysis Info" button; Yahoo Finance button full-width standalone
 
+- [x] Backup format v5: export/import all 10 tables (accounts, positions, transactions, performance records, watch lists, watch list items, change history, definitions, SQL library, AI library)
+- [x] Added snapshot queries to WatchListDao, DefinitionDao, SqlLibraryDao, AiLibraryDao for backup export
+- [x] Added deleteAll() to WatchListDao, SqlLibraryDao, AiLibraryDao for backup restore
+- [x] PWA web app: Node.js + Express + better-sqlite3 server with vanilla JS frontend (64 files)
+- [x] PWA: Yahoo Finance proxy setting for networks where Yahoo is blocked
+- [x] PWA: configurable proxy URL in Settings with test connection button
+
 ## Pending
 - [ ] Fix deprecation warning: Icons.Filled.OpenInNew -> Icons.AutoMirrored.Filled.OpenInNew (ItemDetailScreen.kt)
 - [ ] Fix deprecation warning: Icons.Filled.ShowChart/TrendingUp -> AutoMirrored versions (DashboardScreen.kt, MainActivity.kt)

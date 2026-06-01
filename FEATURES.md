@@ -239,8 +239,9 @@ Three tabs: **Details**, **Price History**, **Transactions** (ScrollableTabRow)
   - Detailed import result log after completion: summary counts (New/Updated/Skipped) + per-ticker entries showing status and field changes
 - Named mapping profiles stored in `csv_named_mappings` table
 - Backup folder selection (persisted)
-- Export to JSON (v4 format)
-- Restore from JSON (v1/v2/v3/v4 compatible)
+- Export to JSON (v5 format) — includes all 10 tables: accounts, positions, transactions, performance records, watch lists, watch list items, change history, definitions, SQL library, AI library
+- Restore from JSON (v1/v2/v3/v4/v5 compatible)
+- Backup format compatible between Android app and PWA web app
 - **Automatic Back Up when quitting**: toggle (default: off); when on, automatically exports a backup JSON file when the app goes to background (with 30-minute cooldown to prevent excessive backups)
 - **Number of automatic backup to keep**: configurable limit (default: 10); oldest auto-backup files are deleted when the count exceeds the limit
 - **Last Auto Backup completed on**: displays the date and time of the most recent successful auto backup
@@ -313,3 +314,20 @@ Three tabs: **Details**, **Price History**, **Transactions** (ScrollableTabRow)
 - Captures price fetch results, refresh summaries, errors
 - Viewable from About dialog > Show Log
 - Newest-first with timestamps; clear button
+
+## PWA Web App
+
+- Full web version of InvestHelp in `PWA/` folder
+- **Server**: Node.js + Express + better-sqlite3 (same SQLite schema as Android Room v29)
+- **Frontend**: Vanilla HTML/CSS/JS — no framework, no build step
+- **16 API routes**: accounts, positions, transactions, performance, watchlists, change-history, definitions, csv-mappings, sql-library, ai-library, yahoo, refresh, backup, csv-import, sql-explorer, settings
+- **18 screens**: dashboard, positions, item-detail, item-form, transaction-list/form, simulation, account-list/detail/form, performance, watchlist, settings, sql-explorer, ai-ticker, next-day-actions, analyze-price, help
+- **11 components**: top-bar, bottom-nav, collapsible-card, confirm-dialog, data-table, pie-chart, line-chart, mini-chart, ticker-icon, filter-chips, date-range-picker
+- **22 color themes** with dark mode via CSS custom properties
+- **Yahoo Finance proxy**: configurable proxy URL in Settings > Preferences for restricted networks; supports prepend-style (corsproxy.io) and replace-style (self-hosted); test button verifies connectivity
+- **Charts**: HTML5 Canvas — line chart (zoom/pan/tap-to-select), pie chart, mini sparkline
+- **Auto-refresh**: server-side cron (works with browser closed)
+- **SQL Explorer**: direct SQLite access — full SQL support
+- **Backup**: v5 JSON format compatible with Android app (all 10 tables)
+- **Launch**: `START_APP.bat` (Windows) or `npm start` → http://localhost:3000
+- **Dependencies**: express, better-sqlite3, multer

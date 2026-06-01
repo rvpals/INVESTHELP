@@ -182,10 +182,13 @@ Android app to track personal investments.
 - Delete items respects "Warn before delete" setting
 
 ### Backup & Restore
-- Export all data to JSON file (v3 format; items without accountId)
-- Restore from JSON backup file (supports v1, v2, and v3 formats)
+- Export all data to JSON file (v5 format; includes all 10 tables)
+- v5 exports: accounts, positions, transactions, performance records, watch lists, watch list items, change history, definitions, SQL library, AI library
+- Restore from JSON backup file (supports v1, v2, v3, v4, and v5 formats)
 - v1 backward compatibility: assigns items to first account, maps numShares to quantity
 - v2 backward compatibility: ignores accountId field on items
+- v3/v4 backward compatibility: imports accounts, positions, transactions only (extra tables empty)
+- Compatible between Android app and PWA web app (same JSON format)
 
 ### Application Log
 - In-memory log (AppLog singleton) captures price fetch results, refresh summaries, and per-ticker errors
@@ -210,3 +213,22 @@ Android app to track personal investments.
 - Minor version and version code auto-increment after each assembleDebug/assembleRelease build
 - `versionName` and `versionCode` in build.gradle.kts read from version.properties
 - About dialog shows dynamic version via BuildConfig
+
+## PWA Web App
+
+### Overview
+- Progressive web app version of InvestHelp
+- Node.js + Express server with better-sqlite3 (same SQLite schema as Android Room v29)
+- Vanilla HTML/CSS/JS frontend — no framework, no build step
+- Same backup format (v5 JSON) — data portable between Android and PWA
+- `START_APP.bat` to launch on Windows
+
+### Architecture
+- Server: 16 REST API route files, 3 service modules (Yahoo Finance, auto-refresh, CSV parser)
+- Frontend: 18 screens, 11 reusable components, hash-based SPA router
+- Database: server-side SQLite file (`server/investhelp.db`), 12 tables + settings table
+- Yahoo Finance calls are server-side (no CORS issues)
+- Configurable Yahoo Finance proxy URL for restricted networks
+- Auto-refresh runs as server-side cron (works even when browser is closed)
+- UI preferences (theme, pin states, card order) stored in browser localStorage
+- Data-affecting settings stored in server SQLite `settings` table

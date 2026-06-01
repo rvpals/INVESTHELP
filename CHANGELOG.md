@@ -1,5 +1,32 @@
 # Changelog
 
+## PWA v1.0 - 2026-06-01
+
+### Added
+- **PWA Web App** (`PWA/` folder): full web version of InvestHelp
+  - Node.js + Express server with better-sqlite3 (same SQLite schema as Android Room v29)
+  - 64 files: 16 API routes, 18 screens, 11 components, 3 CSS themes, 3 services
+  - Vanilla HTML/CSS/JS frontend — no framework, no build step
+  - Hash-based SPA router with 20+ routes
+  - HTML5 Canvas charts (line chart with zoom/pan/tap, pie chart, mini sparkline)
+  - 22 color themes with dark mode support via CSS custom properties
+  - `START_APP.bat` for Windows launch; `npm start` for CLI
+  - Yahoo Finance calls server-side (no CORS issues)
+  - Configurable Yahoo Finance proxy URL (Settings > Preferences) with test button
+  - Server-side auto-refresh cron (works with browser closed)
+  - Full SQL Explorer with direct SQLite access
+  - CSV import (Position, Transaction, Performance) with preview and auto-mapping
+  - Backup export/import compatible with Android app (v5 JSON format)
+- **Backup format v5**: exports/imports all 10 tables (previously only 3)
+  - Added: performance records, watch lists + items, change history, definitions, SQL library, AI library
+  - Full data roundtrip between Android and PWA
+  - Backward compatible with v1-v4 backups on restore
+- Snapshot queries added to WatchListDao, DefinitionDao, SqlLibraryDao, AiLibraryDao
+- deleteAll() added to WatchListDao, SqlLibraryDao, AiLibraryDao
+
+### Changed
+- SettingsViewModel now injects WatchListDao, ChangeHistoryDao, SqlLibraryDao, AiLibraryDao for full backup coverage
+
 ## v1.50 (Build 51) - 2026-05-30
 
 ### Fixed

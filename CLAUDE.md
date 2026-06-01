@@ -99,7 +99,7 @@ Android investment tracking app built with Kotlin, Jetpack Compose, and Material
 - SQL Result screen: full screen with editable SQL query card, result grid (vertical+horizontal scroll, clickable cells for full-screen detail), Export to CSV button; auto-executes on load
 - SQL Library: `sql_library` table (id, name, description, category, sql) for persisting reusable queries
 - Settings: backup folder URI persisted to SharedPreferences; restored on ViewModel init
-- Backup format v3: items no longer include accountId; v1/v2 backward compat on restore
+- Backup format v5: exports all 10 tables (accounts, positions, transactions, performance records, watch lists + items, change history, definitions, SQL library, AI library); v1/v2/v3/v4 backward compat on restore; compatible between Android app and PWA
 - Transaction list: each card shows G/L = (currentPrice - pricePerShare) * numberOfShares; green for positive, red for negative
 - Settings Data Management: "Import Data" section with CSV position import; column mapping dialog with 3-row preview, auto-mapping with brokerage aliases (Price→currentPrice, Description→name, Symbol→ticker, etc.), account selector, progress bar; upserts into investment_items
 - CSV Import: `parseNumeric()` strips commas from numbers (handles brokerage formats like "92,150.62"); non-data rows (blank lines, FOOTNOTES) filtered out during import
@@ -144,6 +144,10 @@ Android investment tracking app built with Kotlin, Jetpack Compose, and Material
 - Database migration v27 -> v28: creates sql_library table (id, name, description, category, sql) for saved SQL queries
 - Database migration v28 -> v29: creates ai_library table (id, name, description, promptText) with 3 seed prompts for AI-powered ticker analysis
 - Database version 29
+- WatchListDao: `getAllWatchListsSnapshot()`, `getAllItemsSnapshot()`, `deleteAllItems()`, `deleteAllLists()` for backup
+- DefinitionDao: `getAllDefinitionsSnapshot()` for backup
+- SqlLibraryDao: `getAllSnapshot()`, `deleteAll()` for backup
+- AiLibraryDao: `getAllSnapshot()`, `deleteAll()` for backup
 - Change History: `change_history` table records daily portfolio values by type (ETF, Stock, Total) plus daily change values (dailyChangeEtf, dailyChangeStock, dailyChangeTotal); one row per day, overwritten on re-refresh
 - Change History dialog: "Change Value This Week So Far" summary card above data table showing sum of daily changes for ETF, Stock, and Total since Monday; color-coded green/red
 - Settings: "Auto Update Change History when refresh" toggle (default: off) — when on, automatically records ETF/Stock/Total values to change_history after price refresh; overwrites existing entry for today
@@ -161,7 +165,18 @@ Android investment tracking app built with Kotlin, Jetpack Compose, and Material
 - Build: `buildConfig = true` enabled in build features for BuildConfig access
 - Build: auto-increment versioning via `version.properties` (VERSION_MAJOR, VERSION_MINOR, VERSION_CODE); minor version and version code increment after each assembleDebug/assembleRelease
 
-## Build
+## PWA Web App
+Located in `PWA/` folder. Node.js + Express + better-sqlite3 server with vanilla JS frontend.
+- **Server:** 16 REST API routes, Yahoo Finance proxy service, auto-refresh cron, CSV parser
+- **Frontend:** 18 screens, 11 components, HTML5 Canvas charts, hash-based SPA router
+- **Database:** Same SQLite schema as Android Room v29 (12 tables + settings)
+- **No build step:** vanilla JS modules, no framework
+- **Yahoo Finance:** Server-side calls (no CORS); configurable proxy URL in Settings
+- **Backup:** Same v5 JSON format — data portable between Android and PWA
+- **Run:** `START_APP.bat` or `npm start` from PWA/ folder → http://localhost:3000
+- **Dependencies:** express, better-sqlite3, multer (installed via `npm install`)
+
+## Build (Android)
 Open in Android Studio and sync Gradle. Requires JDK 17+.
 Set `JAVA_HOME` to JDK 17 path if building from CLI:
 ```

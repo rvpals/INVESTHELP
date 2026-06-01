@@ -1,0 +1,58 @@
+================================================================================
+Session: 2026-06-01
+================================================================================
+
+Summary: Created PWA web app, upgraded backup format to v5, added Yahoo Finance
+proxy setting.
+
+--- PWA Web App (PWA/ folder) ---
+Created a full Progressive Web App version of InvestHelp from scratch:
+- Server: Node.js + Express + better-sqlite3 with same SQLite schema as Android
+  Room v29 (12 tables + settings table with seed data)
+- Frontend: Vanilla HTML/CSS/JS with hash-based SPA router, no framework
+- 64 files total: 16 API route files (~60 endpoints), 18 screen modules,
+  11 reusable components, 3 CSS files (base, themes, components), 3 server
+  services (Yahoo Finance, auto-refresh, CSV parser)
+- Charts: HTML5 Canvas line chart (with tap-to-select), pie chart, mini sparkline
+- 22 color themes with CSS custom properties + dark mode
+- START_APP.bat for one-click Windows launch
+- PWA manifest + service worker for installable web app
+
+--- Backup Format v5 (Android + PWA) ---
+Upgraded from v4 (3 tables) to v5 (all 10 tables):
+- Previously exported: accounts, positions, transactions
+- Now also exports: performance records, watch lists, watch list items,
+  change history, definitions, SQL library, AI library
+- Full backward compatibility with v1-v4 on restore
+- Same JSON format works on both Android app and PWA
+
+Android DAO changes for backup:
+- WatchListDao: added getAllWatchListsSnapshot(), getAllItemsSnapshot(),
+  deleteAllItems(), deleteAllLists()
+- DefinitionDao: added getAllDefinitionsSnapshot()
+- SqlLibraryDao: added getAllSnapshot(), deleteAll()
+- AiLibraryDao: added getAllSnapshot(), deleteAll()
+- SettingsViewModel: injected 4 new DAOs, updated exportData() and restoreData()
+  to handle all 10 tables
+
+--- Yahoo Finance Proxy (PWA) ---
+- Added configurable proxy_url setting in server SQLite settings table
+- yahoo-finance.js: central yf() helper routes all Yahoo calls through proxy
+  when configured
+- Two proxy modes: prepend (corsproxy.io style) and replace (self-hosted)
+- Settings screen: proxy URL input, Save button, Test Connection button
+  (fetches AAPL quote to verify)
+
+--- UI Fixes (PWA) ---
+- Added Next Day Actions to hamburger menu
+- Restored full Data Management tab (auto-backup toggle, backup file list,
+  3 CSV import sections with Define Mapping/Start Import/Clear All per type)
+- Added search ticker button (magnifying glass) to top bar
+- Added "+ Add" button and Edit (pencil) button per row on Positions screen
+- Fixed Price History tab: replaced invalid Yahoo ranges (60d, 13mo, 15y) with
+  valid ones (3mo, 1y, 10y); added hourly interval selector; added loading spinner
+- Fixed portfolio refresh button: prevents double-clicks, shows status bar with
+  progress/result feedback, uses finally block for reliable spinner cleanup
+
+Files changed: 73 (6,387 insertions, 654 deletions)
+Commit: 611d3d7
