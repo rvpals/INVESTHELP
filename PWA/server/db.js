@@ -176,7 +176,6 @@ if (settingsCount === 0) {
     ins.run('profit_target_pct', '20');
     ins.run('stock_concentration_cap', '10');
     ins.run('etf_concentration_cap', '25');
-    ins.run('proxy_url', '');
   });
   tx();
 }

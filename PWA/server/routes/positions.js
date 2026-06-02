@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
+const yahoo = require('../services/yahoo-finance');
 
 router.get('/summary', (req, res) => {
   const all = db.prepare('SELECT type, value, dayGainLoss FROM investment_positions').all();
@@ -23,12 +24,24 @@ router.get('/:ticker', (req, res) => {
   res.json({ ...rest, hasLogo: !!logo });
 });
 
-router.get('/:ticker/logo', (req, res) => {
-  const row = db.prepare('SELECT logo FROM investment_positions WHERE ticker = ?').get(req.params.ticker);
-  if (!row?.logo) return res.status(404).end();
-  res.set('Content-Type', 'image/webp');
-  res.set('Cache-Control', 'public, max-age=86400');
-  res.send(row.logo);
+router.get('/:ticker/logo', async (req, res) => {
+  const ticker = req.params.ticker;
+  const row = db.prepare('SELECT logo FROM investment_positions WHERE ticker = ?').get(ticker);
+  if (row?.logo) {
+    res.set('Content-Type', 'image/webp');
+    res.set('Cache-Control', 'public, max-age=86400');
+    return res.send(row.logo);
+  }
+  try {
+    const logo = await yahoo.fetchLogo(ticker);
+    if (!logo) return res.status(404).end();
+    db.prepare('UPDATE investment_positions SET logo = ? WHERE ticker = ?').run(logo, ticker);
+    res.set('Content-Type', 'image/webp');
+    res.set('Cache-Control', 'public, max-age=86400');
+    res.send(logo);
+  } catch {
+    res.status(404).end();
+  }
 });
 
 router.post('/', (req, res) => {

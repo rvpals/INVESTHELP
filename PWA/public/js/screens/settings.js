@@ -1,6 +1,26 @@
-import { settings, backup, sql, yahoo } from '../api.js';
+import { settings, backup, sql } from '../api.js';
 import { getPref, setPref, applyTheme } from '../preferences.js';
 import { showToast, confirmAction } from '../components/confirm-dialog.js';
+import { collapsibleCard, initCollapsibleCards } from '../components/collapsible-card.js';
+
+const DASHBOARD_CARDS = [
+  { id: 'portfolio_summary', label: 'Portfolio Summary' },
+  { id: 'market_indices', label: 'Market Indices' },
+  { id: 'daily_glance', label: 'Daily Glance' },
+  { id: 'positions', label: 'Positions' },
+  { id: 'position_details', label: 'Position Details' },
+];
+
+const ALL_INDICES = [
+  { ticker: '^IXIC', label: 'NASDAQ' },
+  { ticker: '^GSPC', label: 'S&P 500' },
+  { ticker: '^DJI', label: 'Dow' },
+  { ticker: 'GC=F', label: 'Gold' },
+  { ticker: '^RUT', label: 'Russell 2K' },
+  { ticker: 'SI=F', label: 'Silver' },
+  { ticker: 'CL=F', label: 'Oil' },
+  { ticker: 'BTC-USD', label: 'Bitcoin' },
+];
 
 const THEMES = ['default','ocean','sunset','midnight','forest','ruby','arctic','gold','chase','fidelity','charcoal',
   'lavender','copper','emerald','slate','mocha','navy','tropical','wine','desert','nordic'];
@@ -61,21 +81,18 @@ function renderPrefs(el, serverSettings) {
       </select>
     </div>
 
-    <h3 class="mt-16 mb-8">Yahoo Finance Proxy</h3>
-    <p class="text-xs text-muted mb-8">If Yahoo Finance is blocked or unreachable, set a proxy URL. Leave blank for direct access.</p>
-    <div class="form-group">
-      <label>Proxy URL</label>
-      <input type="text" class="input" id="proxy-url" value="${serverSettings.proxy_url || ''}" placeholder="e.g. https://corsproxy.io/? or http://localhost:3001">
+    <h3 class="mt-16 mb-8">Next Day Actions Thresholds</h3>
+    <div class="flex gap-8 mb-8">
+      <div class="form-group" style="flex:1"><label>Profit Target %</label><input type="number" class="input" id="profit-target" value="${serverSettings.profit_target_pct || 20}" min="1" max="100"></div>
+      <div class="form-group" style="flex:1"><label>Stock Cap %</label><input type="number" class="input" id="stock-cap" value="${serverSettings.stock_concentration_cap || 10}" min="1" max="100"></div>
     </div>
-    <p class="text-xs text-muted mb-4">Supported formats:</p>
-    <ul class="text-xs text-muted" style="padding-left:20px;margin-bottom:8px">
-      <li><code>https://corsproxy.io/?</code> — prepends to full URL</li>
-      <li><code>http://localhost:3001</code> — replaces Yahoo base URL</li>
-      <li><code>https://my-proxy.workers.dev</code> — Cloudflare Worker proxy</li>
-    </ul>
-    <button class="btn btn-sm btn-secondary" id="save-proxy">Save Proxy</button>
-    <button class="btn btn-sm btn-outline" id="test-proxy" style="margin-left:8px">Test Connection</button>
-    <div id="proxy-test-result" class="text-sm mt-8"></div>
+    <div class="flex gap-8 mb-8">
+      <div class="form-group" style="flex:1"><label>ETF Cap %</label><input type="number" class="input" id="etf-cap" value="${serverSettings.etf_concentration_cap || 25}" min="1" max="100"></div>
+      <div class="form-group" style="flex:1"><label>Trailing Stop %</label><input type="number" class="input" id="trailing-stop" value="${serverSettings.trailing_stop_pct || 10}" min="1" max="100"></div>
+    </div>
+
+    ${collapsibleCard('settings_dashboard_cards', 'Dashboard Cards', renderDashboardCardsSection())}
+    ${collapsibleCard('settings_market_indices', 'Market Indices', renderMarketIndicesSection())}
   `;
 
   el.querySelectorAll('[data-theme]').forEach(btn => {
@@ -115,24 +132,124 @@ function renderPrefs(el, serverSettings) {
     await settings.set('news_article_count', this.value);
   });
 
-  document.getElementById('save-proxy')?.addEventListener('click', async () => {
-    const url = document.getElementById('proxy-url').value.trim();
-    await settings.set('proxy_url', url);
-    showToast(url ? 'Proxy saved' : 'Proxy cleared — using direct connection');
+  for (const [id, key] of [['profit-target','profit_target_pct'],['stock-cap','stock_concentration_cap'],['etf-cap','etf_concentration_cap'],['trailing-stop','trailing_stop_pct']]) {
+    document.getElementById(id)?.addEventListener('change', async function() {
+      await settings.set(key, this.value);
+      showToast('Threshold updated');
+    });
+  }
+
+  initCollapsibleCards(el);
+  attachDashboardCardHandlers(el, serverSettings);
+  attachMarketIndexHandlers(el, serverSettings);
+}
+
+function renderDashboardCardsSection() {
+  const order = (getPref('dashboard_card_order') || DASHBOARD_CARDS.map(c => c.id).join(',')).split(',');
+  const cards = order.map(id => DASHBOARD_CARDS.find(c => c.id === id)).filter(Boolean);
+  return `
+    <p class="text-xs text-muted mb-8">Toggle visibility and reorder dashboard cards.</p>
+    <div id="dashboard-cards-list">
+      ${cards.map((c, i) => {
+        const visible = getPref('dashboard_card_visible_' + c.id) !== false;
+        return `
+        <div class="flex items-center gap-8 py-6" style="border-bottom:1px solid color-mix(in srgb, var(--outline) 20%, transparent)">
+          <button class="toggle${visible ? ' on' : ''}" data-card-toggle="${c.id}" style="flex-shrink:0"></button>
+          <span class="text-sm" style="flex:1">${c.label}</span>
+          <button class="btn-icon" data-card-up="${c.id}" ${i === 0 ? 'disabled style="opacity:0.3"' : ''} title="Move up">&#9650;</button>
+          <button class="btn-icon" data-card-down="${c.id}" ${i === cards.length - 1 ? 'disabled style="opacity:0.3"' : ''} title="Move down">&#9660;</button>
+        </div>`;
+      }).join('')}
+    </div>
+  `;
+}
+
+function renderMarketIndicesSection() {
+  const orderStr = getPref('market_indices_order') || ALL_INDICES.map(x => x.ticker).join(',');
+  const order = orderStr.split(',');
+  const enabledStr = getPref('market_indices') || '^IXIC,^GSPC,^DJI,GC=F';
+  const enabledSet = new Set(enabledStr.split(','));
+  const indices = order.map(t => ALL_INDICES.find(x => x.ticker === t)).filter(Boolean);
+  return `
+    <p class="text-xs text-muted mb-8">Toggle which market indices appear on the dashboard and reorder them.</p>
+    <div id="market-indices-list">
+      ${indices.map((idx, i) => {
+        const on = enabledSet.has(idx.ticker);
+        return `
+        <div class="flex items-center gap-8 py-6" style="border-bottom:1px solid color-mix(in srgb, var(--outline) 20%, transparent)">
+          <button class="toggle${on ? ' on' : ''}" data-idx-toggle="${idx.ticker}" style="flex-shrink:0"></button>
+          <span class="text-sm" style="flex:1">${idx.label} <span class="text-xs text-muted">(${idx.ticker})</span></span>
+          <button class="btn-icon" data-idx-up="${idx.ticker}" ${i === 0 ? 'disabled style="opacity:0.3"' : ''} title="Move up">&#9650;</button>
+          <button class="btn-icon" data-idx-down="${idx.ticker}" ${i === indices.length - 1 ? 'disabled style="opacity:0.3"' : ''} title="Move down">&#9660;</button>
+        </div>`;
+      }).join('')}
+    </div>
+  `;
+}
+
+function attachDashboardCardHandlers(el, serverSettings) {
+  el.querySelectorAll('[data-card-toggle]').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const id = this.dataset.cardToggle;
+      const on = !this.classList.contains('on');
+      this.classList.toggle('on', on);
+      setPref('dashboard_card_visible_' + id, on);
+    });
   });
 
-  document.getElementById('test-proxy')?.addEventListener('click', async () => {
-    const resultEl = document.getElementById('proxy-test-result');
-    resultEl.innerHTML = '<div class="flex items-center gap-8"><div class="spinner"></div> Testing connection...</div>';
-    // Save current proxy value first
-    const url = document.getElementById('proxy-url').value.trim();
-    await settings.set('proxy_url', url);
-    try {
-      const quote = await yahoo.quote('AAPL');
-      resultEl.innerHTML = `<span class="text-green">Connected! AAPL = $${quote.price?.toFixed(2) || '?'}</span>`;
-    } catch (err) {
-      resultEl.innerHTML = `<span style="color:var(--error)">Failed: ${err.message}</span>`;
-    }
+  el.querySelectorAll('[data-card-up], [data-card-down]').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const id = this.dataset.cardUp || this.dataset.cardDown;
+      const dir = this.dataset.cardUp ? -1 : 1;
+      const order = (getPref('dashboard_card_order') || DASHBOARD_CARDS.map(c => c.id).join(',')).split(',');
+      const idx = order.indexOf(id);
+      if (idx < 0) return;
+      const newIdx = idx + dir;
+      if (newIdx < 0 || newIdx >= order.length) return;
+      [order[idx], order[newIdx]] = [order[newIdx], order[idx]];
+      setPref('dashboard_card_order', order.join(','));
+      const content = document.getElementById('content-settings_dashboard_cards');
+      if (content) {
+        content.querySelector('.collapsible-body').innerHTML = renderDashboardCardsSection();
+        attachDashboardCardHandlers(el, serverSettings);
+      }
+    });
+  });
+}
+
+function attachMarketIndexHandlers(el, serverSettings) {
+  el.querySelectorAll('[data-idx-toggle]').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const ticker = this.dataset.idxToggle;
+      const on = !this.classList.contains('on');
+      this.classList.toggle('on', on);
+      const orderStr = getPref('market_indices_order') || ALL_INDICES.map(x => x.ticker).join(',');
+      const allTickers = orderStr.split(',');
+      const enabled = allTickers.filter(t => {
+        if (t === ticker) return on;
+        return (getPref('market_indices') || '^IXIC,^GSPC,^DJI,GC=F').split(',').includes(t);
+      });
+      setPref('market_indices', enabled.join(','));
+    });
+  });
+
+  el.querySelectorAll('[data-idx-up], [data-idx-down]').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const ticker = this.dataset.idxUp || this.dataset.idxDown;
+      const dir = this.dataset.idxUp ? -1 : 1;
+      const order = (getPref('market_indices_order') || ALL_INDICES.map(x => x.ticker).join(',')).split(',');
+      const idx = order.indexOf(ticker);
+      if (idx < 0) return;
+      const newIdx = idx + dir;
+      if (newIdx < 0 || newIdx >= order.length) return;
+      [order[idx], order[newIdx]] = [order[newIdx], order[idx]];
+      setPref('market_indices_order', order.join(','));
+      const content = document.getElementById('content-settings_market_indices');
+      if (content) {
+        content.querySelector('.collapsible-body').innerHTML = renderMarketIndicesSection();
+        attachMarketIndexHandlers(el, serverSettings);
+      }
+    });
   });
 }
 

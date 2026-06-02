@@ -22,25 +22,23 @@ export async function render(container) {
   const refreshedAt = getPref('last_refreshed_at');
   const refreshLabel = refreshedAt > 0 ? `Refreshed: ${formatDateTime(refreshedAt)}` : '';
 
-  container.innerHTML = `<div class="screen">
-    ${collapsibleCard('portfolio_summary', 'Portfolio Summary', `
+  const cardHtml = {
+    portfolio_summary: collapsibleCard('portfolio_summary', 'Portfolio Summary', `
       <div class="text-center">
         <div class="text-2xl text-bold">${formatCurrency(summary.totalValue)}</div>
         <div class="mt-8 ${gainLossClass(summary.dayGainLoss)}">
           ${formatSignedCurrency(summary.dayGainLoss)} (${formatPercent(summary.dayPercent)}) today
         </div>
-        <div class="chart-container mt-8"><canvas id="summary-chart"></canvas></div>
+        <div class="chart-container mt-8" id="summary-chart-container" style="display:none"><canvas id="summary-chart"></canvas></div>
         ${refreshLabel ? `<div class="text-xs text-muted mt-8">${refreshLabel}</div>` : ''}
       </div>
-    `, { defaultPinned: true })}
-
-    ${collapsibleCard('market_indices', 'Market Indices', `
+    `, { defaultPinned: true }),
+    market_indices: collapsibleCard('market_indices', 'Market Indices', `
       <div class="flex gap-8 overflow-x" id="indices-row" style="padding-bottom:4px">
         <div class="text-sm text-muted">Loading indices...</div>
       </div>
-    `)}
-
-    ${collapsibleCard('daily_glance', 'Daily Glance', `
+    `),
+    daily_glance: collapsibleCard('daily_glance', 'Daily Glance', `
       <div class="mb-8">
         <div class="flex justify-between py-8">
           <div><span class="text-sm text-muted">Stock Daily:</span> <span class="${gainLossClass(summary.stockValue > 0 ? 1 : -1)}">${formatSignedCurrency(posData.filter(p=>p.type==='Stock').reduce((s,p)=>s+p.dayGainLoss,0))}</span></div>
@@ -52,14 +50,12 @@ export async function render(container) {
       ${losers.length ? `<h3 class="text-sm text-bold mb-8 mt-8">Top Losers</h3>` : ''}
       ${losers.map(p => glanceRow(p)).join('')}
       ${!gainers.length && !losers.length ? '<div class="text-sm text-muted text-center py-8">No daily changes</div>' : ''}
-    `)}
-
-    ${collapsibleCard('positions', 'Positions', `
+    `),
+    positions: collapsibleCard('positions', 'Positions', `
       <div class="chart-container"><canvas id="positions-pie"></canvas></div>
       <div id="pie-legend" class="mt-8"></div>
-    `)}
-
-    ${collapsibleCard('position_details', 'Position Details', `
+    `),
+    position_details: collapsibleCard('position_details', 'Position Details', `
       <div class="data-table-wrapper">
         <table class="data-table">
           <thead><tr><th>Ticker</th><th>Shares</th><th>Price</th><th>Value</th></tr></thead>
@@ -75,7 +71,14 @@ export async function render(container) {
           </tbody>
         </table>
       </div>
-    `)}
+    `),
+  };
+
+  const cardOrder = (getPref('dashboard_card_order') || 'portfolio_summary,market_indices,daily_glance,positions,position_details').split(',');
+  const visibleCards = cardOrder.filter(id => getPref('dashboard_card_visible_' + id) !== false && cardHtml[id]);
+
+  container.innerHTML = `<div class="screen">
+    ${visibleCards.map(id => cardHtml[id]).join('\n')}
   </div>`;
 
   initCollapsibleCards(container);
@@ -88,6 +91,7 @@ export async function render(container) {
   // Render charts
   const summaryCanvas = document.getElementById('summary-chart');
   if (summaryCanvas && history.length >= 2) {
+    document.getElementById('summary-chart-container').style.display = '';
     const sorted = [...history].sort((a, b) => a.date - b.date);
     renderMiniChart(summaryCanvas, sorted.map(h => ({ y: h.totalValue })));
   }
@@ -114,8 +118,10 @@ function glanceRow(p) {
 }
 
 async function loadMarketIndices() {
-  const indicesStr = getPref('market_indices') || '^IXIC,^GSPC,^DJI,GC=F';
-  const tickers = indicesStr.split(',');
+  const orderStr = getPref('market_indices_order') || '^IXIC,^GSPC,^DJI,GC=F,^RUT,SI=F,CL=F,BTC-USD';
+  const enabledStr = getPref('market_indices') || '^IXIC,^GSPC,^DJI,GC=F';
+  const enabledSet = new Set(enabledStr.split(','));
+  const tickers = orderStr.split(',').filter(t => enabledSet.has(t));
   const labels = { '^IXIC': 'NASDAQ', '^GSPC': 'S&P 500', '^DJI': 'Dow', 'GC=F': 'Gold', '^RUT': 'Russell 2K', 'SI=F': 'Silver', 'CL=F': 'Oil', 'BTC-USD': 'Bitcoin' };
   const row = document.getElementById('indices-row');
   if (!row) return;

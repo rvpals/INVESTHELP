@@ -1,40 +1,11 @@
-const db = require('../db');
-
 let crumb = null;
 let cookies = '';
 
-function getProxyUrl() {
-  const row = db.prepare("SELECT value FROM settings WHERE key = 'proxy_url'").get();
-  return (row?.value || '').trim();
-}
-
-function proxyRewrite(url) {
-  const proxy = getProxyUrl();
-  if (!proxy) return url;
-  // Supported formats:
-  //   https://corsproxy.io/?           → prepend: https://corsproxy.io/?https://query1...
-  //   https://my-proxy.com/yahoo       → replace base: https://my-proxy.com/yahoo/v8/finance/...
-  //   http://localhost:3001            → replace base: http://localhost:3001/v8/finance/...
-  if (proxy.endsWith('?')) {
-    return proxy + encodeURIComponent(url);
-  }
-  // Replace the Yahoo host with the proxy base
-  return url
-    .replace('https://query1.finance.yahoo.com', proxy)
-    .replace('https://query2.finance.yahoo.com', proxy);
-}
-
-async function yf(url, opts = {}) {
-  const proxied = proxyRewrite(url);
-  const resp = await fetch(proxied, opts);
-  return resp;
-}
-
 async function refreshCrumb() {
   try {
-    const r1 = await yf('https://fc.yahoo.com/cupcake', { redirect: 'manual' });
+    const r1 = await fetch('https://fc.yahoo.com/cupcake', { redirect: 'manual' });
     cookies = r1.headers.get('set-cookie') || '';
-    const r2 = await yf('https://query2.finance.yahoo.com/v1/test/getcrumb', {
+    const r2 = await fetch('https://query2.finance.yahoo.com/v1/test/getcrumb', {
       headers: { Cookie: cookies }
     });
     crumb = await r2.text();
@@ -45,7 +16,7 @@ async function refreshCrumb() {
 
 async function fetchQuote(ticker) {
   const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}?range=1d&interval=1m`;
-  const resp = await yf(url);
+  const resp = await fetch(url);
   if (!resp.ok) throw new Error(`Yahoo quote ${ticker}: ${resp.status}`);
   const data = await resp.json();
   const result = data.chart?.result?.[0];
@@ -66,7 +37,7 @@ async function fetchQuote(ticker) {
 
 async function fetchPriceHistory(ticker, range, interval) {
   const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}?range=${range}&interval=${interval}`;
-  const resp = await yf(url);
+  const resp = await fetch(url);
   if (!resp.ok) throw new Error(`Yahoo history ${ticker}: ${resp.status}`);
   const data = await resp.json();
   const result = data.chart?.result?.[0];
@@ -80,7 +51,7 @@ async function fetchPriceHistory(ticker, range, interval) {
 
 async function fetchPriceHistoryByPeriod(ticker, period1, period2, interval) {
   const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}?period1=${period1}&period2=${period2}&interval=${interval}`;
-  const resp = await yf(url);
+  const resp = await fetch(url);
   if (!resp.ok) throw new Error(`Yahoo history-period ${ticker}: ${resp.status}`);
   const data = await resp.json();
   const result = data.chart?.result?.[0];
@@ -96,11 +67,11 @@ async function fetchAnalysisInfo(ticker) {
   if (!crumb) await refreshCrumb();
   const modules = 'assetProfile,defaultKeyStatistics,financialData,summaryDetail,calendarEvents,recommendationTrend,fundProfile,topHoldings';
   const url = `https://query2.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(ticker)}?modules=${modules}&crumb=${encodeURIComponent(crumb || '')}`;
-  const resp = await yf(url, { headers: { Cookie: cookies } });
+  const resp = await fetch(url, { headers: { Cookie: cookies } });
   if (resp.status === 401 || resp.status === 403) {
     await refreshCrumb();
     const retryUrl = `https://query2.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(ticker)}?modules=${modules}&crumb=${encodeURIComponent(crumb || '')}`;
-    const retry = await yf(retryUrl, { headers: { Cookie: cookies } });
+    const retry = await fetch(retryUrl, { headers: { Cookie: cookies } });
     if (!retry.ok) throw new Error(`Yahoo analysis ${ticker}: ${retry.status}`);
     const data = await retry.json();
     return parseAnalysis(data);
@@ -143,7 +114,7 @@ function parseAnalysis(data) {
 
 async function fetchNews(ticker, count = 5) {
   const url = `https://query2.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(ticker)}&newsCount=${count}`;
-  const resp = await yf(url);
+  const resp = await fetch(url);
   if (!resp.ok) return [];
   const data = await resp.json();
   return (data.news || []).map(n => ({
@@ -155,17 +126,29 @@ async function fetchNews(ticker, count = 5) {
 }
 
 async function fetchScanData(ticker) {
-  const history = await fetchPriceHistory(ticker, '1mo', '1d');
-  const last20 = history.slice(-20);
-  if (last20.length === 0) return { twentyDaySma: 0, avgVolume20Day: 0, dayHigh: 0, dayLow: 0, previousClose: 0 };
+  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}?range=1mo&interval=1d`;
+  const resp = await fetch(url);
+  if (!resp.ok) throw new Error(`Yahoo scan ${ticker}: ${resp.status}`);
+  const data = await resp.json();
+  const result = data.chart?.result?.[0];
+  if (!result) return { twentyDaySma: 0, avgVolume20Day: 0, closingVolume: 0, dayHigh: 0, dayLow: 0, previousClose: 0 };
+  const timestamps = result.timestamp || [];
+  const quote = result.indicators?.quote?.[0] || {};
+  const closes = quote.close || [];
+  const volumes = quote.volume || [];
+  const points = timestamps.map((t, i) => ({ close: closes[i], volume: volumes[i] })).filter(p => p.close != null);
+  const last20 = points.slice(-20);
+  if (last20.length === 0) return { twentyDaySma: 0, avgVolume20Day: 0, closingVolume: 0, dayHigh: 0, dayLow: 0, previousClose: 0 };
   const sma = last20.reduce((s, p) => s + p.close, 0) / last20.length;
-  const highs = last20.map(p => p.close);
-  const lows = last20.map(p => p.close);
+  const avgVol = last20.reduce((s, p) => s + (p.volume || 0), 0) / last20.length;
+  const lastPoint = last20[last20.length - 1];
   return {
     twentyDaySma: sma,
-    dayHigh: Math.max(...highs),
-    dayLow: Math.min(...lows),
-    previousClose: last20[last20.length - 1]?.close || 0,
+    avgVolume20Day: Math.round(avgVol),
+    closingVolume: lastPoint.volume || 0,
+    dayHigh: Math.max(...last20.map(p => p.close)),
+    dayLow: Math.min(...last20.map(p => p.close)),
+    previousClose: lastPoint.close || 0,
   };
 }
 
