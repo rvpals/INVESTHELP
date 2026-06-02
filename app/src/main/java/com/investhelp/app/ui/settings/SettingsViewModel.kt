@@ -114,6 +114,14 @@ data class PositionImportResult(
     val totalSkipped: Int = 0
 )
 
+data class AccountNameMappingState(
+    val csvAccountNames: List<String> = emptyList(),
+    val accounts: List<InvestmentAccountEntity> = emptyList(),
+    val mapping: Map<String, Long> = emptyMap(), // csvName -> accountId
+    val fileUri: Uri? = null,
+    val defaultAccountId: Long = -1L
+)
+
 data class SettingsUiState(
     val backupFolderUri: Uri? = null,
     val backupFolderName: String? = null,
@@ -138,6 +146,7 @@ data class SettingsUiState(
     val showMappingSelectionDialog: Boolean = false,
     val savedPositionMappings: List<NamedCsvMappingEntity> = emptyList(),
     val pendingImportFileUri: Uri? = null,
+    val accountNameMappingDialog: AccountNameMappingState? = null,
     val accounts: List<InvestmentAccountEntity> = emptyList(),
     val dashboardCardOrder: List<String> = SettingsViewModel.DEFAULT_CARD_ORDER,
     val watchListCardVisible: Boolean = true,
@@ -1238,6 +1247,197 @@ class SettingsViewModel @Inject constructor(
         return autoMappings
     }
 
+    // --- Performance CSV Account Name Mapping ---
+
+    fun scanCsvForPerformanceImport(fileUri: Uri, defaultAccountId: Long) {
+        viewModelScope.launch {
+            val saved = csvMappingDao.getMapping(CsvImportType.Performance.name)
+            if (saved == null) {
+                _uiState.value = _uiState.value.copy(
+                    message = "No mapping defined for Performance Records. Please define mapping first."
+                )
+                return@launch
+            }
+
+            try {
+                val allRows = withContext(Dispatchers.IO) {
+                    context.contentResolver.openInputStream(fileUri)?.use { input ->
+                        val reader = BufferedReader(InputStreamReader(input))
+                        val headerLine = reader.readLine()
+                            ?: throw Exception("CSV file is empty.")
+                        val headers = parseCsvLine(headerLine)
+                        val colCount = headers.size
+                        val rows = mutableListOf<List<String>>()
+                        var line = reader.readLine()
+                        while (line != null) {
+                            if (line.isNotBlank()) {
+                                val parsed = parseCsvLine(line)
+                                if (parsed.size >= colCount / 2) rows.add(parsed)
+                            }
+                            line = reader.readLine()
+                        }
+                        headers to rows
+                    } ?: throw Exception("Cannot read CSV file.")
+                }
+
+                val headers = allRows.first
+                val rows = allRows.second
+                val mappings = deserializeMappings(saved.mappingsJson, headers)
+
+                // Check if accountName column is mapped
+                val accountNameColIndex = mappings.entries.find { it.value == "accountName" }?.key
+                if (accountNameColIndex == null) {
+                    // No accountName mapped; import directly with defaultAccountId
+                    startCsvImport(CsvImportType.Performance, fileUri, defaultAccountId)
+                    return@launch
+                }
+
+                // Extract unique account names from CSV
+                val csvAccountNames = rows.mapNotNull { row ->
+                    row.getOrNull(accountNameColIndex)?.trim()?.takeIf { it.isNotBlank() }
+                }.distinct().sorted()
+
+                if (csvAccountNames.isEmpty()) {
+                    // No account names found in data; import directly
+                    startCsvImport(CsvImportType.Performance, fileUri, defaultAccountId)
+                    return@launch
+                }
+
+                // Build initial mapping with case-insensitive match
+                val accounts = accountDao.getAllAccountsSnapshot()
+                val initialMapping = mutableMapOf<String, Long>()
+                for (csvName in csvAccountNames) {
+                    val matched = accounts.find { it.name.equals(csvName, ignoreCase = true) }
+                    initialMapping[csvName] = matched?.id ?: (accounts.firstOrNull()?.id ?: defaultAccountId)
+                }
+
+                _uiState.value = _uiState.value.copy(
+                    accountNameMappingDialog = AccountNameMappingState(
+                        csvAccountNames = csvAccountNames,
+                        accounts = accounts,
+                        mapping = initialMapping,
+                        fileUri = fileUri,
+                        defaultAccountId = defaultAccountId
+                    )
+                )
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(
+                    message = "CSV scan failed: ${e.message}"
+                )
+            }
+        }
+    }
+
+    fun updateAccountNameMapping(csvName: String, accountId: Long) {
+        val current = _uiState.value.accountNameMappingDialog ?: return
+        val newMapping = current.mapping.toMutableMap()
+        newMapping[csvName] = accountId
+        _uiState.value = _uiState.value.copy(
+            accountNameMappingDialog = current.copy(mapping = newMapping)
+        )
+    }
+
+    fun dismissAccountNameMapping() {
+        _uiState.value = _uiState.value.copy(accountNameMappingDialog = null)
+    }
+
+    fun confirmAccountNameMapping() {
+        val state = _uiState.value.accountNameMappingDialog ?: return
+        val fileUri = state.fileUri ?: return
+        val mapping = state.mapping
+        val defaultAccountId = state.defaultAccountId
+
+        _uiState.value = _uiState.value.copy(accountNameMappingDialog = null)
+
+        viewModelScope.launch {
+            val saved = csvMappingDao.getMapping(CsvImportType.Performance.name) ?: return@launch
+
+            try {
+                val allRows = withContext(Dispatchers.IO) {
+                    context.contentResolver.openInputStream(fileUri)?.use { input ->
+                        val reader = BufferedReader(InputStreamReader(input))
+                        val headerLine = reader.readLine()
+                            ?: throw Exception("CSV file is empty.")
+                        val headers = parseCsvLine(headerLine)
+                        val colCount = headers.size
+                        val rows = mutableListOf<List<String>>()
+                        var line = reader.readLine()
+                        while (line != null) {
+                            if (line.isNotBlank()) {
+                                val parsed = parseCsvLine(line)
+                                if (parsed.size >= colCount / 2) rows.add(parsed)
+                            }
+                            line = reader.readLine()
+                        }
+                        headers to rows
+                    } ?: throw Exception("Cannot read CSV file.")
+                }
+
+                val headers = allRows.first
+                val rows = allRows.second
+                val mappings = deserializeMappings(saved.mappingsJson, headers)
+                val dateFormats = deserializeDateFormats(saved.dateFormatJson, headers)
+                val total = rows.size
+
+                _uiState.value = _uiState.value.copy(
+                    csvImport = CsvImportState(
+                        importType = CsvImportType.Performance,
+                        isImporting = true,
+                        importTotal = total,
+                        importCurrent = 0,
+                        importProgress = 0f
+                    )
+                )
+
+                var imported = 0
+                var skipped = 0
+                val log = StringBuilder()
+
+                for (row in rows) {
+                    val fieldValues = mutableMapOf<String, String>()
+                    val fieldDateFormats = mutableMapOf<String, String>()
+                    for ((colIndex, fieldName) in mappings) {
+                        if (colIndex < row.size) {
+                            fieldValues[fieldName] = row[colIndex].trim()
+                        }
+                        dateFormats[colIndex]?.let { fmt ->
+                            fieldDateFormats[fieldName] = fmt
+                        }
+                    }
+
+                    try {
+                        importPerformanceRow(fieldValues, fieldDateFormats, defaultAccountId, mapping)
+                        imported++
+                    } catch (e: Exception) {
+                        skipped++
+                        if (skipped <= 5) log.appendLine("Row ${imported + skipped}: ${e.message}")
+                    }
+
+                    _uiState.value = _uiState.value.copy(
+                        csvImport = _uiState.value.csvImport?.copy(
+                            importCurrent = imported + skipped,
+                            importProgress = (imported + skipped).toFloat() / total
+                        )
+                    )
+                }
+
+                val summary = "Imported $imported performance records." +
+                        if (skipped > 0) " Skipped $skipped rows." else ""
+                val fullMsg = if (log.isNotEmpty()) "$summary\n$log" else summary
+                _uiState.value = _uiState.value.copy(
+                    csvImport = null,
+                    message = fullMsg
+                )
+                com.investhelp.app.AppLog.log(summary)
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(
+                    csvImport = null,
+                    message = "Import failed: ${e.message}"
+                )
+            }
+        }
+    }
+
     fun startCsvImport(importType: CsvImportType, fileUri: Uri, accountId: Long) {
         viewModelScope.launch {
             val saved = csvMappingDao.getMapping(importType.name)
@@ -1422,7 +1622,8 @@ class SettingsViewModel @Inject constructor(
     private suspend fun importPerformanceRow(
         fields: Map<String, String>,
         dateFormats: Map<String, String>,
-        defaultAccountId: Long
+        defaultAccountId: Long,
+        accountNameMapping: Map<String, Long>? = null
     ) {
         val totalValue = parseNumeric(fields["totalValue"])
             ?: throw Exception("Missing totalValue")
@@ -1436,9 +1637,14 @@ class SettingsViewModel @Inject constructor(
 
         val accountName = fields["accountName"]?.trim()
         val accountId = if (!accountName.isNullOrBlank()) {
-            accountDao.getAllAccountsSnapshot().find {
-                it.name.equals(accountName, ignoreCase = true)
-            }?.id ?: defaultAccountId
+            // 1. Check explicit mapping first
+            accountNameMapping?.get(accountName)
+            // 2. Fall back to case-insensitive lookup
+                ?: accountDao.getAllAccountsSnapshot().find {
+                    it.name.equals(accountName, ignoreCase = true)
+                }?.id
+            // 3. Fall back to default
+                ?: defaultAccountId
         } else defaultAccountId
 
         val note = fields["note"]?.trim() ?: ""

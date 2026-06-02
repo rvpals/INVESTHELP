@@ -427,6 +427,12 @@ async function renderData(el) {
         if (!await confirmAction('Confirm Import', 'Position details will be refreshed with imported CSV file. Are you sure?')) return;
       }
 
+      if (importType === 'Performance') {
+        await handlePerformanceImport(file, resultId);
+        e.target.value = '';
+        return;
+      }
+
       const form = new FormData();
       form.append('file', file);
       form.append('importType', importType);
@@ -503,5 +509,113 @@ function showMappingDialog(importType) {
     } catch (err) {
       document.getElementById('mapping-preview').innerHTML = `<span style="color:var(--error)">Error: ${err.message}</span>`;
     }
+  });
+}
+
+async function handlePerformanceImport(file, resultId) {
+  const resultEl = document.getElementById(resultId);
+  try {
+    // Preview CSV to get auto-mapping (column index → field name)
+    const previewForm = new FormData();
+    previewForm.append('file', file);
+    const previewResp = await fetch('/api/csv-import/preview', { method: 'POST', body: previewForm });
+    const preview = await previewResp.json();
+    if (preview.error) { resultEl.innerHTML = `<span style="color:var(--error)">${preview.error}</span>`; return; }
+    const colMapping = preview.autoMapping || {};
+
+    // Scan for unique account names using the auto-mapping
+    const scanForm = new FormData();
+    scanForm.append('file', file);
+    scanForm.append('mapping', JSON.stringify(colMapping));
+    const scanResp = await fetch('/api/csv-import/preview-accounts', { method: 'POST', body: scanForm });
+    const scanData = await scanResp.json();
+
+    let accountNameMapping = {};
+    if (scanData.csvAccountNames && scanData.csvAccountNames.length > 0 && scanData.accounts && scanData.accounts.length > 0) {
+      const mapping = await showAccountMappingDialog(scanData.csvAccountNames, scanData.accounts);
+      if (!mapping) return;
+      accountNameMapping = mapping;
+    } else if (scanData.csvAccountNames && scanData.csvAccountNames.length > 0 && (!scanData.accounts || scanData.accounts.length === 0)) {
+      resultEl.innerHTML = `<span style="color:var(--error)">No accounts found. Create accounts first before importing performance data.</span>`;
+      return;
+    }
+
+    const form = new FormData();
+    form.append('file', file);
+    form.append('importType', 'Performance');
+    form.append('mapping', JSON.stringify(colMapping));
+    form.append('accountNameMapping', JSON.stringify(accountNameMapping));
+    const r = await fetch('/api/csv-import/execute', { method: 'POST', body: form });
+    const result = await r.json();
+    if (result.error) {
+      resultEl.innerHTML = `<span style="color:var(--error)">${result.error}</span>`;
+    } else {
+      resultEl.innerHTML = `${result.imported || 0} records imported`;
+      showToast(`Performance import complete: ${result.imported} records`);
+    }
+  } catch (err) {
+    resultEl.innerHTML = `<span style="color:var(--error)">Import failed</span>`;
+    showToast('CSV import failed');
+  }
+}
+
+function showAccountMappingDialog(csvNames, appAccounts) {
+  return new Promise((resolve) => {
+    const overlay = document.getElementById('dialog-overlay');
+    overlay.className = 'dialog-overlay';
+
+    // Pre-select best match: case-insensitive partial match
+    const preselect = {};
+    for (const csvName of csvNames) {
+      const lower = csvName.toLowerCase();
+      const exact = appAccounts.find(a => a.name.toLowerCase() === lower);
+      if (exact) { preselect[csvName] = exact.id; continue; }
+      const partial = appAccounts.find(a => a.name.toLowerCase().includes(lower) || lower.includes(a.name.toLowerCase()));
+      if (partial) { preselect[csvName] = partial.id; continue; }
+      preselect[csvName] = appAccounts.length > 0 ? appAccounts[0].id : 0;
+    }
+
+    const rows = csvNames.map(csvName => {
+      const options = appAccounts.map(a =>
+        `<option value="${a.id}"${preselect[csvName] === a.id ? ' selected' : ''}>${a.name}</option>`
+      ).join('');
+      return `
+        <div class="flex items-center gap-8 py-6" style="border-bottom:1px solid color-mix(in srgb, var(--outline) 20%, transparent)">
+          <span class="text-sm" style="flex:1;font-weight:500">${csvName}</span>
+          <span class="text-muted text-sm">&rarr;</span>
+          <select class="select" data-csv-name="${csvName}" style="flex:1;min-width:0">${options}</select>
+        </div>`;
+    }).join('');
+
+    overlay.innerHTML = `
+      <div class="dialog" style="max-width:500px">
+        <div class="dialog-title">Map Account Names</div>
+        <p class="text-sm text-muted mb-8">Map CSV account names to your existing accounts.</p>
+        <div class="text-xs text-muted mb-4" style="display:flex;gap:8px">
+          <span style="flex:1;font-weight:600">CSV Account Name</span>
+          <span style="width:24px"></span>
+          <span style="flex:1;font-weight:600">App Account</span>
+        </div>
+        <div style="max-height:300px;overflow-y:auto">${rows}</div>
+        <div class="dialog-actions mt-16">
+          <button class="btn btn-outline" id="acct-map-cancel">Cancel</button>
+          <button class="btn btn-primary" id="acct-map-confirm">Import</button>
+        </div>
+      </div>
+    `;
+
+    document.getElementById('acct-map-cancel').addEventListener('click', () => {
+      overlay.className = 'dialog-overlay hidden';
+      resolve(null);
+    });
+
+    document.getElementById('acct-map-confirm').addEventListener('click', () => {
+      const mapping = {};
+      overlay.querySelectorAll('[data-csv-name]').forEach(sel => {
+        mapping[sel.dataset.csvName] = parseInt(sel.value);
+      });
+      overlay.className = 'dialog-overlay hidden';
+      resolve(mapping);
+    });
   });
 }

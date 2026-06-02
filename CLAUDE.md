@@ -157,6 +157,7 @@ Android investment tracking app built with Kotlin, Jetpack Compose, and Material
 - Settings Data Management: "Number of automatic backup to keep" (default: 10, shown when auto-backup enabled) — oldest `invest_help_backup_*.json` files deleted when count exceeds limit before writing new backup
 - CSV Import: reusable mapping system for Transaction, Position, Performance imports; mappings persisted in `csv_import_mappings` table; supports date format options per column
 - CSV Transaction Import: does NOT auto-update share counts on items; only creates item stub if ticker doesn't exist
+- CSV Performance Import: account name mapping dialog — when accountName column is mapped, scans CSV for unique account names and shows mapping dialog where each CSV name maps to an existing app account via dropdown; pre-selects via case-insensitive match; resolution order: (1) explicit user mapping, (2) case-insensitive name match, (3) default account
 - Settings Data Management: 3 import types (Transaction Records, Position Details, Performance Records) each with "Define Mapping" and "Start Import" buttons; shared account selector
 - Transaction list: multi-select mode via long-press; contextual top bar with selection count, Select All, and Delete; bulk delete respects "Warn before delete" setting
 - LocalDateTime stored as epoch seconds (UTC) via TypeConverter; LocalDate stored as epoch days
@@ -171,10 +172,73 @@ Located in `PWA/` folder. Node.js + Express + better-sqlite3 server with vanilla
 - **Frontend:** 18 screens, 11 components, HTML5 Canvas charts, hash-based SPA router
 - **Database:** Same SQLite schema as Android Room v29 (12 tables + settings)
 - **No build step:** vanilla JS modules, no framework
-- **Yahoo Finance:** Server-side calls (no CORS); configurable proxy URL in Settings
+- **Yahoo Finance:** Server-side direct fetch calls (no CORS issues since server-side)
 - **Backup:** Same v5 JSON format — data portable between Android and PWA
 - **Run:** `START_APP.bat` or `npm start` from PWA/ folder → http://localhost:3000
 - **Dependencies:** express, better-sqlite3, multer (installed via `npm install`)
+
+### PWA Folder Structure
+All PWA code is inside the `PWA/` folder:
+- `PWA/server/` - Express server
+  - `index.js` - Server entry point
+  - `db.js` - SQLite database setup and schema (better-sqlite3)
+  - `routes/` - REST API route handlers
+    - `accounts.js` - Account CRUD
+    - `positions.js` - Position CRUD + logo endpoint
+    - `transactions.js` - Transaction CRUD
+    - `performance.js` - Account performance records
+    - `csv-import.js` - CSV import for transactions, positions, performance
+    - `csv-mappings.js` - CSV column mapping CRUD
+    - `settings.js` - App settings key/value store
+    - `change-history.js` - Daily portfolio value tracking
+    - `watch-lists.js` - Watch list CRUD
+    - `definitions.js` - Metric definitions
+    - `sql-library.js` - Saved SQL queries
+    - `ai-library.js` - AI prompt library
+    - `backup.js` - Backup export/import (v5 JSON)
+    - `sql-explorer.js` - Raw SQL execution
+    - `yahoo.js` - Yahoo Finance proxy routes
+  - `services/` - Business logic services
+    - `yahoo-finance.js` - Yahoo Finance API (direct fetch, no proxy)
+    - `csv-parser.js` - CSV parsing with auto-mapping aliases
+- `PWA/public/` - Frontend (vanilla JS, no build step)
+  - `index.html` - SPA shell
+  - `css/styles.css` - Global styles (dark/light theme)
+  - `js/app.js` - App initialization
+  - `js/router.js` - Hash-based SPA router
+  - `js/api.js` - API client (fetch wrappers for all server routes)
+  - `js/preferences.js` - localStorage preferences with defaults
+  - `js/screens/` - Screen modules (one per route)
+    - `dashboard.js` - Dashboard with collapsible cards (Portfolio Summary, Market Indices, Daily Glance, Positions, Position Details)
+    - `items.js` - Positions list with Stock/ETF/Analysis tabs
+    - `item-detail.js` - Single ticker detail (Details, Price History, Transactions tabs + Investing Performance chart)
+    - `item-form.js` - Add/edit position form
+    - `transaction-list.js` - Transaction list with multi-select
+    - `transaction-form.js` - Add/edit transaction form
+    - `accounts.js` - Account management
+    - `performance.js` - Account performance chart + records
+    - `settings.js` - Settings (Preferences, Data Management, Dashboard Cards, Market Indices, NDA Thresholds)
+    - `simulation.js` - Price simulation with time ranges
+    - `sql-explorer.js` - SQL query editor + table browser
+    - `sql-result.js` - SQL result grid with CSV export
+    - `watch-list.js` - Watch lists with reminders
+    - `next-day-actions.js` - Portfolio scanner (5-signal: STOP_LOSS, TRIM_PROFIT, REBALANCE, STRONG_BUY, HOLD)
+    - `help.js` - Help documentation
+    - `about.js` - About dialog with version + app log
+    - `change-history.js` - Change history dialog
+    - `analyze-price.js` - Price analysis for transactions
+  - `js/components/` - Reusable UI components
+    - `collapsible-card.js` - CollapsibleCard with pin persistence
+    - `ticker-icon.js` - Gradient icon with logo overlay (Coil-style)
+    - `confirm-dialog.js` - Confirmation dialog
+    - `date-range-picker.js` - Date range picker
+    - `line-chart.js` - Canvas line chart (zoom, pan, tap-to-select)
+    - `pie-chart.js` - Canvas pie chart
+    - `toast.js` - Toast notifications
+  - `js/utils/` - Utility modules
+    - `format.js` - Currency, percent, date formatting
+- `PWA/package.json` - Node.js dependencies
+- `PWA/START_APP.bat` - Windows launcher script
 
 ## Build (Android)
 Open in Android Studio and sync Gradle. Requires JDK 17+.

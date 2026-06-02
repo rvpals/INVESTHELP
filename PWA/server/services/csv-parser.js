@@ -57,6 +57,8 @@ const ALIASES = {
   'Action': 'action', 'Transaction Type': 'action', 'Trans Type': 'action',
   'Amount': 'totalAmount', 'Total': 'totalAmount', 'Total Amount': 'totalAmount',
   'Note': 'note', 'Notes': 'note', 'Memo': 'note',
+  'Account': 'accountName', 'Account Name': 'accountName', 'account': 'accountName', 'account name': 'accountName',
+  'Total Value': 'totalValue', 'Value': 'totalValue', 'Market Value': 'totalValue',
 };
 
 function autoMapHeaders(headers) {

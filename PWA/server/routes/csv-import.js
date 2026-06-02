@@ -17,6 +17,26 @@ router.post('/preview', upload.single('file'), (req, res) => {
   }
 });
 
+router.post('/preview-accounts', upload.single('file'), (req, res) => {
+  try {
+    const text = req.file.buffer.toString('utf8');
+    const { headers, rows } = parseCsv(text);
+    const columnMapping = JSON.parse(req.body.mapping || '{}');
+    const accountColIdx = Object.entries(columnMapping).find(([, field]) => field === 'accountName');
+    if (!accountColIdx) return res.json({ csvAccountNames: [], accounts: [] });
+    const idx = parseInt(accountColIdx[0]);
+    const nameSet = new Set();
+    for (const row of rows) {
+      const val = (row[idx] || '').trim();
+      if (val) nameSet.add(val);
+    }
+    const accounts = db.prepare('SELECT id, name FROM investment_accounts ORDER BY name').all();
+    res.json({ csvAccountNames: [...nameSet].sort(), accounts });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
 router.post('/execute', upload.single('file'), (req, res) => {
   try {
     const text = req.file.buffer.toString('utf8');
@@ -53,12 +73,25 @@ router.post('/execute', upload.single('file'), (req, res) => {
         results.push({ ticker, status: 'OK' });
       }
     } else if (importType === 'Performance') {
+      const accountNameMapping = JSON.parse(req.body.accountNameMapping || '{}');
+      const allAccounts = db.prepare('SELECT id, name FROM investment_accounts').all();
       const ins = db.prepare('INSERT OR IGNORE INTO account_performance (accountId, totalValue, date, note) VALUES (?, ?, ?, ?)');
       for (const row of rows) {
         const rec = mapRow(row, columnMapping);
         const date = rec.date ? parseDateToEpochDays(rec.date) : Math.floor(Date.now() / 86400000);
-        ins.run(parseNumeric(rec.accountId) || 1, parseNumeric(rec.totalValue), date, rec.note || '');
-        results.push({ status: 'OK' });
+        let accountId = parseNumeric(rec.accountId);
+        if (rec.accountName) {
+          const csvName = rec.accountName.trim();
+          if (accountNameMapping[csvName] !== undefined) {
+            accountId = accountNameMapping[csvName];
+          } else {
+            const match = allAccounts.find(a => a.name.toLowerCase() === csvName.toLowerCase());
+            if (match) accountId = match.id;
+          }
+        }
+        if (!accountId) accountId = allAccounts.length > 0 ? allAccounts[0].id : 1;
+        ins.run(accountId, parseNumeric(rec.totalValue), date, rec.note || '');
+        results.push({ accountName: rec.accountName || '', status: 'OK' });
       }
     }
 

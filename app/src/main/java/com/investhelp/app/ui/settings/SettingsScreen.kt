@@ -127,18 +127,12 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
                     onClick = { selectedTab = 2 },
                     text = { Text("Definitions") }
                 )
-                Tab(
-                    selected = selectedTab == 3,
-                    onClick = { selectedTab = 3 },
-                    text = { Text("AI") }
-                )
             }
 
             when (selectedTab) {
                 0 -> PreferencesTab(viewModel, uiState)
                 1 -> DataManagementTab(viewModel, uiState)
                 2 -> DefinitionsTab(viewModel)
-                3 -> AiTab(viewModel, uiState)
             }
         }
     }
@@ -616,6 +610,8 @@ private fun DataManagementTab(viewModel: SettingsViewModel, uiState: SettingsUiS
                 if (type == CsvImportType.Position) {
                     pendingImportUri = fileUri
                     showPositionImportWarning = true
+                } else if (type == CsvImportType.Performance) {
+                    viewModel.scanCsvForPerformanceImport(fileUri, importAccountId)
                 } else {
                     viewModel.startCsvImport(type, fileUri, importAccountId)
                 }
@@ -697,6 +693,18 @@ private fun DataManagementTab(viewModel: SettingsViewModel, uiState: SettingsUiS
                 viewModel.startPositionImportWithMapping(mappingId, importAccountId)
             },
             onDismiss = { viewModel.dismissMappingSelection() }
+        )
+    }
+
+    // Account name mapping dialog for performance import
+    uiState.accountNameMappingDialog?.let { mappingState ->
+        AccountNameMappingDialog(
+            state = mappingState,
+            onMappingChanged = { csvName, accountId ->
+                viewModel.updateAccountNameMapping(csvName, accountId)
+            },
+            onConfirm = { viewModel.confirmAccountNameMapping() },
+            onDismiss = { viewModel.dismissAccountNameMapping() }
         )
     }
 
@@ -1651,6 +1659,111 @@ private fun MappingSelectionDialog(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
+private fun AccountNameMappingDialog(
+    state: AccountNameMappingState,
+    onMappingChanged: (String, Long) -> Unit,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Map Account Names") },
+        text = {
+            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                Text(
+                    text = "Map CSV account names to existing accounts:",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Header row
+                Row(modifier = Modifier.fillMaxWidth()) {
+                    Text(
+                        "CSV Account Name",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Text(
+                        "App Account",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+
+                state.csvAccountNames.forEach { csvName ->
+                    val selectedAccountId = state.mapping[csvName] ?: -1L
+                    var expanded by remember { mutableStateOf(false) }
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = csvName,
+                            style = MaterialTheme.typography.bodySmall,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f)
+                        )
+
+                        ExposedDropdownMenuBox(
+                            expanded = expanded,
+                            onExpandedChange = { expanded = it },
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            OutlinedTextField(
+                                value = state.accounts.find { it.id == selectedAccountId }?.name ?: "Unmapped",
+                                onValueChange = {},
+                                readOnly = true,
+                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .menuAnchor(MenuAnchorType.PrimaryNotEditable),
+                                singleLine = true,
+                                textStyle = MaterialTheme.typography.labelSmall
+                            )
+                            ExposedDropdownMenu(
+                                expanded = expanded,
+                                onDismissRequest = { expanded = false }
+                            ) {
+                                state.accounts.forEach { account ->
+                                    DropdownMenuItem(
+                                        text = { Text(account.name, style = MaterialTheme.typography.bodySmall) },
+                                        onClick = {
+                                            onMappingChanged(csvName, account.id)
+                                            expanded = false
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                    }
+                    HorizontalDivider()
+                }
+            }
+        },
+        confirmButton = {
+            Button(onClick = onConfirm) {
+                Text("Import")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
 private fun PositionImportResultDialog(
     result: PositionImportResult,
     onDismiss: () -> Unit
@@ -1764,61 +1877,6 @@ private fun ThresholdRow(label: String, value: Int, onValueChange: (Int) -> Unit
             IconButton(onClick = { if (value < 99) onValueChange(value + 1) }, modifier = Modifier.size(32.dp)) {
                 Icon(Icons.Default.KeyboardArrowUp, contentDescription = "Increase", modifier = Modifier.size(18.dp))
             }
-        }
-    }
-}
-
-@Composable
-private fun AiTab(viewModel: SettingsViewModel, uiState: SettingsUiState) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(24.dp)
-    ) {
-        Text("Artificial Intelligence", style = MaterialTheme.typography.titleMedium)
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    "Use Artificial Intelligence",
-                    style = MaterialTheme.typography.bodyLarge
-                )
-                Text(
-                    "Enable AI-powered features using Google Gemini",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            Switch(
-                checked = uiState.aiEnabled,
-                onCheckedChange = { viewModel.setAiEnabled(it) }
-            )
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        OutlinedTextField(
-            value = uiState.aiApiKey,
-            onValueChange = { viewModel.setAiApiKey(it) },
-            label = { Text("API Key") },
-            singleLine = true,
-            enabled = uiState.aiEnabled,
-            modifier = Modifier.fillMaxWidth()
-        )
-
-        if (uiState.aiEnabled) {
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                "Powered by Google Gemini",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
         }
     }
 }
