@@ -145,7 +145,7 @@ function closeMenu() {
   document.getElementById('hamburger-menu')?.remove();
 }
 
-function showAbout() {
+async function showAbout() {
   const overlay = document.getElementById('dialog-overlay');
   overlay.className = 'dialog-overlay';
   overlay.innerHTML = `
@@ -153,10 +153,24 @@ function showAbout() {
       <div class="dialog-title">About InvestHelp</div>
       <p>InvestHelp PWA v1.0</p>
       <p class="text-sm text-muted mt-8">Investment tracking progressive web app.</p>
+      <div id="about-version" class="text-sm mt-8" style="border-top:1px solid var(--outline);padding-top:8px;opacity:0.7">
+        <div class="spinner" style="width:16px;height:16px"></div>
+      </div>
       <div class="dialog-actions">
         <button class="btn btn-primary" id="close-about">Close</button>
       </div>
     </div>
   `;
   document.getElementById('close-about').addEventListener('click', () => { overlay.className = 'dialog-overlay hidden'; });
+  try {
+    const resp = await fetch('/api/version');
+    const v = await resp.json();
+    const el = document.getElementById('about-version');
+    if (el && v.commitDate && v.commitDate !== 'unknown') {
+      const date = new Date(v.commitDate);
+      el.innerHTML = `<strong>Last updated:</strong> ${date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })}<br><span class="text-xs text-muted">${v.commitHash} — ${v.commitMsg}</span>`;
+    } else {
+      el.innerHTML = '<span class="text-muted">Version info unavailable</span>';
+    }
+  } catch { }
 }

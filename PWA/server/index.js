@@ -23,6 +23,20 @@ app.use('/api/csv-import', require('./routes/csv-import'));
 app.use('/api/sql', require('./routes/sql-explorer'));
 app.use('/api/settings', require('./routes/settings'));
 
+// Version info
+const { execSync } = require('child_process');
+app.get('/api/version', (req, res) => {
+  try {
+    const rootDir = path.join(__dirname, '..', '..');
+    const commitDate = execSync('git log -1 --format=%ci', { cwd: rootDir }).toString().trim();
+    const commitHash = execSync('git log -1 --format=%h', { cwd: rootDir }).toString().trim();
+    const commitMsg = execSync('git log -1 --format=%s', { cwd: rootDir }).toString().trim();
+    res.json({ commitDate, commitHash, commitMsg });
+  } catch {
+    res.json({ commitDate: 'unknown', commitHash: '', commitMsg: '' });
+  }
+});
+
 // SPA fallback
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, '..', 'public', 'index.html'));
