@@ -285,7 +285,17 @@ class ItemViewModel @Inject constructor(
             _analysisError.value = null
             _analysisInfo.value = null
             try {
-                _analysisInfo.value = stockPriceService.fetchAnalysisInfo(ticker)
+                val info = stockPriceService.fetchAnalysisInfo(ticker)
+                _analysisInfo.value = info
+                // Update dividendRate from v10 summaryDetail (more reliable than v8 chart meta)
+                info.trailingAnnualDividendRate?.let { rate ->
+                    if (rate > 0.0) {
+                        val item = itemRepository.getItemByTicker(ticker)
+                        if (item != null && item.dividendRate != rate) {
+                            itemRepository.upsertItem(item.copy(dividendRate = rate))
+                        }
+                    }
+                }
             } catch (e: Exception) {
                 _analysisError.value = "Failed to fetch analysis: ${e.message}"
             } finally {
@@ -384,7 +394,8 @@ class ItemViewModel @Inject constructor(
                 value = quantity * currentPrice,
                 dayHigh = resolvedDayHigh,
                 dayLow = resolvedDayLow,
-                logo = logo ?: existing?.logo
+                logo = logo ?: existing?.logo,
+                dividendRate = existing?.dividendRate ?: 0.0
             )
             itemRepository.upsertItem(item)
         }
@@ -406,7 +417,8 @@ class ItemViewModel @Inject constructor(
                     dayGainLoss = existing?.dayGainLoss ?: 0.0,
                     value = existing?.value ?: 0.0,
                     dayHigh = existing?.dayHigh ?: 0.0,
-                    dayLow = existing?.dayLow ?: 0.0
+                    dayLow = existing?.dayLow ?: 0.0,
+                    dividendRate = existing?.dividendRate ?: 0.0
                 )
             )
         }
@@ -449,12 +461,14 @@ class ItemViewModel @Inject constructor(
                 val item = itemRepository.getItemByTicker(ticker) ?: return@launch
                 val newValue = item.quantity * quote.price
                 val dayChange = (quote.price - quote.previousClose) * item.quantity
+                val resolvedDividendRate = if (quote.dividendRate > 0.0) quote.dividendRate else item.dividendRate
                 itemRepository.upsertItem(item.copy(
                     currentPrice = quote.price,
                     value = newValue,
                     dayGainLoss = dayChange,
                     dayHigh = quote.dayHigh,
-                    dayLow = quote.dayLow
+                    dayLow = quote.dayLow,
+                    dividendRate = resolvedDividendRate
                 ))
             } catch (e: Exception) {
                 _priceMessage.value = "Failed to fetch $ticker: ${e.message}"
@@ -479,6 +493,7 @@ class ItemViewModel @Inject constructor(
                     val resolvedName = quote.shortName ?: item.name
                     val newValue = quote.price * item.quantity
                     val dayChange = (quote.price - quote.previousClose) * item.quantity
+                    val resolvedDividendRate = if (quote.dividendRate > 0.0) quote.dividendRate else item.dividendRate
                     itemRepository.upsertItem(
                         item.copy(
                             name = resolvedName,
@@ -486,7 +501,8 @@ class ItemViewModel @Inject constructor(
                             value = newValue,
                             dayGainLoss = dayChange,
                             dayHigh = quote.dayHigh,
-                            dayLow = quote.dayLow
+                            dayLow = quote.dayLow,
+                            dividendRate = resolvedDividendRate
                         )
                     )
                     if (item.logo == null) {
@@ -528,6 +544,7 @@ class ItemViewModel @Inject constructor(
                     val resolvedName = quote.shortName ?: item.name
                     val newValue = quote.price * item.quantity
                     val dayChange = (quote.price - quote.previousClose) * item.quantity
+                    val resolvedDividendRate = if (quote.dividendRate > 0.0) quote.dividendRate else item.dividendRate
                     itemRepository.upsertItem(
                         item.copy(
                             name = resolvedName,
@@ -535,7 +552,8 @@ class ItemViewModel @Inject constructor(
                             value = newValue,
                             dayGainLoss = dayChange,
                             dayHigh = quote.dayHigh,
-                            dayLow = quote.dayLow
+                            dayLow = quote.dayLow,
+                            dividendRate = resolvedDividendRate
                         )
                     )
                     if (item.logo == null) {

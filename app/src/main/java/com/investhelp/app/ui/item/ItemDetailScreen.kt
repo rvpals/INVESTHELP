@@ -608,6 +608,31 @@ private fun ItemDetailContent(
                                 )
                             }
                         }
+                        if (inv.dividendRate > 0.0) {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text("Dividend/Share", style = MaterialTheme.typography.labelSmall)
+                                    Text(
+                                        currencyFormat.format(inv.dividendRate),
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = Color(0xFF1565C0)
+                                    )
+                                }
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text("Annual Dividend", style = MaterialTheme.typography.labelSmall)
+                                    Text(
+                                        currencyFormat.format(inv.dividendRate * inv.quantity),
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color(0xFF1565C0)
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
             }

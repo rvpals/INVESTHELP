@@ -27,6 +27,7 @@ db.exec(`
     value        REAL    NOT NULL DEFAULT 0,
     dayHigh      REAL    NOT NULL DEFAULT 0,
     dayLow       REAL    NOT NULL DEFAULT 0,
+    dividendRate REAL    NOT NULL DEFAULT 0,
     logo         BLOB
   );
 
@@ -129,6 +130,16 @@ db.exec(`
     value TEXT NOT NULL DEFAULT ''
   );
 `);
+
+// Schema migrations for existing databases
+try {
+  const cols = db.prepare("PRAGMA table_info(investment_positions)").all().map(c => c.name);
+  if (!cols.includes('dividendRate')) {
+    db.exec("ALTER TABLE investment_positions ADD COLUMN dividendRate REAL NOT NULL DEFAULT 0");
+  }
+} catch (e) {
+  console.error('Migration check failed:', e.message);
+}
 
 // Seed definitions
 const defCount = db.prepare('SELECT COUNT(*) as n FROM definitions').get().n;

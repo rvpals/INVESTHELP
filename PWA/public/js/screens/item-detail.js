@@ -15,7 +15,7 @@ export async function render(container, { ticker }) {
     transactions.list(ticker).catch(() => []),
   ]);
 
-  const p = pos || { ticker, name: '', type: 'Stock', currentPrice: 0, quantity: 0, dayGainLoss: 0, value: 0, dayHigh: 0, dayLow: 0 };
+  const p = pos || { ticker, name: '', type: 'Stock', currentPrice: 0, quantity: 0, dayGainLoss: 0, value: 0, dayHigh: 0, dayLow: 0, dividendRate: 0 };
   const dayGLPerShare = p.quantity > 0 ? p.dayGainLoss / p.quantity : 0;
 
   container.innerHTML = `<div class="screen">
@@ -50,12 +50,16 @@ export async function render(container, { ticker }) {
         <div class="card p-12" style="flex:1;text-align:center"><div class="text-xs text-muted">Total Shares</div><div class="text-lg text-bold">${formatShares(p.quantity)}</div></div>
         <div class="card p-12" style="flex:1;text-align:center"><div class="text-xs text-muted">Total Value</div><div class="text-lg text-bold">${formatCurrency(p.value)}</div></div>
       </div>
-      <div class="flex gap-8 mb-16">
+      <div class="flex gap-8 mb-8">
         <div class="card p-12" style="flex:1;text-align:center"><div class="text-xs text-muted">Daily G/L</div><div class="text-bold ${gainLossClass(p.dayGainLoss)}">${formatSignedCurrency(p.dayGainLoss)}</div></div>
         <div class="card p-12" style="flex:1;text-align:center"><div class="text-xs text-muted">G/L / Share</div><div class="text-bold ${gainLossClass(dayGLPerShare)}">${formatSignedCurrency(dayGLPerShare)}</div></div>
         <div class="card p-12" style="flex:1;text-align:center"><div class="text-xs text-muted">Day High</div><div>${formatCurrency(p.dayHigh)}</div></div>
         <div class="card p-12" style="flex:1;text-align:center"><div class="text-xs text-muted">Day Low</div><div>${formatCurrency(p.dayLow)}</div></div>
       </div>
+      ${(p.dividendRate || 0) > 0 ? `<div class="flex gap-8 mb-16">
+        <div class="card p-12" style="flex:1;text-align:center"><div class="text-xs text-muted">Div/Share</div><div class="text-bold">${formatCurrency(p.dividendRate)}</div></div>
+        <div class="card p-12" style="flex:1;text-align:center"><div class="text-xs text-muted">Annual Dividend</div><div class="text-bold">${formatCurrency(p.dividendRate * p.quantity)}</div></div>
+      </div>` : '<div class="mb-16"></div>'}
       ${collapsibleCard('analysis_' + ticker, 'Analysis Info', '<div id="analysis-content"><div class="spinner"></div> Loading...</div>')}
       ${collapsibleCard('news_' + ticker, 'News on ' + ticker, '<div id="news-content"><div class="spinner"></div> Loading...</div>')}
       <button class="btn btn-primary w-full mt-8" onclick="window.open('https://finance.yahoo.com/quote/${encodeURIComponent(ticker)}','_blank')">Open on Yahoo Finance</button>
@@ -171,7 +175,10 @@ export async function render(container, { ticker }) {
       });
     });
     if (txList.length > 0) {
-      loadInvestingPerformance(ticker, txList, p.currentPrice);
+      // Delay slightly so the collapsible card layout is computed before canvas reads clientWidth
+      requestAnimationFrame(() => {
+        loadInvestingPerformance(ticker, txList, p.currentPrice);
+      });
     }
   }
 }
@@ -287,7 +294,8 @@ async function loadInvestingPerformance(ticker, txList, currentPrice) {
     renderPerfChart(canvas, allPoints);
     renderPerfTable(tableEl, allPoints);
   } catch (err) {
-    tableEl.innerHTML = `<div class="text-muted">Error loading performance data: ${err.message}</div>`;
+    canvas.style.display = 'none';
+    tableEl.innerHTML = `<div class="text-muted p-8">Error loading performance data: ${err.message}</div>`;
   }
 }
 
@@ -296,7 +304,8 @@ function renderPerfChart(canvas, points) {
 
   const ctx = canvas.getContext('2d');
   const dpr = window.devicePixelRatio || 1;
-  const w = canvas.parentElement.clientWidth;
+  let w = canvas.parentElement.clientWidth;
+  if (w <= 0) w = canvas.closest('.collapsible-body')?.clientWidth || canvas.closest('.screen')?.clientWidth || 600;
   const h = 260;
   canvas.width = w * dpr;
   canvas.height = h * dpr;

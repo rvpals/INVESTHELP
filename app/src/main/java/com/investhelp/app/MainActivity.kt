@@ -212,7 +212,8 @@ class MainActivity : AppCompatActivity() {
                                 dayGainLoss = it.dayGainLoss,
                                 value = it.value,
                                 dayHigh = it.dayHigh,
-                                dayLow = it.dayLow
+                                dayLow = it.dayLow,
+                                dividendRate = it.dividendRate
                             )
                         },
                         transactions = transactions.map {

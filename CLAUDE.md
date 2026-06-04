@@ -37,6 +37,7 @@ Android investment tracking app built with Kotlin, Jetpack Compose, and Material
 - Items screen: Refresh All toolbar action
 - Items screen: sort-by dropdown (Ticker, Total Value, Current Price) above items list; defaults to Total Value descending
 - Items screen: brokerage-style card rows with thin dividers; each row shows TickerIcon3D + ticker (bold) + uppercase company name on left, current price with day change $ and % below, total position value on right with daily gain/loss badge (green/red chip)
+- Items screen: annual dividend income line ("Div: $X.XX/yr") shown below price when dividendRate > 0; blue color (#1565C0)
 - Items screen: only Edit button per row (no Delete in table); Delete available in Edit dialog
 - TickerIcon3D: gradient-filled rounded-corner (10dp) box with shadow; color derived from ticker hash; white letter fallback; company logo overlay from companiesmarketcap.com CDN via Coil
 - Company full name fetched from Yahoo Finance `shortName` during price refresh
@@ -74,7 +75,9 @@ Android investment tracking app built with Kotlin, Jetpack Compose, and Material
 - Item detail: info button (ℹ) in top bar opens full Yahoo Finance report dialog with all available data (market data, valuation, financials, key stats, profile, events, analyst recs, fund profile/holdings for ETFs)
 - Item detail card row 1 (big font): Total Shares, Total Value
 - Item detail card row 2 (medium font): Daily G/L, Daily G/L/Share, Daily Min Price, Daily Max Price
+- Item detail card row 3 (conditional, shown when dividendRate > 0): Dividend/Share, Annual Dividend (dividendRate × quantity); blue color (#1565C0)
 - Item detail: dayHigh/dayLow fetched from Yahoo Finance `regularMarketDayHigh`/`regularMarketDayLow`
+- Item detail: dividendRate fetched from Yahoo Finance `trailingAnnualDividendRate` (v8 chart meta on price refresh, v10 summaryDetail on analysis fetch); stored in investment_positions table
 - CollapsibleCard: reusable component (`ui/components/CollapsibleCard.kt`) with title, pin button (persisted to SharedPreferences), HorizontalDivider between header and content, and AnimatedVisibility collapse/expand; unpinned cards default collapsed, pinned cards default expanded
 - Dashboard cards (Market Indices, Daily Glance, Positions, Position Details) all use CollapsibleCard with per-card pin state persisted via `pin_card_*` keys
 - Dashboard "Position Details" card: horizontally scrollable table with ticker icon, shares, current price, total value; clickable rows navigate to item detail
@@ -143,7 +146,8 @@ Android investment tracking app built with Kotlin, Jetpack Compose, and Material
 - Database migration v26 -> v27: renames investment_items to investment_positions, removes cost and totalGainLoss columns
 - Database migration v27 -> v28: creates sql_library table (id, name, description, category, sql) for saved SQL queries
 - Database migration v28 -> v29: creates ai_library table (id, name, description, promptText) with 3 seed prompts for AI-powered ticker analysis
-- Database version 29
+- Database migration v29 -> v30: adds dividendRate REAL column to investment_positions (trailing annual dividend per share from Yahoo Finance)
+- Database version 30
 - WatchListDao: `getAllWatchListsSnapshot()`, `getAllItemsSnapshot()`, `deleteAllItems()`, `deleteAllLists()` for backup
 - DefinitionDao: `getAllDefinitionsSnapshot()` for backup
 - SqlLibraryDao: `getAllSnapshot()`, `deleteAll()` for backup

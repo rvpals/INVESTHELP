@@ -32,6 +32,7 @@ async function fetchQuote(ticker) {
     dayHigh: highs.length ? Math.max(...highs) : 0,
     dayLow: lows.length ? Math.min(...lows) : 0,
     quoteType: meta.instrumentType || meta.quoteType || null,
+    dividendRate: meta.trailingAnnualDividendRate || 0,
   };
 }
 
@@ -97,6 +98,7 @@ function parseAnalysis(data) {
     forwardPE: sd.forwardPE?.raw || ks.forwardPE?.raw || 0,
     eps: ks.trailingEps?.raw || fd.earningsPerShare?.raw || 0,
     dividendYield: sd.dividendYield?.raw || 0,
+    trailingAnnualDividendRate: sd.trailingAnnualDividendRate?.raw || 0,
     fiftyTwoWeekHigh: sd.fiftyTwoWeekHigh?.raw || 0,
     fiftyTwoWeekLow: sd.fiftyTwoWeekLow?.raw || 0,
     fiftyDayAverage: sd.fiftyDayAverage?.raw || 0,

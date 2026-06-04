@@ -61,13 +61,15 @@ class AutoRefreshWorker @AssistedInject constructor(
                     val resolvedName = quote.shortName ?: item.name
                     val newValue = quote.price * item.quantity
                     val dayChange = (quote.price - quote.previousClose) * item.quantity
+                    val resolvedDividendRate = if (quote.dividendRate > 0.0) quote.dividendRate else item.dividendRate
 
                     itemRepository.upsertItem(
                         item.copy(
                             name = resolvedName,
                             currentPrice = quote.price,
                             value = newValue,
-                            dayGainLoss = dayChange
+                            dayGainLoss = dayChange,
+                            dividendRate = resolvedDividendRate
                         )
                     )
                     successCount++

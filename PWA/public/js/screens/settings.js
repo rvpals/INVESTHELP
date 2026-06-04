@@ -57,12 +57,8 @@ export async function render(container) {
 
 function renderPrefs(el, serverSettings) {
   const currentTheme = getPref('app_theme') || 'default';
-  el.innerHTML = `
-    <h3 class="mb-8">Theme</h3>
-    <div class="chip-row mb-16">
-      ${THEMES.map(t => `<button class="chip${t===currentTheme?' selected':''}" data-theme="${t}">${t}</button>`).join('')}
-    </div>
-    <h3 class="mb-8">General</h3>
+
+  const generalContent = `
     <div class="toggle-row"><span class="toggle-label">Warn before delete</span><button class="toggle${getPref('warn_before_delete')?' on':''}" id="toggle-warn"></button></div>
     <div class="toggle-row"><span class="toggle-label">Auto-update change history on refresh</span><button class="toggle${serverSettings.auto_update_change_history==='true'?' on':''}" id="toggle-history"></button></div>
     <div class="toggle-row"><span class="toggle-label">Auto-refresh prices</span><button class="toggle${serverSettings.auto_refresh_enabled==='true'?' on':''}" id="toggle-refresh"></button></div>
@@ -74,14 +70,15 @@ function renderPrefs(el, serverSettings) {
         </select>
       </div>
     ` : ''}
-    <div class="form-group mt-16">
+    <div class="form-group mt-8">
       <label>Max News Articles</label>
       <select class="select" id="news-count">
         ${['5','10','20'].map(v => `<option value="${v}"${serverSettings.news_article_count===v?' selected':''}>${v}</option>`).join('')}
       </select>
     </div>
+  `;
 
-    <h3 class="mt-16 mb-8">Next Day Actions Thresholds</h3>
+  const ndaContent = `
     <div class="flex gap-8 mb-8">
       <div class="form-group" style="flex:1"><label>Profit Target %</label><input type="number" class="input" id="profit-target" value="${serverSettings.profit_target_pct || 20}" min="1" max="100"></div>
       <div class="form-group" style="flex:1"><label>Stock Cap %</label><input type="number" class="input" id="stock-cap" value="${serverSettings.stock_concentration_cap || 10}" min="1" max="100"></div>
@@ -90,7 +87,18 @@ function renderPrefs(el, serverSettings) {
       <div class="form-group" style="flex:1"><label>ETF Cap %</label><input type="number" class="input" id="etf-cap" value="${serverSettings.etf_concentration_cap || 25}" min="1" max="100"></div>
       <div class="form-group" style="flex:1"><label>Trailing Stop %</label><input type="number" class="input" id="trailing-stop" value="${serverSettings.trailing_stop_pct || 10}" min="1" max="100"></div>
     </div>
+  `;
 
+  const themeContent = `
+    <div class="chip-row">
+      ${THEMES.map(t => `<button class="chip${t===currentTheme?' selected':''}" data-theme="${t}">${t}</button>`).join('')}
+    </div>
+  `;
+
+  el.innerHTML = `
+    ${collapsibleCard('settings_general', 'General', generalContent, { defaultExpanded: true })}
+    ${collapsibleCard('settings_theme', 'Theme', themeContent)}
+    ${collapsibleCard('settings_nda', 'Next Day Actions', ndaContent)}
     ${collapsibleCard('settings_dashboard_cards', 'Dashboard Cards', renderDashboardCardsSection())}
     ${collapsibleCard('settings_market_indices', 'Market Indices', renderMarketIndicesSection())}
   `;
@@ -256,8 +264,7 @@ function attachMarketIndexHandlers(el, serverSettings) {
 async function renderData(el) {
   const serverSettings = await settings.getAll();
 
-  el.innerHTML = `
-    <h3 class="mb-8">Backup & Restore</h3>
+  const backupContent = `
     <div class="flex gap-8 mb-8">
       <a href="${backup.exportUrl}" class="btn btn-primary" download>Export Data</a>
       <label class="btn btn-secondary" style="cursor:pointer">
@@ -265,7 +272,6 @@ async function renderData(el) {
         <input type="file" accept=".json" id="import-file" style="display:none">
       </label>
     </div>
-
     <div class="toggle-row">
       <span class="toggle-label">Automatic backup on refresh</span>
       <button class="toggle${serverSettings.auto_backup_on_refresh === 'true' ? ' on' : ''}" id="toggle-auto-backup"></button>
@@ -276,16 +282,13 @@ async function renderData(el) {
         <input type="number" class="input" id="backup-keep-count" value="${serverSettings.auto_backup_keep_count || 10}" min="1" max="100" style="width:80px">
       </div>
     ` : ''}
-
-    <div id="backup-list-section" class="mt-8 mb-16">
+    <div id="backup-list-section" class="mt-8">
       <button class="btn btn-sm btn-outline" id="show-backups-btn">Show Backup Files</button>
       <div id="backup-list" class="mt-8 hidden"></div>
     </div>
+  `;
 
-    <hr style="border:none;border-top:1px solid var(--outline);opacity:0.3;margin:16px 0">
-
-    <h3 class="mb-8">Import Data</h3>
-
+  const importContent = `
     <div class="card p-12 mb-8">
       <div class="flex justify-between items-center mb-8">
         <h4 class="text-sm text-bold">Transaction Records</h4>
@@ -331,6 +334,13 @@ async function renderData(el) {
       <div id="csv-perf-result" class="text-sm mt-4"></div>
     </div>
   `;
+
+  el.innerHTML = `
+    ${collapsibleCard('settings_backup', 'Backup & Restore', backupContent, { defaultExpanded: true })}
+    ${collapsibleCard('settings_import', 'Import Data', importContent)}
+  `;
+
+  initCollapsibleCards(el);
 
   // Backup import
   document.getElementById('import-file')?.addEventListener('change', async (e) => {

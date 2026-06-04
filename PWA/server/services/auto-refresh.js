@@ -41,7 +41,8 @@ async function refreshAll() {
   const update = db.prepare(`
     UPDATE investment_positions
     SET currentPrice = ?, dayGainLoss = ?, value = ?, dayHigh = ?, dayLow = ?,
-        name = CASE WHEN ? != '' THEN ? ELSE name END
+        name = CASE WHEN ? != '' THEN ? ELSE name END,
+        dividendRate = ?
     WHERE ticker = ?
   `);
 
@@ -52,7 +53,7 @@ async function refreshAll() {
       const q = await yahoo.fetchQuote(pos.ticker);
       const value = q.price * (pos.quantity || 0);
       const dayGL = (q.price - q.previousClose) * (pos.quantity || 0);
-      update.run(q.price, dayGL, value, q.dayHigh, q.dayLow, q.shortName || '', q.shortName || '', pos.ticker);
+      update.run(q.price, dayGL, value, q.dayHigh, q.dayLow, q.shortName || '', q.shortName || '', q.dividendRate || 0, pos.ticker);
 
       // Fetch logo if missing
       const existing = db.prepare('SELECT logo FROM investment_positions WHERE ticker = ?').get(pos.ticker);
@@ -110,7 +111,7 @@ function performAutoBackup() {
     if (!fs.existsSync(BACKUP_DIR)) fs.mkdirSync(BACKUP_DIR, { recursive: true });
 
     const accounts = db.prepare('SELECT * FROM investment_accounts').all();
-    const positions = db.prepare('SELECT ticker, name, type, currentPrice, quantity, dayGainLoss, value, dayHigh, dayLow FROM investment_positions').all();
+    const positions = db.prepare('SELECT ticker, name, type, currentPrice, quantity, dayGainLoss, value, dayHigh, dayLow, dividendRate FROM investment_positions').all();
     const transactions = db.prepare('SELECT * FROM investment_transactions').all();
     const performanceRecords = db.prepare('SELECT * FROM account_performance').all();
     const watchLists = db.prepare('SELECT * FROM watch_lists').all();
@@ -123,7 +124,7 @@ function performAutoBackup() {
     const data = {
       version: 5,
       accounts: accounts.map(a => ({ id: a.id, name: a.name, description: a.description, initialValue: a.initialValue })),
-      items: positions.map(p => ({ ticker: p.ticker, name: p.name, type: p.type, currentPrice: p.currentPrice, quantity: p.quantity, dayGainLoss: p.dayGainLoss, value: p.value, dayHigh: p.dayHigh, dayLow: p.dayLow })),
+      items: positions.map(p => ({ ticker: p.ticker, name: p.name, type: p.type, currentPrice: p.currentPrice, quantity: p.quantity, dayGainLoss: p.dayGainLoss, value: p.value, dayHigh: p.dayHigh, dayLow: p.dayLow, dividendRate: p.dividendRate || 0 })),
       transactions: transactions.map(t => ({ id: t.id, dateEpochDay: t.date, timeSecondOfDay: t.time, action: t.action, ticker: t.ticker, numberOfShares: t.numberOfShares, pricePerShare: t.pricePerShare, totalAmount: t.totalAmount, note: t.note })),
       performanceRecords: performanceRecords.map(p => ({ id: p.id, accountId: p.accountId, totalValue: p.totalValue, dateEpochDay: p.date, note: p.note })),
       watchLists: watchLists.map(w => ({ id: w.id, name: w.name })),

@@ -10,7 +10,7 @@ const BACKUP_DIR = path.join(__dirname, '..', '..', 'backups');
 
 router.get('/export', (req, res) => {
   const accounts = db.prepare('SELECT * FROM investment_accounts').all();
-  const positions = db.prepare('SELECT ticker, name, type, currentPrice, quantity, dayGainLoss, value, dayHigh, dayLow FROM investment_positions').all();
+  const positions = db.prepare('SELECT ticker, name, type, currentPrice, quantity, dayGainLoss, value, dayHigh, dayLow, dividendRate FROM investment_positions').all();
   const transactions = db.prepare('SELECT * FROM investment_transactions').all();
   const performanceRecords = db.prepare('SELECT * FROM account_performance').all();
   const watchLists = db.prepare('SELECT * FROM watch_lists').all();
@@ -26,7 +26,8 @@ router.get('/export', (req, res) => {
     accounts: accounts.map(a => ({ id: a.id, name: a.name, description: a.description, initialValue: a.initialValue })),
     items: positions.map(p => ({
       ticker: p.ticker, name: p.name, type: p.type, currentPrice: p.currentPrice,
-      quantity: p.quantity, dayGainLoss: p.dayGainLoss, value: p.value, dayHigh: p.dayHigh, dayLow: p.dayLow
+      quantity: p.quantity, dayGainLoss: p.dayGainLoss, value: p.value, dayHigh: p.dayHigh, dayLow: p.dayLow,
+      dividendRate: p.dividendRate || 0
     })),
     transactions: transactions.map(t => ({
       id: t.id, dateEpochDay: t.date, timeSecondOfDay: t.time, action: t.action,
@@ -85,11 +86,11 @@ router.post('/import', upload.single('file'), (req, res) => {
       }
 
       // Positions (v1 uses numShares, v2+ uses quantity; field may be "items" or "positions")
-      const insPos = db.prepare('INSERT INTO investment_positions (ticker, name, type, currentPrice, quantity, dayGainLoss, value, dayHigh, dayLow) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)');
+      const insPos = db.prepare('INSERT INTO investment_positions (ticker, name, type, currentPrice, quantity, dayGainLoss, value, dayHigh, dayLow, dividendRate) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
       for (const p of (data.positions || data.items || [])) {
         const ticker = (p.ticker || '').trim() || 'UNKNOWN';
         insPos.run(ticker, p.name || '', p.type || 'Stock', p.currentPrice || 0,
-          p.quantity || p.numShares || 0, p.dayGainLoss || 0, p.value || 0, p.dayHigh || 0, p.dayLow || 0);
+          p.quantity || p.numShares || 0, p.dayGainLoss || 0, p.value || 0, p.dayHigh || 0, p.dayLow || 0, p.dividendRate || 0);
       }
 
       // Transactions (v5 uses dateEpochDay; v4 PWA-native uses date directly)

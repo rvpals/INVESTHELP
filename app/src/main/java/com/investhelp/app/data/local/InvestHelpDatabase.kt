@@ -42,7 +42,7 @@ import com.investhelp.app.data.local.entity.WatchListItemEntity
         SqlLibraryEntity::class,
         AiLibraryEntity::class
     ],
-    version = 29,
+    version = 30,
     exportSchema = true
 )
 @TypeConverters(Converters::class)

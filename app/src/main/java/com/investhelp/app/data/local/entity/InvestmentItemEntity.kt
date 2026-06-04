@@ -16,7 +16,8 @@ data class InvestmentItemEntity(
     val value: Double,
     val dayHigh: Double = 0.0,
     val dayLow: Double = 0.0,
-    val logo: ByteArray? = null
+    val logo: ByteArray? = null,
+    val dividendRate: Double = 0.0
 ) {
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
@@ -30,7 +31,8 @@ data class InvestmentItemEntity(
                 value == other.value &&
                 dayHigh == other.dayHigh &&
                 dayLow == other.dayLow &&
-                logo.contentEquals(other.logo)
+                logo.contentEquals(other.logo) &&
+                dividendRate == other.dividendRate
     }
 
     override fun hashCode(): Int {

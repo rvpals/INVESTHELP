@@ -39,6 +39,7 @@ data class BackupItem(
     val value: Double = 0.0,
     val dayHigh: Double = 0.0,
     val dayLow: Double = 0.0,
+    val dividendRate: Double = 0.0,
     // compat fields (ignored in current export)
     val accountId: Long = -1,
     val id: Long = 0,

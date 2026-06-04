@@ -264,6 +264,7 @@ class DashboardViewModel @Inject constructor(
                         val priceChange = quote.price - quote.previousClose
                         val priceChangePct = if (quote.previousClose != 0.0)
                             priceChange / quote.previousClose * 100.0 else 0.0
+                        val resolvedDividendRate = if (quote.dividendRate > 0.0) quote.dividendRate else item.dividendRate
                         _refreshStatus.value = RefreshStatus(
                             ticker = item.ticker,
                             price = quote.price,
@@ -275,7 +276,8 @@ class DashboardViewModel @Inject constructor(
                                 name = resolvedName,
                                 currentPrice = quote.price,
                                 value = newValue,
-                                dayGainLoss = dayChange
+                                dayGainLoss = dayChange,
+                                dividendRate = resolvedDividendRate
                             )
                         )
                         if (item.logo == null) {

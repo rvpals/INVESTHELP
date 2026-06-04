@@ -501,7 +501,8 @@ class SettingsViewModel @Inject constructor(
                             dayGainLoss = it.dayGainLoss,
                             value = it.value,
                             dayHigh = it.dayHigh,
-                            dayLow = it.dayLow
+                            dayLow = it.dayLow,
+                            dividendRate = it.dividendRate
                         )
                     },
                     transactions = transactions.map {
@@ -615,7 +616,8 @@ class SettingsViewModel @Inject constructor(
                                 dayGainLoss = i.dayGainLoss,
                                 value = i.value,
                                 dayHigh = i.dayHigh,
-                                dayLow = i.dayLow
+                                dayLow = i.dayLow,
+                                dividendRate = i.dividendRate
                             )
                         )
                     } else {
@@ -1163,7 +1165,8 @@ class SettingsViewModel @Inject constructor(
                         dayGainLoss = newDayGL ?: existing?.dayGainLoss ?: 0.0,
                         value = newValue ?: existing?.value ?: 0.0,
                         dayHigh = existing?.dayHigh ?: 0.0,
-                        dayLow = existing?.dayLow ?: 0.0
+                        dayLow = existing?.dayLow ?: 0.0,
+                        dividendRate = existing?.dividendRate ?: 0.0
                     )
                     itemDao.upsertItem(item)
 
@@ -1614,7 +1617,8 @@ class SettingsViewModel @Inject constructor(
             value = parseNumeric(fields["value"])
                 ?: existing?.value ?: 0.0,
             dayHigh = existing?.dayHigh ?: 0.0,
-            dayLow = existing?.dayLow ?: 0.0
+            dayLow = existing?.dayLow ?: 0.0,
+            dividendRate = existing?.dividendRate ?: 0.0
         )
         itemDao.upsertItem(item)
     }

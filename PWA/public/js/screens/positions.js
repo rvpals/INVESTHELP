@@ -104,6 +104,7 @@ function sortItems(items) {
 function positionRow(p) {
   const dayChange = p.currentPrice - (p.value / (p.quantity || 1) - p.dayGainLoss / (p.quantity || 1));
   const dayPct = p.currentPrice > 0 && p.quantity > 0 ? (p.dayGainLoss / (p.value - p.dayGainLoss)) * 100 : 0;
+  const annualDiv = (p.dividendRate || 0) * (p.quantity || 0);
   return `
     <div class="position-row" data-ticker="${p.ticker}">
       ${tickerIcon(p.ticker, p.name)}
@@ -111,6 +112,7 @@ function positionRow(p) {
         <div class="position-ticker">${p.ticker}</div>
         <div class="position-name">${p.name || ''}</div>
         <div class="position-price">${formatCurrency(p.currentPrice)} <span class="${gainLossClass(p.dayGainLoss)}">${formatSignedCurrency(p.dayGainLoss / (p.quantity || 1))} ${formatPercent(dayPct)}</span></div>
+        ${annualDiv > 0 ? `<div class="text-xs text-muted">Div: ${formatCurrency(annualDiv)}/yr</div>` : ''}
       </div>
       <div class="position-right">
         <div class="position-value">${formatCurrency(p.value)}</div>

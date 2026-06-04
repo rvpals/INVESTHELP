@@ -4,17 +4,18 @@ const db = require('../db');
 const yahoo = require('../services/yahoo-finance');
 
 router.get('/summary', (req, res) => {
-  const all = db.prepare('SELECT type, value, dayGainLoss FROM investment_positions').all();
+  const all = db.prepare('SELECT type, value, dayGainLoss, dividendRate, quantity FROM investment_positions').all();
   const totalValue = all.reduce((s, r) => s + r.value, 0);
   const dayGainLoss = all.reduce((s, r) => s + r.dayGainLoss, 0);
   const etfValue = all.filter(r => r.type === 'ETF').reduce((s, r) => s + r.value, 0);
   const stockValue = all.filter(r => r.type === 'Stock').reduce((s, r) => s + r.value, 0);
   const dayPercent = totalValue > 0 ? (dayGainLoss / (totalValue - dayGainLoss)) * 100 : 0;
-  res.json({ totalValue, dayGainLoss, dayPercent, etfValue, stockValue });
+  const annualDividend = all.reduce((s, r) => s + (r.dividendRate || 0) * (r.quantity || 0), 0);
+  res.json({ totalValue, dayGainLoss, dayPercent, etfValue, stockValue, annualDividend });
 });
 
 router.get('/', (req, res) => {
-  res.json(db.prepare('SELECT ticker, name, type, currentPrice, quantity, dayGainLoss, value, dayHigh, dayLow FROM investment_positions ORDER BY value DESC').all());
+  res.json(db.prepare('SELECT ticker, name, type, currentPrice, quantity, dayGainLoss, value, dayHigh, dayLow, dividendRate FROM investment_positions ORDER BY value DESC').all());
 });
 
 router.get('/:ticker', (req, res) => {
@@ -45,22 +46,22 @@ router.get('/:ticker/logo', async (req, res) => {
 });
 
 router.post('/', (req, res) => {
-  const { ticker, name, type, currentPrice, quantity, dayGainLoss, value, dayHigh, dayLow } = req.body;
+  const { ticker, name, type, currentPrice, quantity, dayGainLoss, value, dayHigh, dayLow, dividendRate } = req.body;
   db.prepare(`
-    INSERT INTO investment_positions (ticker, name, type, currentPrice, quantity, dayGainLoss, value, dayHigh, dayLow)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO investment_positions (ticker, name, type, currentPrice, quantity, dayGainLoss, value, dayHigh, dayLow, dividendRate)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(ticker) DO UPDATE SET
       name=excluded.name, type=excluded.type, currentPrice=excluded.currentPrice,
       quantity=excluded.quantity, dayGainLoss=excluded.dayGainLoss, value=excluded.value,
-      dayHigh=excluded.dayHigh, dayLow=excluded.dayLow
-  `).run(ticker, name || '', type || 'Stock', currentPrice || 0, quantity || 0, dayGainLoss || 0, value || 0, dayHigh || 0, dayLow || 0);
+      dayHigh=excluded.dayHigh, dayLow=excluded.dayLow, dividendRate=excluded.dividendRate
+  `).run(ticker, name || '', type || 'Stock', currentPrice || 0, quantity || 0, dayGainLoss || 0, value || 0, dayHigh || 0, dayLow || 0, dividendRate || 0);
   res.json({ ok: true });
 });
 
 router.put('/:ticker', (req, res) => {
-  const { name, type, currentPrice, quantity, dayGainLoss, value, dayHigh, dayLow } = req.body;
-  db.prepare(`UPDATE investment_positions SET name=?, type=?, currentPrice=?, quantity=?, dayGainLoss=?, value=?, dayHigh=?, dayLow=? WHERE ticker=?`)
-    .run(name || '', type || 'Stock', currentPrice || 0, quantity || 0, dayGainLoss || 0, value || 0, dayHigh || 0, dayLow || 0, req.params.ticker);
+  const { name, type, currentPrice, quantity, dayGainLoss, value, dayHigh, dayLow, dividendRate } = req.body;
+  db.prepare(`UPDATE investment_positions SET name=?, type=?, currentPrice=?, quantity=?, dayGainLoss=?, value=?, dayHigh=?, dayLow=?, dividendRate=? WHERE ticker=?`)
+    .run(name || '', type || 'Stock', currentPrice || 0, quantity || 0, dayGainLoss || 0, value || 0, dayHigh || 0, dayLow || 0, dividendRate || 0, req.params.ticker);
   res.json({ ok: true });
 });
 

@@ -25,7 +25,8 @@ data class StockQuote(
     val shortName: String? = null,
     val dayHigh: Double = 0.0,
     val dayLow: Double = 0.0,
-    val quoteType: String? = null
+    val quoteType: String? = null,
+    val dividendRate: Double = 0.0
 )
 
 data class NewsArticle(
@@ -58,6 +59,7 @@ data class AnalysisInfo(
     val forwardPE: Double?,
     val eps: Double?,
     val dividendYield: Double?,
+    val trailingAnnualDividendRate: Double?,
     val fiftyTwoWeekHigh: Double?,
     val fiftyTwoWeekLow: Double?,
     val fiftyDayAverage: Double?,
@@ -294,6 +296,7 @@ class StockPriceService @Inject constructor() {
             forwardPE = detail?.rawDouble("forwardPE") ?: keyStats?.rawDouble("forwardPE"),
             eps = keyStats?.rawDouble("trailingEps"),
             dividendYield = detail?.rawDouble("dividendYield"),
+            trailingAnnualDividendRate = detail?.rawDouble("trailingAnnualDividendRate"),
             fiftyTwoWeekHigh = detail?.rawDouble("fiftyTwoWeekHigh"),
             fiftyTwoWeekLow = detail?.rawDouble("fiftyTwoWeekLow"),
             fiftyDayAverage = detail?.rawDouble("fiftyDayAverage"),
@@ -372,7 +375,8 @@ class StockPriceService @Inject constructor() {
                 dayHigh = meta["regularMarketDayHigh"]?.jsonPrimitive?.doubleOrNull ?: 0.0,
                 dayLow = meta["regularMarketDayLow"]?.jsonPrimitive?.doubleOrNull ?: 0.0,
                 quoteType = meta["instrumentType"]?.jsonPrimitive?.contentOrNull
-                    ?: meta["quoteType"]?.jsonPrimitive?.contentOrNull
+                    ?: meta["quoteType"]?.jsonPrimitive?.contentOrNull,
+                dividendRate = meta["trailingAnnualDividendRate"]?.jsonPrimitive?.doubleOrNull ?: 0.0
             )
         } finally {
             connection.disconnect()

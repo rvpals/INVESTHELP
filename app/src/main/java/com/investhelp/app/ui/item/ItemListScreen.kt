@@ -466,6 +466,14 @@ private fun ItemsTable(
                                 color = gainColor
                             )
                         }
+                        if (item.dividendRate > 0.0) {
+                            val annualDividend = item.dividendRate * item.quantity
+                            Text(
+                                text = "Div: ${currencyFormat.format(annualDividend)}/yr",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = Color(0xFF1565C0)
+                            )
+                        }
                     }
 
                     Column(horizontalAlignment = Alignment.End) {
