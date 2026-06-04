@@ -1,8 +1,13 @@
 # Invest Help
 
-Android investment tracking app built with Kotlin, Jetpack Compose, and Material 3.
+Investment tracking app with Android native + PWA web app.
 
-## Tech Stack
+## Project Structure
+- `ANDROID_APP/` - Android native app (Kotlin + Jetpack Compose)
+- `PWA/` - Progressive Web App (Node.js + Express + vanilla JS)
+- `*.md` files at root - Project documentation
+
+## Android Tech Stack (ANDROID_APP/)
 - **Language:** Kotlin
 - **UI:** Jetpack Compose + Material 3
 - **Min SDK:** 29, Target SDK: 35
@@ -14,7 +19,7 @@ Android investment tracking app built with Kotlin, Jetpack Compose, and Material
 - **Charts:** Custom Canvas-drawn (pie chart, line chart) — no external chart library
 - **Images:** Coil 2.7.0 for async image loading (company logos)
 
-## Package Structure
+## Android Package Structure (ANDROID_APP/app/src/main/java/com/investhelp/app/)
 - `data/local/` - Room database, entities, DAOs, DatabaseProvider
 - `data/remote/` - StockPriceService (Yahoo Finance API integration)
 - `data/repository/` - Repository interfaces and implementations
@@ -245,15 +250,16 @@ All PWA code is inside the `PWA/` folder:
 - `PWA/START_APP.bat` - Windows launcher script
 
 ## Build (Android)
-Open in Android Studio and sync Gradle. Requires JDK 17+.
+Open `ANDROID_APP/` in Android Studio and sync Gradle. Requires JDK 17+.
 Set `JAVA_HOME` to JDK 17 path if building from CLI:
 ```
+cd ANDROID_APP
 JAVA_HOME="E:/Prog/Java/jdk-17" ./gradlew assembleRelease
 ```
 
 ## Versioning
-- Version managed via `version.properties` at project root (VERSION_MAJOR, VERSION_MINOR, VERSION_CODE)
+- Version managed via `ANDROID_APP/version.properties` (VERSION_MAJOR, VERSION_MINOR, VERSION_CODE)
 - After each `assembleDebug` or `assembleRelease`, minor version and version code auto-increment by 1
-- `versionName` and `versionCode` in `app/build.gradle.kts` read from `version.properties`
+- `versionName` and `versionCode` in `ANDROID_APP/app/build.gradle.kts` read from `version.properties`
 - To bump major version: edit VERSION_MAJOR in `version.properties` and reset VERSION_MINOR to 0
 - About dialog shows dynamic version via BuildConfig
