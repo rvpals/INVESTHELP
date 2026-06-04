@@ -65,21 +65,53 @@ async function fetchPriceHistoryByPeriod(ticker, period1, period2, interval) {
 }
 
 async function fetchAnalysisInfo(ticker) {
-  if (!crumb) await refreshCrumb();
   const modules = 'assetProfile,defaultKeyStatistics,financialData,summaryDetail,calendarEvents,recommendationTrend,fundProfile,topHoldings';
-  const url = `https://query2.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(ticker)}?modules=${modules}&crumb=${encodeURIComponent(crumb || '')}`;
-  const resp = await fetch(url, { headers: { Cookie: cookies } });
-  if (resp.status === 401 || resp.status === 403) {
-    await refreshCrumb();
-    const retryUrl = `https://query2.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(ticker)}?modules=${modules}&crumb=${encodeURIComponent(crumb || '')}`;
-    const retry = await fetch(retryUrl, { headers: { Cookie: cookies } });
-    if (!retry.ok) throw new Error(`Yahoo analysis ${ticker}: ${retry.status}`);
-    const data = await retry.json();
-    return parseAnalysis(data);
+  const enc = encodeURIComponent(ticker);
+
+  // Try v10 with crumb auth
+  try {
+    if (!crumb) await refreshCrumb();
+    if (crumb) {
+      const url = `https://query2.finance.yahoo.com/v10/finance/quoteSummary/${enc}?modules=${modules}&crumb=${encodeURIComponent(crumb)}`;
+      const resp = await fetch(url, { headers: { Cookie: cookies } });
+      if (resp.status === 401 || resp.status === 403) {
+        await refreshCrumb();
+        if (crumb) {
+          const retry = await fetch(`https://query2.finance.yahoo.com/v10/finance/quoteSummary/${enc}?modules=${modules}&crumb=${encodeURIComponent(crumb)}`, { headers: { Cookie: cookies } });
+          if (retry.ok) return parseAnalysis(await retry.json());
+        }
+      } else if (resp.ok) {
+        return parseAnalysis(await resp.json());
+      }
+    }
+  } catch (e) {
+    console.error(`v10 analysis failed for ${ticker}:`, e.message);
   }
-  if (!resp.ok) throw new Error(`Yahoo analysis ${ticker}: ${resp.status}`);
-  const data = await resp.json();
-  return parseAnalysis(data);
+
+  // Fallback: try v10 without crumb (works for some data)
+  try {
+    const url = `https://query2.finance.yahoo.com/v10/finance/quoteSummary/${enc}?modules=${modules}`;
+    const resp = await fetch(url);
+    if (resp.ok) return parseAnalysis(await resp.json());
+  } catch (e) {
+    console.error(`v10 no-crumb failed for ${ticker}:`, e.message);
+  }
+
+  // Fallback: build partial analysis from v8 chart data
+  try {
+    const quote = await fetchQuote(ticker);
+    return {
+      shortName: quote.shortName || '', sector: '', industry: '', longBusinessSummary: '',
+      marketCap: 0, trailingPE: 0, forwardPE: 0, eps: 0, dividendYield: 0,
+      trailingAnnualDividendRate: quote.dividendRate || 0,
+      fiftyTwoWeekHigh: 0, fiftyTwoWeekLow: 0, fiftyDayAverage: 0, twoHundredDayAverage: 0,
+      targetMeanPrice: 0, revenuePerShare: 0, profitMargins: 0, returnOnEquity: 0,
+      calendarEvents: {}, recommendationTrend: {}, fundProfile: {}, topHoldings: {},
+      _partial: true,
+    };
+  } catch (e) {
+    throw new Error(`All analysis sources failed for ${ticker}`);
+  }
 }
 
 function parseAnalysis(data) {

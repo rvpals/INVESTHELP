@@ -134,9 +134,15 @@ db.exec(`
 // Schema migrations for existing databases
 try {
   const cols = db.prepare("PRAGMA table_info(investment_positions)").all().map(c => c.name);
+  if (!cols.includes('logo')) {
+    db.exec("ALTER TABLE investment_positions ADD COLUMN logo BLOB");
+    console.log('Migration: added logo column to investment_positions');
+  }
   if (!cols.includes('dividendRate')) {
     db.exec("ALTER TABLE investment_positions ADD COLUMN dividendRate REAL NOT NULL DEFAULT 0");
+    console.log('Migration: added dividendRate column to investment_positions');
   }
+  console.log('DB columns for investment_positions:', cols.join(', ') + (cols.includes('dividendRate') ? '' : ', dividendRate (just added)'));
 } catch (e) {
   console.error('Migration check failed:', e.message);
 }
