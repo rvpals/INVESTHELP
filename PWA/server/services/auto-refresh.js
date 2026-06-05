@@ -2,6 +2,7 @@ const db = require('../db');
 const yahoo = require('./yahoo-finance');
 const fs = require('fs');
 const path = require('path');
+const { generateSnapshot } = require('./snapshot');
 
 let refreshInterval = null;
 let isRefreshing = false;
@@ -80,6 +81,9 @@ async function refreshAll() {
   if (autoBackup?.value === 'true') {
     performAutoBackup();
   }
+
+  // Generate static snapshot
+  generateSnapshot();
 
   isRefreshing = false;
   currentTicker = '';

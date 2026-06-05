@@ -113,11 +113,13 @@ function evaluatePosition(item, scanData, allocationPct, costBasis, totalReturnP
   lines.push('');
 
   if (scanData && scanData.twentyDaySma > 0) {
-    const volumeRatio = scanData.avgVolume20Day > 0 ? scanData.closingVolume / scanData.avgVolume20Day : 0;
+    const avgVol = scanData.avgVolume20Day || 0;
+    const closeVol = scanData.closingVolume || 0;
+    const volumeRatio = avgVol > 0 ? closeVol / avgVol : 0;
     lines.push('--- Yahoo Finance Scan Data ---');
     lines.push(`20-Day SMA: ${formatCurrency(scanData.twentyDaySma)}`);
-    lines.push(`20-Day Avg Volume: ${scanData.avgVolume20Day.toLocaleString()}`);
-    lines.push(`Today's Closing Volume: ${scanData.closingVolume.toLocaleString()}`);
+    lines.push(`20-Day Avg Volume: ${avgVol.toLocaleString()}`);
+    lines.push(`Today's Closing Volume: ${closeVol.toLocaleString()}`);
     lines.push(`Volume Ratio: ${volumeRatio.toFixed(2)}x`);
     lines.push('');
 

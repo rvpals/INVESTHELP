@@ -3,9 +3,12 @@ import { applyTheme } from './preferences.js';
 import { renderTopBar } from './components/top-bar.js';
 import { renderBottomNav, updateBottomNav } from './components/bottom-nav.js';
 
-// Register service worker
+// Unregister any existing service worker (no longer needed)
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('/sw.js').catch(() => {});
+  navigator.serviceWorker.getRegistrations().then(regs => {
+    for (const reg of regs) reg.unregister();
+  });
+  caches.keys().then(keys => keys.forEach(k => caches.delete(k)));
 }
 
 // Apply theme
