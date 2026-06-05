@@ -65,6 +65,8 @@ router.post('/import', upload.single('file'), (req, res) => {
     const text = req.file ? req.file.buffer.toString('utf8') : req.body.data;
     if (!text) return res.status(400).json({ error: 'No file provided' });
     const data = JSON.parse(text);
+    console.log('Backup import: keys found:', Object.keys(data).join(', '));
+    console.log('Backup import: watchLists:', (data.watchLists || []).length, 'watchListItems:', (data.watchListItems || []).length);
 
     const tx = db.transaction(() => {
       // Clear all tables in reverse dependency order
@@ -111,7 +113,7 @@ router.post('/import', upload.single('file'), (req, res) => {
 
       // Watch lists (v5)
       if (data.watchLists?.length) {
-        const insWL = db.prepare('INSERT INTO watch_lists (id, name) VALUES (?, ?)');
+        const insWL = db.prepare('INSERT OR REPLACE INTO watch_lists (id, name) VALUES (?, ?)');
         for (const w of data.watchLists) {
           insWL.run(w.id, w.name);
         }
@@ -119,7 +121,7 @@ router.post('/import', upload.single('file'), (req, res) => {
 
       // Watch list items (v5)
       if (data.watchListItems?.length) {
-        const insWLI = db.prepare('INSERT INTO watch_list_items (id, watchListId, ticker, shares, priceWhenAdded, addedDate, reminderDateTime, reminderMessage) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
+        const insWLI = db.prepare('INSERT OR REPLACE INTO watch_list_items (id, watchListId, ticker, shares, priceWhenAdded, addedDate, reminderDateTime, reminderMessage) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
         for (const i of data.watchListItems) {
           insWLI.run(i.id, i.watchListId, i.ticker, i.shares || 0, i.priceWhenAdded || 0,
             i.addedDateEpochDay ?? i.addedDate, i.reminderDateTimeEpochMs ?? i.reminderDateTime ?? null, i.reminderMessage || '');

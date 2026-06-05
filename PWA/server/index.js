@@ -1,3 +1,4 @@
+const appLog = require('./services/app-log'); // must be first to capture all logs
 const express = require('express');
 const path = require('path');
 
@@ -24,18 +25,9 @@ app.use('/api/sql', require('./routes/sql-explorer'));
 app.use('/api/settings', require('./routes/settings'));
 
 // Version info
-const { execSync } = require('child_process');
-app.get('/api/version', (req, res) => {
-  try {
-    const rootDir = path.join(__dirname, '..', '..');
-    const commitDate = execSync('git log -1 --format=%ci', { cwd: rootDir }).toString().trim();
-    const commitHash = execSync('git log -1 --format=%h', { cwd: rootDir }).toString().trim();
-    const commitMsg = execSync('git log -1 --format=%s', { cwd: rootDir }).toString().trim();
-    res.json({ commitDate, commitHash, commitMsg });
-  } catch {
-    res.json({ commitDate: 'unknown', commitHash: '', commitMsg: '' });
-  }
-});
+// Server log
+app.get('/api/server-log', (req, res) => { res.json(appLog.getEntries()); });
+app.delete('/api/server-log', (req, res) => { appLog.clear(); res.json({ ok: true }); });
 
 // SPA fallback
 app.get('*', (req, res) => {

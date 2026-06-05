@@ -1,4 +1,4 @@
-import { positions, transactions, yahoo } from '../api.js';
+import { positions, transactions, yahoo, watchlists } from '../api.js';
 import { navigate } from '../router.js';
 import { tickerIcon } from '../components/ticker-icon.js';
 import { collapsibleCard, initCollapsibleCards } from '../components/collapsible-card.js';
@@ -6,6 +6,7 @@ import { renderLineChart } from '../components/line-chart.js';
 import { confirmAction, showToast } from '../components/confirm-dialog.js';
 import { formatCurrency, formatSignedCurrency, formatPercent, gainLossClass, formatShares } from '../utils/format.js';
 import { formatDate, daysSince, formatTimeAgo } from '../utils/dates.js';
+import { getPref } from '../preferences.js';
 
 let currentTab = 'details';
 
@@ -19,7 +20,7 @@ export async function render(container, { ticker }) {
   const dayGLPerShare = p.quantity > 0 ? p.dayGainLoss / p.quantity : 0;
 
   container.innerHTML = `<div class="screen">
-    <div class="flex items-center gap-8 mb-16">
+    <div class="flex items-center gap-8 mb-8">
       ${tickerIcon(ticker, p.name)}
       <div style="flex:1">
         <div class="text-lg text-bold">${ticker}</div>
@@ -29,6 +30,14 @@ export async function render(container, { ticker }) {
         <div class="text-lg text-bold">${formatCurrency(p.currentPrice)}</div>
       </div>
     </div>
+    <div class="flex gap-4 mb-8" style="flex-wrap:wrap">
+      <button class="btn btn-sm btn-outline" id="btn-edit" title="Edit">&#9998; Edit</button>
+      <button class="btn btn-sm btn-outline" id="btn-delete" title="Delete" style="color:var(--error);border-color:var(--error)">&#128465; Delete</button>
+      <button class="btn btn-sm btn-outline" id="btn-yahoo" title="Yahoo Finance">&#128279; Yahoo</button>
+      <button class="btn btn-sm btn-outline" id="btn-simulate" title="Simulate">&#128200; Simulate</button>
+      <button class="btn btn-sm btn-outline" id="btn-watchlist" title="Add to Watch List">&#9734; Watch List</button>
+      <button class="btn btn-sm btn-outline" id="btn-report" title="Full Yahoo Report">&#9432; Report</button>
+    </div>
     <div class="tab-bar mb-8">
       <button class="tab${currentTab==='details'?' active':''}" data-tab="details">Details</button>
       <button class="tab${currentTab==='history'?' active':''}" data-tab="history">Price History</button>
@@ -36,6 +45,25 @@ export async function render(container, { ticker }) {
     </div>
     <div id="tab-content"></div>
   </div>`;
+
+  // Action buttons
+  document.getElementById('btn-edit')?.addEventListener('click', () => navigate(`#/item-form/${ticker}`));
+  document.getElementById('btn-delete')?.addEventListener('click', async () => {
+    const warn = getPref('warn_before_delete') !== false;
+    if (!warn || await confirmAction('Delete Position', `Delete ${ticker} and all its data? This cannot be undone.`)) {
+      await positions.delete(ticker);
+      showToast(`${ticker} deleted`);
+      navigate('#/positions');
+    }
+  });
+  document.getElementById('btn-yahoo')?.addEventListener('click', () => {
+    window.open(`https://finance.yahoo.com/quote/${encodeURIComponent(ticker)}`, '_blank');
+  });
+  document.getElementById('btn-simulate')?.addEventListener('click', () => {
+    navigate(`#/simulation/${ticker}/${p.quantity || 0}`);
+  });
+  document.getElementById('btn-watchlist')?.addEventListener('click', () => showAddToWatchListDialog(ticker, p.currentPrice));
+  document.getElementById('btn-report')?.addEventListener('click', () => showFullReportDialog(ticker));
 
   container.querySelectorAll('.tab').forEach(t => {
     t.addEventListener('click', () => { currentTab = t.dataset.tab; render(container, { ticker }); });
@@ -60,12 +88,9 @@ export async function render(container, { ticker }) {
         <div class="card p-12" style="flex:1;text-align:center"><div class="text-xs text-muted">Div/Share</div><div class="text-bold">${formatCurrency(p.dividendRate)}</div></div>
         <div class="card p-12" style="flex:1;text-align:center"><div class="text-xs text-muted">Annual Dividend</div><div class="text-bold">${formatCurrency(p.dividendRate * p.quantity)}</div></div>
       </div>` : '<div class="mb-16"></div>'}
-      ${collapsibleCard('analysis_' + ticker, 'Analysis Info', '<div id="analysis-content"><div class="spinner"></div> Loading...</div>')}
       ${collapsibleCard('news_' + ticker, 'News on ' + ticker, '<div id="news-content"><div class="spinner"></div> Loading...</div>')}
-      <button class="btn btn-primary w-full mt-8" onclick="window.open('https://finance.yahoo.com/quote/${encodeURIComponent(ticker)}','_blank')">Open on Yahoo Finance</button>
     `;
     initCollapsibleCards(content);
-    loadAnalysis(ticker);
     loadNews(ticker);
   } else if (currentTab === 'history') {
     const TIMEFRAMES = [
@@ -484,4 +509,160 @@ async function loadHistory(ticker, range, interval) {
   } catch (err) {
     summary.innerHTML = `<div class="text-muted">Error: ${err.message}</div>`;
   }
+}
+
+async function showAddToWatchListDialog(ticker, currentPrice) {
+  const overlay = document.getElementById('dialog-overlay');
+  overlay.className = 'dialog-overlay';
+  let lists = [];
+  try { lists = await watchlists.list(); } catch {}
+  if (lists.length === 0) {
+    overlay.innerHTML = `
+      <div class="dialog" style="max-width:400px">
+        <div class="dialog-title">Add to Watch List</div>
+        <p class="text-sm text-muted">No watch lists found. Create one first from the Watch List screen.</p>
+        <div class="dialog-actions">
+          <button class="btn btn-outline" id="wl-cancel">Cancel</button>
+          <button class="btn btn-primary" id="wl-goto">Go to Watch Lists</button>
+        </div>
+      </div>`;
+    document.getElementById('wl-cancel').addEventListener('click', () => { overlay.className = 'dialog-overlay hidden'; });
+    document.getElementById('wl-goto').addEventListener('click', () => { overlay.className = 'dialog-overlay hidden'; navigate('#/watchlist'); });
+    return;
+  }
+  const options = lists.map(l => `<option value="${l.id}">${l.name}</option>`).join('');
+  overlay.innerHTML = `
+    <div class="dialog" style="max-width:400px">
+      <div class="dialog-title">Add ${ticker} to Watch List</div>
+      <div class="form-group mb-8"><label>Watch List</label><select class="select" id="wl-select">${options}</select></div>
+      <div class="form-group mb-8"><label>Shares</label><input type="number" class="input" id="wl-shares" value="0" min="0" step="any"></div>
+      <div class="form-group mb-8"><label>Price</label><input type="number" class="input" id="wl-price" value="${currentPrice}" step="0.01"></div>
+      <div class="dialog-actions">
+        <button class="btn btn-outline" id="wl-cancel">Cancel</button>
+        <button class="btn btn-primary" id="wl-add">Add</button>
+      </div>
+    </div>`;
+  document.getElementById('wl-cancel').addEventListener('click', () => { overlay.className = 'dialog-overlay hidden'; });
+  document.getElementById('wl-add').addEventListener('click', async () => {
+    const listId = document.getElementById('wl-select').value;
+    const shares = parseFloat(document.getElementById('wl-shares').value) || 0;
+    const price = parseFloat(document.getElementById('wl-price').value) || 0;
+    await watchlists.addItem(listId, { ticker, shares, priceWhenAdded: price, addedDate: Math.floor(Date.now() / 86400000) });
+    overlay.className = 'dialog-overlay hidden';
+    showToast(`${ticker} added to watch list`);
+  });
+}
+
+async function showFullReportDialog(ticker) {
+  const overlay = document.getElementById('dialog-overlay');
+  overlay.className = 'dialog-overlay';
+  overlay.innerHTML = `
+    <div class="dialog" style="max-width:700px;max-height:85vh;display:flex;flex-direction:column">
+      <div class="dialog-title flex justify-between items-center">
+        <span>Yahoo Finance Detail — ${ticker}</span>
+        <button class="btn-icon" id="report-close" style="font-size:20px">&times;</button>
+      </div>
+      <div style="flex:1;overflow-y:auto;padding:0 16px 16px">
+        <div class="flex items-center gap-8"><div class="spinner"></div> <span class="text-sm text-muted">Fetching data from Yahoo Finance...</span></div>
+      </div>
+    </div>`;
+  document.getElementById('report-close').addEventListener('click', () => { overlay.className = 'dialog-overlay hidden'; });
+
+  try {
+    const resp = await fetch(`/api/yahoo/report/${encodeURIComponent(ticker)}`);
+    const report = await resp.json();
+    if (report.error) throw new Error(report.error);
+
+    const sections = buildReportSections(report);
+    if (sections.length === 0) {
+      overlay.querySelector('[style*="overflow"]').innerHTML = '<div class="text-muted p-16 text-center">No data available</div>';
+      return;
+    }
+
+    let activeTab = 0;
+    const contentArea = overlay.querySelector('[style*="overflow"]');
+
+    function renderReport() {
+      contentArea.innerHTML = `
+        <div class="tab-bar mb-8" style="position:sticky;top:0;background:var(--surface);z-index:1">
+          ${sections.map((s, i) => `<button class="tab${i === activeTab ? ' active' : ''}" data-ridx="${i}">${s.title}</button>`).join('')}
+        </div>
+        <div class="data-table-wrapper">
+          <table class="data-table">
+            <thead><tr><th>Metric</th><th>Value</th></tr></thead>
+            <tbody>${sections[activeTab].fields.map((f, i) => `
+              <tr${i % 2 ? ' class="row-alt"' : ''}>
+                <td><span class="text-bold">${f.name}</span><br><span class="text-xs text-muted">${f.description}</span></td>
+                <td class="text-bold" style="text-align:right;white-space:nowrap">${f.value}</td>
+              </tr>`).join('')}
+            </tbody>
+          </table>
+        </div>`;
+      contentArea.querySelectorAll('[data-ridx]').forEach(btn => {
+        btn.addEventListener('click', () => { activeTab = parseInt(btn.dataset.ridx); renderReport(); });
+      });
+    }
+    renderReport();
+  } catch (err) {
+    overlay.querySelector('[style*="overflow"]').innerHTML = `<div class="text-muted p-16">Error: ${err.message}</div>`;
+  }
+}
+
+function buildReportSections(report) {
+  const sections = [];
+  const q = report.quote;
+  const a = report.analysis;
+
+  // Market Data from quote
+  if (q) {
+    const fields = [];
+    if (q.shortName) fields.push({ name: 'Name', value: q.shortName, description: 'Company name' });
+    if (q.quoteType) fields.push({ name: 'Type', value: q.quoteType, description: 'Security type' });
+    fields.push({ name: 'Price', value: formatCurrency(q.price), description: 'Current market price' });
+    fields.push({ name: 'Previous Close', value: formatCurrency(q.previousClose), description: 'Previous trading day close' });
+    if (q.dayHigh) fields.push({ name: 'Day High', value: formatCurrency(q.dayHigh), description: 'Highest price today' });
+    if (q.dayLow) fields.push({ name: 'Day Low', value: formatCurrency(q.dayLow), description: 'Lowest price today' });
+    if (q.dividendRate) fields.push({ name: 'Dividend Rate', value: formatCurrency(q.dividendRate), description: 'Trailing annual dividend per share' });
+    if (fields.length) sections.push({ title: 'Market Data', fields });
+  }
+
+  if (a) {
+    // Valuation
+    const val = [];
+    if (a.marketCap) val.push({ name: 'Market Cap', value: formatLargeNum(a.marketCap), description: 'Total market value of outstanding shares' });
+    if (a.trailingPE) val.push({ name: 'Trailing P/E', value: a.trailingPE.toFixed(2), description: 'Price-to-earnings based on last 12 months' });
+    if (a.forwardPE) val.push({ name: 'Forward P/E', value: a.forwardPE.toFixed(2), description: 'Price-to-earnings based on estimated future earnings' });
+    if (a.dividendYield) val.push({ name: 'Dividend Yield', value: (a.dividendYield * 100).toFixed(2) + '%', description: 'Annual dividend as % of price' });
+    if (a.trailingAnnualDividendRate) val.push({ name: 'Trailing Dividend', value: formatCurrency(a.trailingAnnualDividendRate), description: 'Dividends paid per share last 12 months' });
+    if (a.fiftyTwoWeekHigh) val.push({ name: '52-Week High', value: formatCurrency(a.fiftyTwoWeekHigh), description: 'Highest price in last 52 weeks' });
+    if (a.fiftyTwoWeekLow) val.push({ name: '52-Week Low', value: formatCurrency(a.fiftyTwoWeekLow), description: 'Lowest price in last 52 weeks' });
+    if (a.fiftyDayAverage) val.push({ name: '50-Day Avg', value: formatCurrency(a.fiftyDayAverage), description: 'Average closing price over 50 days' });
+    if (a.twoHundredDayAverage) val.push({ name: '200-Day Avg', value: formatCurrency(a.twoHundredDayAverage), description: 'Average closing price over 200 days' });
+    if (val.length) sections.push({ title: 'Valuation', fields: val });
+
+    // Financials
+    const fin = [];
+    if (a.eps) fin.push({ name: 'EPS', value: formatCurrency(a.eps), description: 'Earnings per share (trailing 12 months)' });
+    if (a.revenuePerShare) fin.push({ name: 'Revenue/Share', value: formatCurrency(a.revenuePerShare), description: 'Revenue per share' });
+    if (a.profitMargins) fin.push({ name: 'Profit Margin', value: (a.profitMargins * 100).toFixed(1) + '%', description: 'Net income as % of revenue' });
+    if (a.returnOnEquity) fin.push({ name: 'Return on Equity', value: (a.returnOnEquity * 100).toFixed(1) + '%', description: 'Net income as % of shareholder equity' });
+    if (a.targetMeanPrice) fin.push({ name: 'Analyst Target', value: formatCurrency(a.targetMeanPrice), description: 'Average analyst price target' });
+    if (fin.length) sections.push({ title: 'Financials', fields: fin });
+
+    // Profile
+    const prof = [];
+    if (a.sector) prof.push({ name: 'Sector', value: a.sector, description: 'Business sector' });
+    if (a.industry) prof.push({ name: 'Industry', value: a.industry, description: 'Industry classification' });
+    if (a.longBusinessSummary) prof.push({ name: 'About', value: a.longBusinessSummary.substring(0, 300) + (a.longBusinessSummary.length > 300 ? '...' : ''), description: 'Business summary' });
+    if (prof.length) sections.push({ title: 'Profile', fields: prof });
+  }
+
+  return sections;
+}
+
+function formatLargeNum(val) {
+  if (val >= 1e12) return (val / 1e12).toFixed(2) + 'T';
+  if (val >= 1e9) return (val / 1e9).toFixed(2) + 'B';
+  if (val >= 1e6) return (val / 1e6).toFixed(2) + 'M';
+  return formatCurrency(val);
 }
