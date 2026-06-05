@@ -153,10 +153,33 @@ function showAbout() {
       <div class="dialog-title">About InvestHelp</div>
       <p>InvestHelp PWA v1.0</p>
       <p class="text-sm text-muted mt-8">Investment tracking progressive web app.</p>
+      <div class="mt-16">
+        <button class="btn btn-outline w-full" id="refresh-app-btn">&#128260; Refresh App</button>
+        <p class="text-xs text-muted mt-4 text-center">Clears cached files and reloads with latest code</p>
+      </div>
       <div class="dialog-actions">
         <button class="btn btn-primary" id="close-about">Close</button>
       </div>
     </div>
   `;
   document.getElementById('close-about').addEventListener('click', () => { overlay.className = 'dialog-overlay hidden'; });
+  document.getElementById('refresh-app-btn').addEventListener('click', async () => {
+    const btn = document.getElementById('refresh-app-btn');
+    btn.disabled = true;
+    btn.textContent = 'Refreshing...';
+    try {
+      // Clear all caches
+      const keys = await caches.keys();
+      await Promise.all(keys.map(k => caches.delete(k)));
+      // Tell service worker to skip waiting
+      const reg = await navigator.serviceWorker?.getRegistration();
+      if (reg) {
+        reg.waiting?.postMessage('force-refresh');
+        reg.active?.postMessage('force-refresh');
+        await reg.update();
+      }
+    } catch {}
+    // Hard reload
+    window.location.reload(true);
+  });
 }
