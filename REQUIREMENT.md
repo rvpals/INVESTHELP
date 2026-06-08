@@ -89,6 +89,7 @@ Android app to track personal investments.
 ### Items (unified screen combining item metadata + position tracking)
 - **Pie chart** — collapsible chart section showing allocation by ticker value
 - **STOCK/ETF tabs** — filter items by type
+- **Dividend tab** — aggregate annual dividend view; "Total Annual Dividend Income" summary card at top; separate Stock and ETF cards each with exploding pie chart (largest slice offset) and sortable data table (columns: Ticker, Shares, Div/Share, Annual, %); sort options: Annual Dividend, Div/Share, Ticker, Shares; only dividend-paying tickers shown; clickable rows navigate to item detail
 - **Sort dropdown** — sort items by Ticker (A-Z), Total Value (descending), or Current Price (descending); defaults to Total Value
 - **Items list** — card-style rows with alternating background colors; each row shows:
   - Left: 3D ticker icon + Ticker (bold, larger) with company name (smaller, italic) below

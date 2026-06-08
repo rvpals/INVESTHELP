@@ -24,9 +24,12 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Analytics
+import androidx.compose.material.icons.filled.ArrowDownward
+import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.Payments
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.ShowChart
 import androidx.compose.material.icons.filled.TrendingUp
@@ -50,8 +53,8 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.ScrollableTabRow
 import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -126,7 +129,8 @@ fun ItemListScreen(
     val tabs = listOf(
         TabInfo("STOCK", Icons.Default.ShowChart),
         TabInfo("ETF", Icons.Default.TrendingUp),
-        TabInfo("Analysis", Icons.Default.Analytics)
+        TabInfo("Analysis", Icons.Default.Analytics),
+        TabInfo("Dividend", Icons.Default.Payments)
     )
     val filteredItems = when (selectedTab) {
         0 -> items.filter { it.type == InvestmentType.Stock }
@@ -238,7 +242,7 @@ fun ItemListScreen(
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            TabRow(selectedTabIndex = selectedTab) {
+            ScrollableTabRow(selectedTabIndex = selectedTab, edgePadding = 0.dp) {
                 tabs.forEachIndexed { index, tab ->
                     Tab(
                         selected = selectedTab == index,
@@ -295,6 +299,9 @@ fun ItemListScreen(
                 }
                 2 -> {
                     AnalysisTab(items = items, currencyFormat = currencyFormat)
+                }
+                3 -> {
+                    DividendTab(items = items, currencyFormat = currencyFormat, onItemClick = onNavigateToItem)
                 }
             }
         }
@@ -669,6 +676,299 @@ private fun ExplodingPieCard(
                         }
                     }
                 }
+            }
+        }
+    }
+}
+
+// --- Dividend Tab ---
+
+private enum class DividendSortOption(val label: String) {
+    AnnualDividend("Annual Dividend"),
+    DividendRate("Div/Share"),
+    Ticker("Ticker"),
+    Shares("Shares")
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun DividendTab(
+    items: List<InvestmentItemEntity>,
+    currencyFormat: NumberFormat,
+    onItemClick: (String) -> Unit
+) {
+    val stockDividends = items.filter { it.type == InvestmentType.Stock && it.dividendRate > 0 && it.quantity > 0 }
+    val etfDividends = items.filter { it.type == InvestmentType.ETF && it.dividendRate > 0 && it.quantity > 0 }
+    val totalAnnual = (stockDividends + etfDividends).sumOf { it.dividendRate * it.quantity }
+
+    if (stockDividends.isEmpty() && etfDividends.isEmpty()) {
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Text("No dividend-paying positions", style = MaterialTheme.typography.bodyLarge)
+            Text("Dividend data is fetched during price refresh", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        return
+    }
+
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        item { Spacer(modifier = Modifier.height(4.dp)) }
+
+        item {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text("Total Annual Dividend Income", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = currencyFormat.format(totalAnnual),
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF1565C0)
+                    )
+                }
+            }
+        }
+
+        if (stockDividends.isNotEmpty()) {
+            item {
+                DividendPieCard(
+                    title = "Stock",
+                    items = stockDividends,
+                    currencyFormat = currencyFormat,
+                    onItemClick = onItemClick
+                )
+            }
+        }
+
+        if (etfDividends.isNotEmpty()) {
+            item {
+                DividendPieCard(
+                    title = "ETF",
+                    items = etfDividends,
+                    currencyFormat = currencyFormat,
+                    onItemClick = onItemClick
+                )
+            }
+        }
+
+        item { Spacer(modifier = Modifier.height(8.dp)) }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun DividendPieCard(
+    title: String,
+    items: List<InvestmentItemEntity>,
+    currencyFormat: NumberFormat,
+    onItemClick: (String) -> Unit
+) {
+    val dividendData = items.map { Triple(it.ticker, it.dividendRate * it.quantity, it) }
+    val totalDividend = dividendData.sumOf { it.second }
+    val maxIndex = if (dividendData.isNotEmpty()) dividendData.indices.maxByOrNull { dividendData[it].second } ?: 0 else 0
+
+    var sortOption by remember { mutableStateOf(DividendSortOption.AnnualDividend) }
+    var sortAsc by remember { mutableStateOf(false) }
+
+    val sortedData = when (sortOption) {
+        DividendSortOption.AnnualDividend -> if (sortAsc) dividendData.sortedBy { it.second } else dividendData.sortedByDescending { it.second }
+        DividendSortOption.DividendRate -> if (sortAsc) dividendData.sortedBy { it.third.dividendRate } else dividendData.sortedByDescending { it.third.dividendRate }
+        DividendSortOption.Ticker -> if (sortAsc) dividendData.sortedBy { it.first } else dividendData.sortedByDescending { it.first }
+        DividendSortOption.Shares -> if (sortAsc) dividendData.sortedBy { it.third.quantity } else dividendData.sortedByDescending { it.third.quantity }
+    }
+
+    val priceFormat = remember { DecimalFormat("#,##0.00") }
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                "Annual: ${currencyFormat.format(totalDividend)}",
+                style = MaterialTheme.typography.bodySmall,
+                color = Color(0xFF1565C0),
+                fontWeight = FontWeight.Medium
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Exploding pie chart
+            Canvas(
+                modifier = Modifier
+                    .fillMaxWidth(0.65f)
+                    .aspectRatio(1f)
+                    .align(Alignment.CenterHorizontally)
+            ) {
+                val explodeOffset = 12.dp.toPx()
+                val diameter = size.minDimension - explodeOffset * 2
+                val center = Offset(size.width / 2f, size.height / 2f)
+                var startAngle = -90f
+
+                dividendData.forEachIndexed { index, (_, annualDiv, _) ->
+                    val sweep = (annualDiv / totalDividend * 360.0).toFloat()
+                    val midAngle = Math.toRadians((startAngle + sweep / 2).toDouble())
+
+                    val offset = if (index == maxIndex) {
+                        Offset(
+                            (cos(midAngle) * explodeOffset).toFloat(),
+                            (sin(midAngle) * explodeOffset).toFloat()
+                        )
+                    } else Offset.Zero
+
+                    val topLeft = Offset(
+                        center.x - diameter / 2f + offset.x,
+                        center.y - diameter / 2f + offset.y
+                    )
+
+                    drawArc(
+                        color = chartColors[index % chartColors.size],
+                        startAngle = startAngle,
+                        sweepAngle = sweep,
+                        useCenter = true,
+                        topLeft = topLeft,
+                        size = Size(diameter, diameter)
+                    )
+                    startAngle += sweep
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Legend
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                dividendData.forEachIndexed { index, (ticker, annualDiv, _) ->
+                    val pct = if (totalDividend > 0) annualDiv / totalDividend * 100 else 0.0
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier
+                                .size(10.dp)
+                                .clip(CircleShape)
+                                .background(chartColors[index % chartColors.size])
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "$ticker ${"%.1f".format(pct)}%",
+                            style = MaterialTheme.typography.bodySmall,
+                            fontWeight = if (index == maxIndex) FontWeight.Bold else FontWeight.Medium
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+            HorizontalDivider(color = MaterialTheme.colorScheme.outline)
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Sort controls
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.End
+            ) {
+                DividendSortOption.entries.forEach { opt ->
+                    val isSelected = sortOption == opt
+                    TextButton(
+                        onClick = {
+                            if (isSelected) sortAsc = !sortAsc
+                            else { sortOption = opt; sortAsc = false }
+                        }
+                    ) {
+                        Text(
+                            text = opt.label,
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                            color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        if (isSelected) {
+                            Icon(
+                                if (sortAsc) Icons.Default.ArrowUpward else Icons.Default.ArrowDownward,
+                                contentDescription = null,
+                                modifier = Modifier.size(14.dp),
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
+                }
+            }
+
+            // Data table header
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                    .padding(horizontal = 8.dp, vertical = 8.dp)
+            ) {
+                Text("Ticker", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1.2f))
+                Text("Shares", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("Div/Share", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("Annual", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1.2f), color = Color(0xFF1565C0))
+                Text("%", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, modifier = Modifier.weight(0.6f), color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            HorizontalDivider(color = MaterialTheme.colorScheme.outline)
+
+            // Data table rows
+            sortedData.forEachIndexed { index, (ticker, annualDiv, item) ->
+                val pct = if (totalDividend > 0) annualDiv / totalDividend * 100 else 0.0
+                val bgColor = if (index % 2 == 1) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f) else Color.Transparent
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(bgColor)
+                        .clickable { onItemClick(ticker) }
+                        .padding(horizontal = 8.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = ticker,
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.weight(1.2f)
+                    )
+                    Text(
+                        text = priceFormat.format(item.quantity),
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Text(
+                        text = "$${priceFormat.format(item.dividendRate)}",
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Text(
+                        text = currencyFormat.format(annualDiv),
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF1565C0),
+                        modifier = Modifier.weight(1.2f)
+                    )
+                    Text(
+                        text = "${"%.1f".format(pct)}%",
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.weight(0.6f)
+                    )
+                }
+                HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f))
             }
         }
     }

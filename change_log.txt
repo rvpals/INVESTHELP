@@ -77,3 +77,36 @@ Session: 2026-06-08
 - 6085527 Add batch script to generate Android signing keystore and properties
 - 8e03b0e Fix release build crash when keystore.properties is missing
 - 5561eea Add service worker back with network-first caching, Refresh App button, PWA build guide
+
+================================================================================
+Session: 2026-06-08 (continued)
+================================================================================
+
+## Android Changes
+
+### New Features
+- Dividend tab added to Positions screen (4th tab with Payments icon)
+  - ScrollableTabRow to accommodate 4 tabs (STOCK, ETF, Analysis, Dividend)
+  - "Total Annual Dividend Income" summary card (blue #1565C0, bold)
+  - Separate Stock and ETF DividendPieCard composables
+  - Exploding pie chart: Canvas drawArc with offset on largest slice
+  - Color-coded legend with per-ticker percentage
+  - Sortable data table with 4 sort options (Annual Dividend, Div/Share, Ticker, Shares)
+  - Toggle sort direction by clicking active sort button
+  - Columns: Ticker, Shares, Div/Share, Annual, %
+  - Alternating row colors, clickable rows navigate to item detail
+  - Only tickers with dividendRate > 0 and quantity > 0 shown
+  - Empty state message when no dividend-paying positions exist
+
+## PWA Changes
+
+### New Features
+- Dividend tab added to Positions screen (4th tab)
+  - "Total Annual Dividend Income" summary card
+  - Separate Stock and ETF dividend cards with exploding pie charts
+  - Largest slice offset via custom Canvas rendering (not shared pie-chart component)
+  - Ticker labels inside slices, color-coded legend with percentages
+  - Sort buttons (Annual, Div/Share, Ticker, Shares) with toggle direction
+  - Data table using existing data-table CSS (alternating rows, gridlines, hover)
+  - Clickable rows navigate to item detail
+  - Only dividend-paying tickers shown; empty state for no dividends

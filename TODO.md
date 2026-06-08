@@ -242,6 +242,8 @@
 - [x] PWA: fix backup import missing watch list tables (INSERT OR REPLACE)
 - [x] PWA: fix Daily Glance gain/loss color (was using total value instead of daily change)
 - [x] PWA: improve dividend rate fetch with crumb auth fallback
+- [x] Android: Dividend tab in Positions screen — 4th tab with total annual income, Stock/ETF exploding pie charts, sortable data tables (Annual Dividend, Div/Share, Ticker, Shares); only dividend-paying tickers shown
+- [x] PWA: Dividend tab in Positions screen — matches Android: total income card, Stock/ETF cards with exploding pie charts, sort buttons, data tables with clickable rows
 - [x] Android: dividend rate tracking (DB migration v29-v30, entity, UI display)
 - [x] Android: CSV Performance import account name mapping dialog
 - [x] Android: moved all files into ANDROID_APP/ subfolder

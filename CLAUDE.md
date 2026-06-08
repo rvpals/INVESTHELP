@@ -38,11 +38,12 @@ Investment tracking app with Android native + PWA web app.
 - Navigation routes use ticker strings (not Long IDs) for item detail, form, and statistics
 - DatabaseProvider pattern: DB opens lazily on first access
 - CASCADE deletes: removing account removes associated performance records (transactions and items are not tied to accounts)
-- Items screen: 3 tabs with icons — STOCK (ShowChart), ETF (TrendingUp), Analysis (Analytics); STOCK/ETF tabs have pie chart + item list; Analysis tab has Stock and ETF exploding pie chart cards
+- Items screen: 4 tabs with icons — STOCK (ShowChart), ETF (TrendingUp), Analysis (Analytics), Dividend (Payments); STOCK/ETF tabs have pie chart + item list; Analysis tab has Stock and ETF exploding pie chart cards; Dividend tab has total annual income summary + Stock/ETF dividend cards with exploding pie charts and sortable tables
 - Items screen: Refresh All toolbar action
 - Items screen: sort-by dropdown (Ticker, Total Value, Current Price) above items list; defaults to Total Value descending
 - Items screen: brokerage-style card rows with thin dividers; each row shows TickerIcon3D + ticker (bold) + uppercase company name on left, current price with day change $ and % below, total position value on right with daily gain/loss badge (green/red chip)
 - Items screen: annual dividend income line ("Div: $X.XX/yr") shown below price when dividendRate > 0; blue color (#1565C0)
+- Items screen Dividend tab: "Total Annual Dividend Income" summary card at top (blue, bold); separate "Stock" and "ETF" DividendPieCard sections; each card has exploding pie chart (largest slice offset), color-coded legend with % per ticker, sort buttons (Annual Dividend, Div/Share, Ticker, Shares), and data table (Ticker, Shares, Div/Share, Annual, %); only shows tickers with dividendRate > 0 and quantity > 0; clickable rows navigate to item detail
 - Items screen: only Edit button per row (no Delete in table); Delete available in Edit dialog
 - TickerIcon3D: gradient-filled rounded-corner (10dp) box with shadow; color derived from ticker hash; white letter fallback; company logo overlay from companiesmarketcap.com CDN via Coil
 - Company full name fetched from Yahoo Finance `shortName` during price refresh
@@ -225,7 +226,7 @@ All PWA code is inside the `PWA/` folder:
   - `js/preferences.js` - localStorage preferences with defaults
   - `js/screens/` - Screen modules (one per route)
     - `dashboard.js` - Dashboard with collapsible cards (Portfolio Summary, Market Indices, Daily Glance, Positions, Position Details)
-    - `items.js` - Positions list with Stock/ETF/Analysis tabs
+    - `items.js` - Positions list with Stock/ETF/Analysis/Dividend tabs
     - `item-detail.js` - Single ticker detail (Details, Price History, Transactions tabs + Investing Performance chart)
     - `item-form.js` - Add/edit position form
     - `transaction-list.js` - Transaction list with multi-select
