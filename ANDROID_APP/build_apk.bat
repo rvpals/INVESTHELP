@@ -1,11 +1,9 @@
 @echo off
+call env.bat
 echo ============================================
 echo  Building Invest Help - Release APK
 echo ============================================
 echo.
-
-set JAVA_HOME=E:/Prog/Java/jdk-17
-
 echo Using JAVA_HOME: %JAVA_HOME%
 echo.
 

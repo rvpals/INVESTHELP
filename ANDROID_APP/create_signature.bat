@@ -1,10 +1,9 @@
 @echo off
+call env.bat
 echo ============================================
 echo  Create Android Signing Keystore
 echo ============================================
 echo.
-
-set JAVA_HOME=E:/Prog/Java/jdk-17
 set KEYTOOL=%JAVA_HOME%\bin\keytool.exe
 
 if not exist "%KEYTOOL%" (
