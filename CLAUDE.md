@@ -13,7 +13,7 @@ Investment tracking app with Android native + PWA web app.
 - **Min SDK:** 29, Target SDK: 35
 - **Architecture:** MVVM + Repository pattern
 - **DI:** Hilt (KSP)
-- **Database:** Room, version 29
+- **Database:** Room, version 30
 - **Navigation:** Compose Navigation (type-safe routes)
 - **Splash:** AndroidX SplashScreen API (core-splashscreen 1.0.1)
 - **Charts:** Custom Canvas-drawn (pie chart, line chart) — no external chart library
@@ -181,7 +181,10 @@ Located in `PWA/` folder. Node.js + Express + better-sqlite3 server with vanilla
 - **Frontend:** 18 screens, 11 components, HTML5 Canvas charts, hash-based SPA router
 - **Database:** Same SQLite schema as Android Room v29 (12 tables + settings)
 - **No build step:** vanilla JS modules, no framework
-- **Yahoo Finance:** Server-side direct fetch calls (no CORS issues since server-side)
+- **Yahoo Finance:** Server-side direct fetch calls (no CORS issues since server-side); v10 summaryDetail with crumb auth for dividend rate
+- **Service Worker:** Network-first for JS/CSS/HTML, cache-first for assets; "Refresh App" button in About to force cache bust
+- **Snapshot:** Static `snapshot.html` generated after every Refresh All — offline-viewable portfolio summary
+- **Server Log:** In-memory log capture (500 entries); viewable in Settings > Server Log tab
 - **Backup:** Same v5 JSON format — data portable between Android and PWA
 - **Run:** `START_APP.bat` or `npm start` from PWA/ folder → http://localhost:3000
 - **Dependencies:** express, better-sqlite3, multer (installed via `npm install`)
@@ -208,8 +211,11 @@ All PWA code is inside the `PWA/` folder:
     - `sql-explorer.js` - Raw SQL execution
     - `yahoo.js` - Yahoo Finance proxy routes
   - `services/` - Business logic services
-    - `yahoo-finance.js` - Yahoo Finance API (direct fetch, no proxy)
+    - `yahoo-finance.js` - Yahoo Finance API (direct fetch, crumb auth for v10)
     - `csv-parser.js` - CSV parsing with auto-mapping aliases
+    - `auto-refresh.js` - Periodic price refresh, change history, auto-backup, snapshot generation
+    - `snapshot.js` - Static HTML portfolio snapshot generator
+    - `app-log.js` - In-memory server log capture (intercepts console.log/error/warn)
 - `PWA/public/` - Frontend (vanilla JS, no build step)
   - `index.html` - SPA shell
   - `css/styles.css` - Global styles (dark/light theme)
@@ -246,16 +252,47 @@ All PWA code is inside the `PWA/` folder:
     - `toast.js` - Toast notifications
   - `js/utils/` - Utility modules
     - `format.js` - Currency, percent, date formatting
+  - `sw.js` - Service worker (network-first caching, force-refresh via message)
 - `PWA/package.json` - Node.js dependencies
 - `PWA/START_APP.bat` - Windows launcher script
+- `PWA/start_server.sh` - Linux/NAS launcher (stop, pull, restart)
+- `PWA/full_reset_server.sh` - Full reset (backup DB, hard reset, restore DB, restart)
 
 ## Build (Android)
 Open `ANDROID_APP/` in Android Studio and sync Gradle. Requires JDK 17+.
-Set `JAVA_HOME` to JDK 17 path if building from CLI:
+
+### Batch Scripts (in ANDROID_APP/)
+All scripts source `env.bat` for shared config (JAVA_HOME, proxy settings).
+- `env.bat` - Shared environment config (JAVA_HOME path, corporate proxy)
+- `build_apk.bat` - Clean + assembleRelease, opens output folder
+- `create_signature.bat` - Generate signing keystore + keystore.properties
+- `run_once.bat` - First-time setup (keystore.properties, local.properties, keystore generation)
+- `install_dependency.bat` - Download/install JDK 17 + Android SDK command-line tools
+- `start_emulator.bat` - Launch emulator, build debug, install and run app
+
+### Building from CLI
 ```
 cd ANDROID_APP
-JAVA_HOME="E:/Prog/Java/jdk-17" ./gradlew assembleRelease
+build_apk.bat
 ```
+Or manually:
+```
+cd ANDROID_APP
+set JAVA_HOME=C:\Program Files\jdk-17.0.2
+gradlew assembleRelease
+```
+
+### First-Time Setup on New Machine
+Run `run_once.bat` to create gitignored config files, or manually:
+1. Set JAVA_HOME in `env.bat`
+2. Run `create_signature.bat` to generate keystore
+3. Run `install_dependency.bat` to install Android SDK
+4. Run `build_apk.bat` to build
+
+### Corporate Proxy
+Proxy configured in two places:
+- `env.bat` — `PROXY` variable used by batch scripts (curl downloads)
+- `gradle.properties` — `systemProp.http(s).proxyHost/Port` used by Gradle wrapper (Java networking)
 
 ## Versioning
 - Version managed via `ANDROID_APP/version.properties` (VERSION_MAJOR, VERSION_MINOR, VERSION_CODE)

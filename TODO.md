@@ -228,6 +228,30 @@
 - [x] PWA web app: Node.js + Express + better-sqlite3 server with vanilla JS frontend (64 files)
 - [x] PWA: Yahoo Finance proxy setting for networks where Yahoo is blocked
 - [x] PWA: configurable proxy URL in Settings with test connection button
+- [x] PWA: dividend rate tracking (DB migration, entity, UI display on positions + item detail)
+- [x] PWA: Settings UI reorganized with collapsible cards (General, Theme, NDA, Dashboard Cards, Market Indices; Backup & Restore, Import Data)
+- [x] PWA: tab styling improvements (borders, hover effect, active highlight)
+- [x] PWA: item detail action buttons (Edit, Delete, Yahoo, Simulate, Watch List, Report)
+- [x] PWA: Full Yahoo Report dialog with tabbed sections (Market Data, Valuation, Financials, Profile)
+- [x] PWA: Server Log viewer in Settings tab
+- [x] PWA: portfolio snapshot generation (static HTML after Refresh All)
+- [x] PWA: service worker with network-first caching + "Refresh App" button in About
+- [x] PWA: start_server.sh and full_reset_server.sh deployment scripts
+- [x] PWA: fix NDA scan crash (undefined volume data)
+- [x] PWA: fix Yahoo analysis 500 error (3-tier fallback: v10+crumb, v10, v8 chart)
+- [x] PWA: fix backup import missing watch list tables (INSERT OR REPLACE)
+- [x] PWA: fix Daily Glance gain/loss color (was using total value instead of daily change)
+- [x] PWA: improve dividend rate fetch with crumb auth fallback
+- [x] Android: dividend rate tracking (DB migration v29-v30, entity, UI display)
+- [x] Android: CSV Performance import account name mapping dialog
+- [x] Android: moved all files into ANDROID_APP/ subfolder
+- [x] Android: centralized env config in env.bat (JAVA_HOME, proxy)
+- [x] Android: build scripts (build_apk, create_signature, run_once, install_dependency)
+- [x] Android: fix release build when keystore.properties missing
+- [x] Android: fix keystore path resolution (rootProject.file for storeFile)
+- [x] Android: corporate proxy support in gradle.properties
+- [x] PWA Build Guide (PWA_BUILD_GUIDE.md)
+- [x] refresh_from_github.bat for Windows
 
 ## Pending
 - [ ] Fix deprecation warning: Icons.Filled.OpenInNew -> Icons.AutoMirrored.Filled.OpenInNew (ItemDetailScreen.kt)

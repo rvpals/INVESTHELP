@@ -1,0 +1,79 @@
+================================================================================
+Session: 2026-06-08
+================================================================================
+
+## PWA Changes
+
+### New Features
+- Service worker re-added with network-first caching strategy for JS/CSS/HTML
+  - Cache-first for images/fonts; API calls never cached
+  - "Refresh App" button in About dialog to force cache bust and reload
+  - Versioned cache (investhelp-v1) with old cache cleanup on activate
+- Portfolio snapshot generator (snapshot.js)
+  - Generates static snapshot.html after every Refresh All
+  - Self-contained HTML with portfolio summary cards and positions table
+  - Dark/light mode support via prefers-color-scheme
+- Server Log viewer in Settings > Server Log tab
+  - In-memory log capture (500 entries) intercepting console.log/error/warn
+  - View and clear log from the UI
+- Item detail action buttons bar: Edit, Delete, Yahoo Finance, Simulate, Watch List, Report
+- Full Yahoo Report dialog with tabbed sections (Market Data, Valuation, Financials, Profile)
+- Add to Watch List dialog from item detail screen
+- Deployment shell scripts: start_server.sh, full_reset_server.sh
+
+### Bug Fixes
+- Fixed Daily Glance gain/loss color: was using total position value (always positive)
+  instead of actual daily change amount for color class
+- Fixed NDA scan crash: scanData.avgVolume20Day and closingVolume undefined from Yahoo;
+  defaulted to 0
+- Fixed Yahoo Analysis 500 error: added 3-tier fallback (v10+crumb → v10 → v8 chart)
+- Fixed backup import missing watch list tables: changed INSERT to INSERT OR REPLACE
+- Improved dividend rate fetch: v8 chart meta often omits trailingAnnualDividendRate;
+  added v10 summaryDetail fallback with crumb auth, then without crumb as last resort
+- Removed broken version/git info from About dialog (was hanging on NAS)
+
+### UI Improvements
+- Settings Preferences tab reorganized into collapsible cards:
+  General, Theme, Next Day Actions, Dashboard Cards, Market Indices
+- Settings Data Management tab: Backup & Restore, Import Data collapsible cards
+- Tab styling: 1px solid borders, rounded top corners, hover highlight, active background
+
+## Android Changes
+
+### New Features
+- Dividend rate tracking: DB migration v29→v30 adds dividendRate column
+  - Fetched from Yahoo Finance trailingAnnualDividendRate (v8 chart meta)
+  - Also updated from v10 summaryDetail during analysis fetch
+  - Displayed on positions list ("Div: $X.XX/yr") and item detail cards
+- CSV Performance import: account name mapping dialog for matching CSV account names
+  to existing app accounts (explicit mapping → case-insensitive match → default account)
+
+### Build & DevOps
+- Moved all Android files into ANDROID_APP/ subfolder
+- Centralized environment config in env.bat (JAVA_HOME, proxy settings)
+  - All batch scripts (build_apk, create_signature, install_dependency, start_emulator)
+    now source env.bat instead of hardcoding paths
+- create_signature.bat: generates signing keystore + keystore.properties
+- run_once.bat: first-time setup for gitignored config files
+- install_dependency.bat: fixed "was unexpected at this time" error with delayed expansion
+  for paths containing spaces (C:\Program Files)
+- build.gradle.kts: guarded signing config behind keystorePropertiesFile.exists()
+  so builds don't crash when keystore.properties is missing
+- build.gradle.kts: changed file() to rootProject.file() for storeFile path resolution
+- gradle.properties: added corporate proxy settings (systemProp.http(s).proxyHost/Port)
+
+## Documentation
+- Created PWA_BUILD_GUIDE.md: comprehensive guide for building PWA apps covering
+  architecture, SPA routing, service workers, SQLite, theming, external APIs,
+  backup/restore, CSV import, deployment gotchas, and new project checklist
+- Created refresh_from_github.bat: Windows batch script for pulling latest code
+- Updated all MD files (CLAUDE.md, TODO.md, ISSUES.md, REQUIREMENT.md, TO_TEST.md)
+
+## Commits (this session)
+- 89d784b Centralize env config (JAVA_HOME, proxy) in env.bat, fix batch scripts
+- d04492b Fix Daily Glance gain/loss color, improve dividend rate fetch with crumb auth
+- 6368af3 Add first-time setup script for gitignored Android config files
+- 6859e3d Fix keystore path resolution after ANDROID_APP folder move
+- 6085527 Add batch script to generate Android signing keystore and properties
+- 8e03b0e Fix release build crash when keystore.properties is missing
+- 5561eea Add service worker back with network-first caching, Refresh App button, PWA build guide

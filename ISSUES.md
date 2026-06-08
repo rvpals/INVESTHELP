@@ -18,8 +18,20 @@
 ## Resolved
 - Android backup format (v1-v4) only exported accounts, positions, and transactions — missing 7 tables added in later migrations (performance records, watch lists, change history, definitions, SQL/AI library). Fixed in v5 backup format.
 
+## Resolved
+- PWA: NDA scan crash "Cannot read properties of undefined (reading 'toLocaleString')" — `scanData.avgVolume20Day` and `closingVolume` undefined from Yahoo. Fixed by defaulting to 0.
+- PWA: Yahoo Analysis 500 error — v10 quoteSummary needs crumb+cookie auth. Fixed with 3-tier fallback (v10 with crumb → v10 without → v8 chart).
+- PWA: Watch list tables not imported from Android backup — INSERT changed to INSERT OR REPLACE.
+- PWA: Browser not refreshing new features — service worker was caching old static files. Removed SW entirely initially, then re-added with network-first strategy + force refresh button.
+- PWA: Daily Glance gain/loss always green — color was based on total position value (always positive) instead of actual daily change amount. Fixed.
+- PWA: Dividend rate always 0 — v8 chart meta often omits `trailingAnnualDividendRate`. Added v10 summaryDetail fallback with crumb auth.
+- Android: Release build crash when keystore.properties missing — `null` cast to non-null String. Fixed by guarding signingConfigs behind `keystorePropertiesFile.exists()`.
+- Android: Keystore file not found after ANDROID_APP folder move — `file()` resolves relative to `app/`, not root. Fixed by using `rootProject.file()`.
+- Android: Gradle wrapper download timeout behind corporate proxy — Java ignores system proxy settings. Fixed by adding proxy config to `gradle.properties`.
+- Android: install_dependency.bat "was unexpected at this time" error — paths with spaces (Program Files) broke `%variable%` expansion in if/else blocks. Fixed with `enabledelayedexpansion` and `!variable!` syntax.
+
 ## Notes
-- Build requires JAVA_HOME set to JDK 17+ (system default is JDK 8)
+- Build requires JAVA_HOME set to JDK 17+ — configure in `ANDROID_APP/env.bat`
 - Migration 16->17 drops bank_transfers table (Bank Transfer feature removed); existing bank transfer data is lost on upgrade
 - Migration 4->5 drops existing positions table (fresh install or re-entry needed after upgrade)
 - Migration 5->6 recreates transactions table; existing transactions map investmentItemId to ticker via items table
@@ -32,6 +44,9 @@
 - Migration 14->15 removes accountId from investment_items, makes ticker sole PK; merges duplicate tickers by summing quantity/cost/value and taking MAX of dayHigh/dayLow
 - Migration 15->16 recreates account_performance table: converts dateTime (epoch seconds) to date (epoch days), adds unique index on (accountId, date)
 - Yahoo Finance API (v8/v10) is undocumented and may change without notice; no API key required
+- Yahoo Finance v10 endpoints require crumb+cookie auth; PWA fetches crumb on startup and retries on 401/403
 - Yahoo Finance may be unreachable from some networks; PWA app has configurable proxy setting (Settings > Preferences > Yahoo Finance Proxy)
 - Yahoo Finance historical data for large ranges (5Y+) uses weekly interval to reduce data volume
+- Corporate networks may block Gradle wrapper downloads; configure proxy in `ANDROID_APP/gradle.properties`
 - Encryption removed: existing users with an SQLCipher-encrypted database must uninstall and reinstall, then restore from a JSON backup
+- Batch scripts on Windows: paths with spaces/parentheses (e.g. `C:\Program Files`) require `enabledelayedexpansion` and `!var!` syntax inside if/else blocks

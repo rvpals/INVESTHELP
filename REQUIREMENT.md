@@ -4,7 +4,7 @@
 Android app to track personal investments.
 
 ## Storage
-- Room (SQLite) for local storage, version 17
+- Room (SQLite) for local storage, version 30
 - No encryption — database opens directly on app launch
 
 ## Data Objects
@@ -27,6 +27,8 @@ Android app to track personal investments.
 - Total gain/loss
 - Day high price (from Yahoo Finance regularMarketDayHigh)
 - Day low price (from Yahoo Finance regularMarketDayLow)
+- Dividend rate (trailing annual per share from Yahoo Finance; stored in investment_positions)
+- Logo (BLOB, cached company logo from CDN)
 - Auto-created when a transaction references a new ticker (defaults to Stock type)
 
 ### Investment Transaction
@@ -218,7 +220,7 @@ Android app to track personal investments.
 
 ### Overview
 - Progressive web app version of InvestHelp
-- Node.js + Express server with better-sqlite3 (same SQLite schema as Android Room v29)
+- Node.js + Express server with better-sqlite3 (same SQLite schema as Android Room v30)
 - Vanilla HTML/CSS/JS frontend — no framework, no build step
 - Same backup format (v5 JSON) — data portable between Android and PWA
 - `START_APP.bat` to launch on Windows
@@ -230,5 +232,10 @@ Android app to track personal investments.
 - Yahoo Finance calls are server-side (no CORS issues)
 - Configurable Yahoo Finance proxy URL for restricted networks
 - Auto-refresh runs as server-side cron (works even when browser is closed)
+- Service worker with network-first caching; "Refresh App" button in About to force cache bust
+- Static snapshot.html generated after every Refresh All for offline viewing
+- Server log capture (500 entries) viewable in Settings > Server Log tab
+- Item detail action buttons: Edit, Delete, Yahoo Finance, Simulate, Watch List, Full Report
+- Full Yahoo Report dialog with tabbed sections (Market Data, Valuation, Financials, Profile)
 - UI preferences (theme, pin states, card order) stored in browser localStorage
 - Data-affecting settings stored in server SQLite `settings` table
