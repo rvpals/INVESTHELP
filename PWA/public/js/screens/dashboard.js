@@ -41,8 +41,8 @@ export async function render(container) {
     daily_glance: collapsibleCard('daily_glance', 'Daily Glance', `
       <div class="mb-8">
         <div class="flex justify-between py-8">
-          <div><span class="text-sm text-muted">Stock Daily:</span> <span class="${gainLossClass(summary.stockValue > 0 ? 1 : -1)}">${formatSignedCurrency(posData.filter(p=>p.type==='Stock').reduce((s,p)=>s+p.dayGainLoss,0))}</span></div>
-          <div><span class="text-sm text-muted">ETF Daily:</span> <span class="${gainLossClass(summary.etfValue > 0 ? 1 : -1)}">${formatSignedCurrency(posData.filter(p=>p.type==='ETF').reduce((s,p)=>s+p.dayGainLoss,0))}</span></div>
+          <div><span class="text-sm text-muted">Stock Daily:</span> <span class="${gainLossClass(posData.filter(p=>p.type==='Stock').reduce((s,p)=>s+p.dayGainLoss,0))}">${formatSignedCurrency(posData.filter(p=>p.type==='Stock').reduce((s,p)=>s+p.dayGainLoss,0))}</span></div>
+          <div><span class="text-sm text-muted">ETF Daily:</span> <span class="${gainLossClass(posData.filter(p=>p.type==='ETF').reduce((s,p)=>s+p.dayGainLoss,0))}">${formatSignedCurrency(posData.filter(p=>p.type==='ETF').reduce((s,p)=>s+p.dayGainLoss,0))}</span></div>
         </div>
       </div>
       ${gainers.length ? `<h3 class="text-sm text-bold mb-8">Top Gainers</h3>` : ''}

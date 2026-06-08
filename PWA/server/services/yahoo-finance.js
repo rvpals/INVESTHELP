@@ -25,6 +25,37 @@ async function fetchQuote(ticker) {
   const quotes = result.indicators?.quote?.[0] || {};
   const highs = (quotes.high || []).filter(v => v != null && v > 0);
   const lows = (quotes.low || []).filter(v => v != null && v > 0);
+
+  let dividendRate = meta.trailingAnnualDividendRate || 0;
+
+  // v8 meta often omits dividendRate — fall back to v10 summaryDetail with crumb auth
+  if (!dividendRate) {
+    try {
+      if (!crumb) await refreshCrumb();
+      const enc = encodeURIComponent(ticker);
+      if (crumb) {
+        const sdResp = await fetch(
+          `https://query2.finance.yahoo.com/v10/finance/quoteSummary/${enc}?modules=summaryDetail&crumb=${encodeURIComponent(crumb)}`,
+          { headers: { Cookie: cookies } }
+        );
+        if (sdResp.ok) {
+          const sdData = await sdResp.json();
+          const sd = sdData.quoteSummary?.result?.[0]?.summaryDetail || {};
+          dividendRate = sd.trailingAnnualDividendRate?.raw || 0;
+        }
+      }
+      // Try without crumb as last resort
+      if (!dividendRate) {
+        const sdResp2 = await fetch(`https://query2.finance.yahoo.com/v10/finance/quoteSummary/${enc}?modules=summaryDetail`);
+        if (sdResp2.ok) {
+          const sdData2 = await sdResp2.json();
+          const sd2 = sdData2.quoteSummary?.result?.[0]?.summaryDetail || {};
+          dividendRate = sd2.trailingAnnualDividendRate?.raw || 0;
+        }
+      }
+    } catch {}
+  }
+
   return {
     price: meta.regularMarketPrice,
     previousClose: meta.chartPreviousClose || meta.previousClose || 0,
@@ -32,7 +63,7 @@ async function fetchQuote(ticker) {
     dayHigh: highs.length ? Math.max(...highs) : 0,
     dayLow: lows.length ? Math.min(...lows) : 0,
     quoteType: meta.instrumentType || meta.quoteType || null,
-    dividendRate: meta.trailingAnnualDividendRate || 0,
+    dividendRate,
   };
 }
 
