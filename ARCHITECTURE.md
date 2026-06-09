@@ -46,8 +46,9 @@ com.investhelp.app/
     ├── components/              # CollapsibleCard, ConfirmDeleteDialog, DateRangePicker
     ├── dashboard/               # DashboardScreen, DashboardViewModel
     ├── help/                    # HelpScreen (WebView)
-    ├── item/                    # ItemListScreen, ItemDetailScreen, ItemViewModel
+    ├── item/                    # ItemDetailScreen, ItemFormScreen, ItemViewModel
     ├── navigation/              # NavRoutes, NavGraph
+    ├── positions/               # PositionDetailScreen (STOCK/ETF/Analysis/Dividend tabs)
     ├── performance/             # AccountPerformanceScreen, AccountPerformanceViewModel
     ├── settings/                # SettingsScreen, SettingsViewModel
     ├── simulation/              # SimulationScreen, SimulationViewModel

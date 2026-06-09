@@ -25,7 +25,8 @@
 - [ ] Tab styling: visible borders, hover highlight, active tab highlight
 
 ## Android - Recent Changes
-- [ ] Dividend tab: shows on Positions screen as 4th tab (ScrollableTabRow with Payments icon)
+- [ ] Positions screen: 4 tabs visible (STOCK, ETF, Analysis, Dividend) in flat Row layout with icons
+- [ ] Positions tabs: equal width, selected tab highlighted with primaryContainer background
 - [ ] Dividend tab: total annual dividend income card shows correct sum (blue, bold)
 - [ ] Dividend tab: Stock and ETF exploding pie charts render correctly (largest slice offset)
 - [ ] Dividend tab: sort buttons toggle sort direction; sort options: Annual Dividend, Div/Share, Ticker, Shares
@@ -43,7 +44,23 @@
 - [ ] `run_once.bat`: creates keystore.properties, local.properties, and keystore
 - [ ] `create_signature.bat`: generates keystore and writes correct storeFile path
 
+## Backup/Restore v6 (Generic Table-Based)
+- [ ] Export backup from Android: exported JSON has `"version":6` and a `"tables"` object
+- [ ] Export backup from Android: all tables present in JSON (accounts, positions, transactions, performance, watch_lists, watch_list_items, change_history, definitions, sql_library, ai_library, csv_import_mappings, csv_named_mappings)
+- [ ] Export backup from Android: BLOB columns (e.g. logo) are base64-encoded strings, not binary
+- [ ] Restore backup on Android: all rows re-inserted across all tables (verify counts before vs after)
+- [ ] Restore backup on Android: DB transaction atomicity — if restore fails partway, DB is not partially modified
+- [ ] Export backup from PWA: exported JSON has `"version":6` and all expected tables
+- [ ] Restore backup on PWA: all tables cleared and re-populated correctly
+- [ ] Auto-backup on Android (onStop): file written to selected backup folder using v6 format
+- [ ] Android auto-backup: oldest files pruned when count exceeds the configured limit
+- [ ] Legacy restore on Android: importing a v5 backup still restores data correctly via legacy path
+- [ ] Legacy restore on Android: importing a v1-v4 backup still restores data correctly via legacy path
+- [ ] Legacy restore on PWA: importing a v5 backup still restores data correctly
+- [ ] PWA auto-refresh auto-backup: uses shared exportAllTablesGeneric() (same output as manual export)
+
 ## Cross-Platform
 - [ ] Backup export from Android, import into PWA: all tables restored
 - [ ] Backup export from PWA, import into Android: all tables restored
 - [ ] Dividend rate preserved in backup/restore cycle
+- [ ] v6 backup exported from Android imports cleanly into PWA (and vice versa) with no data loss

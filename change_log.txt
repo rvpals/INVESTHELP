@@ -120,3 +120,56 @@ Session: 2026-06-08 (continued)
 - Android Positions tabs: replaced ScrollableTabRow with flat Row layout (all 4 tabs always visible)
   - Equal-width tabs with icon + label, selected tab highlighted with primaryContainer background
   - Fixes issue where 4th Dividend tab was not visible/scrollable on some devices
+
+================================================================================
+Session: 2026-06-09
+================================================================================
+
+## Android Changes
+
+### Backup/Restore Overhaul — Generic Table-Based System (v6)
+- Replaced hardcoded per-table export with generic `sqlite_master` table discovery
+  - Queries `sqlite_master` for all user tables dynamically
+  - Exports every row from every table as raw data
+  - BLOB columns (e.g. logo) base64-encoded in JSON
+  - New tables automatically included without code changes
+- New backup format v6: `{"version":6,"tables":{"table_name":[{row},...],...}}`
+- Restore: v6+ uses generic raw SQL `INSERT OR REPLACE` per table; v1-v5 uses legacy typed restore for backward compat
+- Topological sort via `PRAGMA foreign_key_list` for FK-safe delete (children first) and insert (parents first) order
+- All delete + insert operations wrapped in a single database transaction for atomicity
+- Injected `DatabaseProvider` into `SettingsViewModel` for raw SQL access
+- Auto-backup in `MainActivity.onStop()` also updated to use generic export
+- Fixes: watch_lists, watch_list_items, definitions, sql_library, ai_library not restoring after uninstall+restore
+- Also now backs up tables not previously included: csv_import_mappings, csv_named_mappings
+
+## PWA Changes
+
+### Backup/Restore Overhaul — Generic Table-Based System (v6)
+- Replaced hardcoded per-table export with generic `sqlite_master` table discovery
+- Shared `exportAllTablesGeneric()` function used by both `/export` route and `performAutoBackup()`
+- Restore: v6+ uses generic approach; v1-v5 uses legacy restore with improved `INSERT OR REPLACE`
+- Topological sort for FK-safe table ordering
+- BLOB columns handled as base64 strings, decoded to Buffer on restore
+- Settings table now automatically included in backup
+
+## Android — Positions Screen Fix & Dead Code Cleanup
+
+### Bug Fix
+- Dividend tab was not visible on Positions screen — it was added to `ItemListScreen.kt` which is dead code (never navigated to); the bottom nav routes to `PositionDetailScreen.kt` via `PositionDetailRoute`
+- Fixed by adding Dividend tab (with full implementation) to `PositionDetailScreen.kt`
+
+### Tab Layout Overhaul
+- Replaced `TabRow` (3 tabs: Stocks, ETF, Analysis) with flat `Row` layout (4 tabs: STOCK, ETF, Analysis, Dividend)
+- Each tab has icon (ShowChart, TrendingUp, Analytics, Payments) + label
+- Equal width via `weight(1f)`, selected tab highlighted with `primaryContainer` background
+- Matches the pattern used in `ItemListScreen.kt` and documented in CLAUDE.md
+
+### Dead Code Removal
+- Deleted `ItemListScreen.kt` — full screen with Stock/ETF/Analysis/Dividend tabs, but never navigated to (no route in NavHost, not imported anywhere)
+- Deleted `ItemStatisticsScreen.kt` — route defined in NavRoutes.kt but never wired into NavHost; functionality already exists inline in ItemDetailScreen's Transactions tab
+- Removed `ItemListRoute` and `ItemStatisticsRoute` from NavRoutes.kt
+- Updated ARCHITECTURE.md: removed ItemListScreen reference, added positions/ folder entry
+
+### Documentation
+- Updated About dialog "What's New" section (Android + PWA)
+- Updated TODO.md, ISSUES.md, TO_TEST.md, ARCHITECTURE.md, change_log.txt

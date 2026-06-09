@@ -30,7 +30,7 @@ export async function render(container) {
         <li><strong>Portfolio Button</strong> — Tap the value in the top bar to refresh all prices</li>
         <li><strong>Item Detail</strong> — Tap any ticker to see details, price history, analysis info, and news</li>
         <li><strong>Charts</strong> — Click on chart points to see values. Charts support interactive selection.</li>
-        <li><strong>Backup/Restore</strong> — Export your data as JSON from Settings > Data Management</li>
+        <li><strong>Backup/Restore</strong> — Generic table-based backup (v6) auto-discovers all tables; backward compatible with v1-v5. Export from Settings > Data Management</li>
         <li><strong>CSV Import</strong> — Import positions/transactions from brokerage CSV exports</li>
         <li><strong>Auto Refresh</strong> — Enable in Settings to automatically refresh prices on a schedule</li>
       </ul>

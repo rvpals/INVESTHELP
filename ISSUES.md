@@ -17,6 +17,9 @@
 
 ## Resolved
 - Android backup format (v1-v4) only exported accounts, positions, and transactions — missing 7 tables added in later migrations (performance records, watch lists, change history, definitions, SQL/AI library). Fixed in v5 backup format.
+- Backup export/restore was hardcoded per-table — adding a new table required code changes in both Android and PWA backup logic. Fixed in v6 with generic table-based export/restore via `sqlite_master` auto-discovery; new tables are automatically included without code changes.
+- Android: Dividend tab not visible on Positions screen — tab was added to `ItemListScreen.kt` (dead code, never navigated to) instead of `PositionDetailScreen.kt` (the actual screen rendered by `PositionDetailRoute` via bottom nav). Fixed by adding Dividend tab to the correct file and deleting dead code.
+- Android: Dead screens `ItemListScreen.kt` and `ItemStatisticsScreen.kt` existed in the codebase with no navigation routes wired to them. Deleted along with unused route definitions (`ItemListRoute`, `ItemStatisticsRoute`).
 
 ## Resolved
 - PWA: NDA scan crash "Cannot read properties of undefined (reading 'toLocaleString')" — `scanData.avgVolume20Day` and `closingVolume` undefined from Yahoo. Fixed by defaulting to 0.

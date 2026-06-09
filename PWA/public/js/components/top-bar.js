@@ -156,9 +156,9 @@ function showAbout() {
       <hr style="border-color:var(--border-color);margin:12px 0 8px">
       <p class="text-sm" style="font-weight:600">What's New</p>
       <ul class="text-sm text-muted" style="padding-left:20px;margin-top:4px">
-        <li>Dividend tab on Positions screen — annual income with Stock/ETF pie charts and sortable tables</li>
-        <li>Positions screen now has 4 tabs: STOCK, ETF, Analysis, Dividend</li>
-        <li>Dividend rate displayed on position rows and item detail</li>
+        <li>Positions tabs: flat layout with STOCK/ETF/Analysis/Dividend (icon + equal width)</li>
+        <li>Dividend tab: total annual income, Stock/ETF exploding pie charts, sortable tables</li>
+        <li>Generic backup/restore (v6) — auto-discovers all tables via sqlite_master</li>
       </ul>
       <div class="mt-16">
         <button class="btn btn-outline w-full" id="refresh-app-btn">&#128260; Refresh App</button>

@@ -25,7 +25,7 @@ Investment tracking app with Android native + PWA web app.
 - `data/repository/` - Repository interfaces and implementations
 - `di/` - Hilt modules (DatabaseModule, RepositoryModule)
 - `model/` - Domain models and enums
-- `ui/` - Compose screens organized by feature (dashboard, account, item, transaction, simulation, sqlexplorer, performance, watchlist, help)
+- `ui/` - Compose screens organized by feature (dashboard, account, item, positions, transaction, simulation, sqlexplorer, performance, watchlist, help)
 - `ui/components/` - Reusable UI components (CollapsibleCard, ConfirmDeleteDialog, DateRangePicker)
 
 ## Key Design Decisions
@@ -108,7 +108,9 @@ Investment tracking app with Android native + PWA web app.
 - SQL Result screen: full screen with editable SQL query card, result grid (vertical+horizontal scroll, clickable cells for full-screen detail), Export to CSV button; auto-executes on load
 - SQL Library: `sql_library` table (id, name, description, category, sql) for persisting reusable queries
 - Settings: backup folder URI persisted to SharedPreferences; restored on ViewModel init
-- Backup format v5: exports all 10 tables (accounts, positions, transactions, performance records, watch lists + items, change history, definitions, SQL library, AI library); v1/v2/v3/v4 backward compat on restore; compatible between Android app and PWA
+- Backup format v6: generic table-based — auto-discovers all tables via `sqlite_master`, exports every row from every table as `{"version":6,"tables":{"table_name":[{row},...],...}}`; BLOB columns base64-encoded; topological sort for FK-safe delete/insert order; new tables automatically included without code changes
+- Backup restore: v6+ uses generic restore (raw SQL INSERT OR REPLACE per table); v1-v5 uses legacy typed restore via BackupData model for backward compat
+- Backup compatible between Android app and PWA
 - Transaction list: each card shows G/L = (currentPrice - pricePerShare) * numberOfShares; green for positive, red for negative
 - Settings Data Management: "Import Data" section with CSV position import; column mapping dialog with 3-row preview, auto-mapping with brokerage aliases (Price→currentPrice, Description→name, Symbol→ticker, etc.), account selector, progress bar; upserts into investment_items
 - CSV Import: `parseNumeric()` strips commas from numbers (handles brokerage formats like "92,150.62"); non-data rows (blank lines, FOOTNOTES) filtered out during import
@@ -186,7 +188,7 @@ Located in `PWA/` folder. Node.js + Express + better-sqlite3 server with vanilla
 - **Service Worker:** Network-first for JS/CSS/HTML, cache-first for assets; "Refresh App" button in About to force cache bust
 - **Snapshot:** Static `snapshot.html` generated after every Refresh All — offline-viewable portfolio summary
 - **Server Log:** In-memory log capture (500 entries); viewable in Settings > Server Log tab
-- **Backup:** Same v5 JSON format — data portable between Android and PWA
+- **Backup:** Same v6 generic JSON format — data portable between Android and PWA
 - **Run:** `START_APP.bat` or `npm start` from PWA/ folder → http://localhost:3000
 - **Dependencies:** express, better-sqlite3, multer (installed via `npm install`)
 
@@ -208,7 +210,7 @@ All PWA code is inside the `PWA/` folder:
     - `definitions.js` - Metric definitions
     - `sql-library.js` - Saved SQL queries
     - `ai-library.js` - AI prompt library
-    - `backup.js` - Backup export/import (v5 JSON)
+    - `backup.js` - Backup export/import (v6 generic JSON, v1-v5 legacy compat)
     - `sql-explorer.js` - Raw SQL execution
     - `yahoo.js` - Yahoo Finance proxy routes
   - `services/` - Business logic services

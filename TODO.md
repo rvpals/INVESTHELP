@@ -259,6 +259,23 @@
 - [x] PWA Build Guide (PWA_BUILD_GUIDE.md)
 - [x] refresh_from_github.bat for Windows
 
+- [x] Backup/restore v6: generic table-based export — auto-discovers all tables via `sqlite_master`, exports every row in `{"version":6,"tables":{"table_name":[{row},...],...}}` format
+- [x] Backup/restore v6: BLOB columns base64-encoded
+- [x] Backup/restore v6: FK-safe topological sort for delete (children first) and insert (parents first) order
+- [x] Backup/restore v6: all deletes and inserts wrapped in a single DB transaction for atomicity
+- [x] Backup/restore v6: new tables automatically included in future exports without code changes
+- [x] Backup/restore v6: backward compatible — v6+ uses generic restore; v1-v5 uses legacy typed restore
+- [x] Android: SettingsViewModel injected with DatabaseProvider for generic backup export
+- [x] Android: MainActivity auto-backup in onStop() uses generic v6 export
+- [x] PWA: backup.js rewritten with generic exportAllTablesGeneric() + shared with auto-refresh service
+- [x] Android + PWA: Help/About screens updated with v6 backup details
+
+- [x] Android: Positions screen Dividend tab fixed — was added to dead ItemListScreen.kt instead of PositionDetailScreen.kt (the actual screen rendered by bottom nav)
+- [x] Android: Positions tabs use flat Row layout with icons (STOCK/ETF/Analysis/Dividend), equal width, primaryContainer highlight
+- [x] Android: deleted dead code — ItemListScreen.kt (never navigated to), ItemStatisticsScreen.kt (route existed but not wired in NavHost)
+- [x] Android: removed unused routes ItemListRoute and ItemStatisticsRoute from NavRoutes.kt
+- [x] Android: ARCHITECTURE.md updated with positions/ folder, removed ItemListScreen reference
+
 ## Pending
 - [ ] Fix deprecation warning: Icons.Filled.OpenInNew -> Icons.AutoMirrored.Filled.OpenInNew (ItemDetailScreen.kt)
 - [ ] Fix deprecation warning: Icons.Filled.ShowChart/TrendingUp -> AutoMirrored versions (DashboardScreen.kt, MainActivity.kt)

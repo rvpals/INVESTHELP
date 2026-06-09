@@ -185,13 +185,19 @@ Android app to track personal investments.
 - Delete items respects "Warn before delete" setting
 
 ### Backup & Restore
-- Export all data to JSON file (v5 format; includes all 10 tables)
-- v5 exports: accounts, positions, transactions, performance records, watch lists, watch list items, change history, definitions, SQL library, AI library
-- Restore from JSON backup file (supports v1, v2, v3, v4, and v5 formats)
+- Export all data to JSON file (**v6 generic format**; auto-discovers all tables via `sqlite_master`)
+- v6 export format: `{"version":6,"tables":{"table_name":[{row},...],...}}` — one entry per table, every row included
+- v6 BLOB columns (e.g. logo): base64-encoded in JSON
+- v6 restore: FK-safe topological sort — children deleted first, parents inserted first; entire restore wrapped in a single DB transaction for atomicity
+- v6 extensible: new database tables are automatically included in future exports without code changes
+- Restore from JSON backup file (v6+ uses generic restore; v1-v5 uses legacy typed restore for backward compatibility)
 - v1 backward compatibility: assigns items to first account, maps numShares to quantity
 - v2 backward compatibility: ignores accountId field on items
 - v3/v4 backward compatibility: imports accounts, positions, transactions only (extra tables empty)
-- Compatible between Android app and PWA web app (same JSON format)
+- v5 backward compatibility: imports all 10 known tables via legacy typed path
+- Compatible between Android app and PWA web app (same v6 JSON format)
+- Android auto-backup (onStop): writes v6 JSON to selected backup folder; oldest files pruned to configured limit; 30-minute cooldown guard prevents duplicate writes
+- PWA auto-refresh auto-backup: uses shared `exportAllTablesGeneric()` — same output as manual export button
 
 ### Application Log
 - In-memory log (AppLog singleton) captures price fetch results, refresh summaries, and per-ticker errors
@@ -223,7 +229,7 @@ Android app to track personal investments.
 - Progressive web app version of InvestHelp
 - Node.js + Express server with better-sqlite3 (same SQLite schema as Android Room v30)
 - Vanilla HTML/CSS/JS frontend — no framework, no build step
-- Same backup format (v5 JSON) — data portable between Android and PWA
+- Same backup format (v6 generic JSON) — data portable between Android and PWA
 - `START_APP.bat` to launch on Windows
 
 ### Architecture

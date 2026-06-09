@@ -114,38 +114,14 @@ function performAutoBackup() {
     const BACKUP_DIR = path.join(__dirname, '..', '..', 'backups');
     if (!fs.existsSync(BACKUP_DIR)) fs.mkdirSync(BACKUP_DIR, { recursive: true });
 
-    const accounts = db.prepare('SELECT * FROM investment_accounts').all();
-    const positions = db.prepare('SELECT ticker, name, type, currentPrice, quantity, dayGainLoss, value, dayHigh, dayLow, dividendRate FROM investment_positions').all();
-    const transactions = db.prepare('SELECT * FROM investment_transactions').all();
-    const performanceRecords = db.prepare('SELECT * FROM account_performance').all();
-    const watchLists = db.prepare('SELECT * FROM watch_lists').all();
-    const watchListItems = db.prepare('SELECT * FROM watch_list_items').all();
-    const changeHistory = db.prepare('SELECT * FROM change_history').all();
-    const definitions = db.prepare('SELECT * FROM definitions').all();
-    const sqlLibrary = db.prepare('SELECT * FROM sql_library').all();
-    const aiLibrary = db.prepare('SELECT * FROM ai_library').all();
-
-    const data = {
-      version: 5,
-      accounts: accounts.map(a => ({ id: a.id, name: a.name, description: a.description, initialValue: a.initialValue })),
-      items: positions.map(p => ({ ticker: p.ticker, name: p.name, type: p.type, currentPrice: p.currentPrice, quantity: p.quantity, dayGainLoss: p.dayGainLoss, value: p.value, dayHigh: p.dayHigh, dayLow: p.dayLow, dividendRate: p.dividendRate || 0 })),
-      transactions: transactions.map(t => ({ id: t.id, dateEpochDay: t.date, timeSecondOfDay: t.time, action: t.action, ticker: t.ticker, numberOfShares: t.numberOfShares, pricePerShare: t.pricePerShare, totalAmount: t.totalAmount, note: t.note })),
-      performanceRecords: performanceRecords.map(p => ({ id: p.id, accountId: p.accountId, totalValue: p.totalValue, dateEpochDay: p.date, note: p.note })),
-      watchLists: watchLists.map(w => ({ id: w.id, name: w.name })),
-      watchListItems: watchListItems.map(i => ({ id: i.id, watchListId: i.watchListId, ticker: i.ticker, shares: i.shares, priceWhenAdded: i.priceWhenAdded, addedDateEpochDay: i.addedDate, reminderDateTimeEpochMs: i.reminderDateTime, reminderMessage: i.reminderMessage })),
-      changeHistory: changeHistory.map(c => ({ id: c.id, dateEpochDay: c.date, etfValue: c.etfValue, stockValue: c.stockValue, totalValue: c.totalValue, dailyChangeEtf: c.dailyChangeEtf, dailyChangeStock: c.dailyChangeStock, dailyChangeTotal: c.dailyChangeTotal })),
-      definitions: definitions.map(d => ({ id: d.id, name: d.name, description: d.description })),
-      sqlLibrary: sqlLibrary.map(s => ({ id: s.id, name: s.name, description: s.description, category: s.category, sql: s.sql })),
-      aiLibrary: aiLibrary.map(a => ({ id: a.id, name: a.name, description: a.description, promptText: a.promptText })),
-      exportedAt: new Date().toISOString()
-    };
+    const { exportAllTablesGeneric } = require('../routes/backup');
+    const data = exportAllTablesGeneric();
 
     const now = new Date();
     const stamp = now.toISOString().replace(/[:.]/g, '-').slice(0, 19);
     const filename = `invest_help_backup_${stamp}.json`;
     fs.writeFileSync(path.join(BACKUP_DIR, filename), JSON.stringify(data, null, 2));
 
-    // Prune old backups beyond keep count
     const keepCount = parseInt(db.prepare("SELECT value FROM settings WHERE key = 'auto_backup_keep_count'").get()?.value || '10');
     const files = fs.readdirSync(BACKUP_DIR)
       .filter(f => f.startsWith('invest_help_backup_') && f.endsWith('.json'))

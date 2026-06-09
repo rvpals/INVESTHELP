@@ -431,7 +431,7 @@
     <li>Mapping editor: preview rows, auto-map with brokerage aliases, Save/Save As/Load named profiles.</li>
     <li>Import shows detailed per-ticker log (NEW/UPDATED/SKIPPED with field changes).</li>
     <li><strong>Clear</strong> button per import type to erase all entries from a table.</li>
-    <li><strong>Backup &amp; Restore:</strong> export/import full database as JSON. Supports v1/v2/v3/v4 formats.</li>
+    <li><strong>Backup &amp; Restore:</strong> generic table-based backup (v6) &mdash; auto-discovers all tables via sqlite_master; BLOB columns base64-encoded; FK-safe topological sort for restore order. Backward compatible with v1-v5 formats.</li>
   </ul>
 </div>
 
