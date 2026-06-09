@@ -42,6 +42,7 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -287,6 +288,17 @@ fun GlobalTopBar(navController: NavHostController) {
                     Text(
                         "Investment tracking app for managing portfolios, positions, and transactions.",
                         style = MaterialTheme.typography.bodyMedium
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    HorizontalDivider()
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text("What's New", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        "• Dividend tab on Positions screen — annual income breakdown with Stock/ETF pie charts and sortable tables\n" +
+                        "• APK filename now includes version number\n" +
+                        "• Dividend rate displayed on position rows and item detail",
+                        style = MaterialTheme.typography.bodySmall
                     )
                 }
             },

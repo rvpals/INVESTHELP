@@ -244,6 +244,9 @@
 - [x] PWA: improve dividend rate fetch with crumb auth fallback
 - [x] Android: Dividend tab in Positions screen — 4th tab with total annual income, Stock/ETF exploding pie charts, sortable data tables (Annual Dividend, Div/Share, Ticker, Shares); only dividend-paying tickers shown
 - [x] PWA: Dividend tab in Positions screen — matches Android: total income card, Stock/ETF cards with exploding pie charts, sort buttons, data tables with clickable rows
+- [x] Android + PWA: Help screens updated with Dividend tab documentation
+- [x] Android + PWA: About dialogs updated with "What's New" section
+- [x] Android: APK filename includes version number (investhelp_v<version>.apk)
 - [x] Android: dividend rate tracking (DB migration v29-v30, entity, UI display)
 - [x] Android: CSV Performance import account name mapping dialog
 - [x] Android: moved all files into ANDROID_APP/ subfolder

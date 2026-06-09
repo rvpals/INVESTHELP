@@ -8,12 +8,21 @@ export async function render(container) {
       <h3 class="mb-8">Navigation</h3>
       <ul class="text-sm" style="padding-left:20px;margin-bottom:16px">
         <li><strong>Dashboard</strong> — Portfolio overview, market indices, daily gainers/losers</li>
-        <li><strong>Positions</strong> — View all your holdings (STOCK/ETF tabs), add/edit positions</li>
+        <li><strong>Positions</strong> — View all your holdings (STOCK/ETF/Analysis/Dividend tabs), add/edit positions</li>
         <li><strong>Transactions</strong> — Record buy/sell transactions</li>
         <li><strong>Simulation</strong> — Run "what if" scenarios on historical data</li>
         <li><strong>Performance</strong> — Track account values over time with charts</li>
         <li><strong>Watch Lists</strong> — Create watch lists to monitor tickers you're interested in</li>
         <li><strong>SQL Explorer</strong> — Run raw SQL queries against the database</li>
+      </ul>
+
+      <h3 class="mb-8">Dividend Tab (Positions)</h3>
+      <ul class="text-sm" style="padding-left:20px;margin-bottom:16px">
+        <li><strong>Total Annual Dividend Income</strong> — summary card showing combined Stock + ETF income</li>
+        <li>Separate Stock and ETF sections with exploding pie charts (largest slice offset)</li>
+        <li>Sortable tables: Annual Dividend, Div/Share, Ticker, Shares</li>
+        <li>Only dividend-paying tickers shown. Click a row to view item detail</li>
+        <li>Dividend rates fetched during Refresh All</li>
       </ul>
 
       <h3 class="mb-8">Key Features</h3>

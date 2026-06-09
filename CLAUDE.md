@@ -172,7 +172,7 @@ Investment tracking app with Android native + PWA web app.
 - Transaction list: multi-select mode via long-press; contextual top bar with selection count, Select All, and Delete; bulk delete respects "Warn before delete" setting
 - LocalDateTime stored as epoch seconds (UTC) via TypeConverter; LocalDate stored as epoch days
 - Help screen: accessible from hamburger menu; loads `assets/help.html` via WebView; styled HTML with dark/light theme support; covers all features with navigation overview grid, per-section guides, and tips
-- About dialog: version displayed dynamically from BuildConfig (versionName + versionCode)
+- About dialog: version displayed dynamically from BuildConfig (versionName + versionCode); "What's New" section with recent feature changelog
 - Build: `buildConfig = true` enabled in build features for BuildConfig access
 - Build: auto-increment versioning via `version.properties` (VERSION_MAJOR, VERSION_MINOR, VERSION_CODE); minor version and version code increment after each assembleDebug/assembleRelease
 

@@ -7,6 +7,8 @@
 - [ ] Dividend tab: sort buttons (Annual, Div/Share, Ticker, Shares) change table order
 - [ ] Dividend tab: clicking a row navigates to item detail
 - [ ] Dividend tab: only tickers with dividendRate > 0 appear
+- [ ] About dialog: "What's New" section visible with recent features listed
+- [ ] Help: Dividend Tab section present
 - [ ] Service worker caching: verify new JS/CSS loads without manual refresh
 - [ ] About > "Refresh App" button: clears cache and reloads with latest code
 - [ ] snapshot.html generated after Refresh All (check PWA/public/snapshot.html)
@@ -30,6 +32,9 @@
 - [ ] Dividend tab: data table rows clickable → navigate to item detail
 - [ ] Dividend tab: only dividend-paying tickers with quantity > 0 appear
 - [ ] Dividend tab: empty state shown when no dividend-paying positions exist
+- [ ] About dialog: "What's New" section visible with recent features listed
+- [ ] Help screen: Dividend Tab section present under Items
+- [ ] APK filename: output is investhelp_v<version>.apk (not app-release.apk)
 - [ ] Dividend rate: shows on positions list and item detail when dividendRate > 0
 - [ ] CSV Performance import: account name mapping dialog works correctly
 - [ ] Build: `build_apk.bat` succeeds with env.bat config

@@ -110,3 +110,10 @@ Session: 2026-06-08 (continued)
   - Data table using existing data-table CSS (alternating rows, gridlines, hover)
   - Clickable rows navigate to item detail
   - Only dividend-paying tickers shown; empty state for no dividends
+
+## Help & About Updates (Android + PWA)
+- Android About dialog: added "What's New" section with recent feature summary
+- Android help.html: added Dividend Tab section under Items with full feature description
+- PWA About dialog: added "What's New" section with recent feature summary
+- PWA help.js: added Dividend Tab section and updated Positions tab description
+- APK filename now includes version: investhelp_v<version>.apk (via applicationVariants in build.gradle.kts)
