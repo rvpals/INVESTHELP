@@ -247,6 +247,7 @@
 - [x] Android + PWA: Help screens updated with Dividend tab documentation
 - [x] Android + PWA: About dialogs updated with "What's New" section
 - [x] Android: APK filename includes version number (investhelp_v<version>.apk)
+- [x] Android: Positions tabs replaced ScrollableTabRow with flat Row (all 4 tabs always visible)
 - [x] Android: dividend rate tracking (DB migration v29-v30, entity, UI display)
 - [x] Android: CSV Performance import account name mapping dialog
 - [x] Android: moved all files into ANDROID_APP/ subfolder

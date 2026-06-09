@@ -296,6 +296,7 @@ fun GlobalTopBar(navController: NavHostController) {
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         "• Dividend tab on Positions screen — annual income breakdown with Stock/ETF pie charts and sortable tables\n" +
+                        "• Positions tabs now show all 4 tabs in a single row (STOCK, ETF, Analysis, Dividend)\n" +
                         "• APK filename now includes version number\n" +
                         "• Dividend rate displayed on position rows and item detail",
                         style = MaterialTheme.typography.bodySmall

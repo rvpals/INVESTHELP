@@ -157,6 +157,7 @@ function showAbout() {
       <p class="text-sm" style="font-weight:600">What's New</p>
       <ul class="text-sm text-muted" style="padding-left:20px;margin-top:4px">
         <li>Dividend tab on Positions screen — annual income with Stock/ETF pie charts and sortable tables</li>
+        <li>Positions screen now has 4 tabs: STOCK, ETF, Analysis, Dividend</li>
         <li>Dividend rate displayed on position rows and item detail</li>
       </ul>
       <div class="mt-16">

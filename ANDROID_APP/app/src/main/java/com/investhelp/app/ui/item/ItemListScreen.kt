@@ -53,8 +53,6 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.ScrollableTabRow
-import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -242,16 +240,27 @@ fun ItemListScreen(
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            ScrollableTabRow(selectedTabIndex = selectedTab, edgePadding = 0.dp) {
+            Row(modifier = Modifier.fillMaxWidth()) {
                 tabs.forEachIndexed { index, tab ->
-                    Tab(
-                        selected = selectedTab == index,
-                        onClick = { selectedTab = index },
-                        text = { Text(tab.title) },
-                        icon = { Icon(tab.icon, contentDescription = tab.title) }
-                    )
+                    val isSelected = selectedTab == index
+                    val bgColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent
+                    val contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clickable { selectedTab = index }
+                            .background(bgColor)
+                            .padding(vertical = 10.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Icon(tab.icon, contentDescription = tab.title, modifier = Modifier.size(18.dp), tint = contentColor)
+                            Text(tab.title, style = MaterialTheme.typography.labelMedium, color = contentColor, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal)
+                        }
+                    }
                 }
             }
+            HorizontalDivider(color = MaterialTheme.colorScheme.outline)
 
             when (selectedTab) {
                 0, 1 -> {

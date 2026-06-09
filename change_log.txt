@@ -117,3 +117,6 @@ Session: 2026-06-08 (continued)
 - PWA About dialog: added "What's New" section with recent feature summary
 - PWA help.js: added Dividend Tab section and updated Positions tab description
 - APK filename now includes version: investhelp_v<version>.apk (via applicationVariants in build.gradle.kts)
+- Android Positions tabs: replaced ScrollableTabRow with flat Row layout (all 4 tabs always visible)
+  - Equal-width tabs with icon + label, selected tab highlighted with primaryContainer background
+  - Fixes issue where 4th Dividend tab was not visible/scrollable on some devices

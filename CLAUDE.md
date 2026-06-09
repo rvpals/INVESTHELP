@@ -38,7 +38,7 @@ Investment tracking app with Android native + PWA web app.
 - Navigation routes use ticker strings (not Long IDs) for item detail, form, and statistics
 - DatabaseProvider pattern: DB opens lazily on first access
 - CASCADE deletes: removing account removes associated performance records (transactions and items are not tied to accounts)
-- Items screen: 4 tabs with icons — STOCK (ShowChart), ETF (TrendingUp), Analysis (Analytics), Dividend (Payments); STOCK/ETF tabs have pie chart + item list; Analysis tab has Stock and ETF exploding pie chart cards; Dividend tab has total annual income summary + Stock/ETF dividend cards with exploding pie charts and sortable tables
+- Items screen: 4 tabs in a flat Row layout — STOCK (ShowChart), ETF (TrendingUp), Analysis (Analytics), Dividend (Payments); all tabs always visible with equal width, selected tab highlighted with primaryContainer background; STOCK/ETF tabs have pie chart + item list; Analysis tab has Stock and ETF exploding pie chart cards; Dividend tab has total annual income summary + Stock/ETF dividend cards with exploding pie charts and sortable tables
 - Items screen: Refresh All toolbar action
 - Items screen: sort-by dropdown (Ticker, Total Value, Current Price) above items list; defaults to Total Value descending
 - Items screen: brokerage-style card rows with thin dividers; each row shows TickerIcon3D + ticker (bold) + uppercase company name on left, current price with day change $ and % below, total position value on right with daily gain/loss badge (green/red chip)
