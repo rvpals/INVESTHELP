@@ -43,7 +43,7 @@ async function refreshAll() {
     UPDATE investment_positions
     SET currentPrice = ?, dayGainLoss = ?, value = ?, dayHigh = ?, dayLow = ?,
         name = CASE WHEN ? != '' THEN ? ELSE name END,
-        dividendRate = ?
+        dividendRate = CASE WHEN ? > 0 THEN ? ELSE dividendRate END
     WHERE ticker = ?
   `);
 
@@ -54,7 +54,8 @@ async function refreshAll() {
       const q = await yahoo.fetchQuote(pos.ticker);
       const value = q.price * (pos.quantity || 0);
       const dayGL = (q.price - q.previousClose) * (pos.quantity || 0);
-      update.run(q.price, dayGL, value, q.dayHigh, q.dayLow, q.shortName || '', q.shortName || '', q.dividendRate || 0, pos.ticker);
+      const divRate = q.dividendRate || 0;
+      update.run(q.price, dayGL, value, q.dayHigh, q.dayLow, q.shortName || '', q.shortName || '', divRate, divRate, pos.ticker);
 
       // Fetch logo if missing
       const existing = db.prepare('SELECT logo FROM investment_positions WHERE ticker = ?').get(pos.ticker);
