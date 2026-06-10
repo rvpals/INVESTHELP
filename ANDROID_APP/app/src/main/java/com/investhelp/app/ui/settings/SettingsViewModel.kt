@@ -658,7 +658,9 @@ class SettingsViewModel @Inject constructor(
         withContext(Dispatchers.IO) {
             val db = dbProvider.database.openHelper.writableDatabase
             val existingTables = discoverTables()
-            val sortedForInsert = topologicalSort(existingTables)
+            val backupTableNames = tablesData.keys
+            val tablesToRestore = existingTables.filter { it in backupTableNames }
+            val sortedForInsert = topologicalSort(tablesToRestore)
             val sortedForDelete = sortedForInsert.reversed()
 
             db.beginTransaction()

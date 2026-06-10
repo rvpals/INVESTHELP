@@ -350,7 +350,11 @@ async function renderData(el) {
     if (!file) return;
     try {
       const result = await backup.import(file);
-      showToast(`Imported: ${result.accounts || 0} accounts, ${result.positions || 0} positions, ${result.transactions || 0} transactions, ${result.watchLists || 0} watch lists`);
+      const accts = result.investment_accounts || result.accounts || 0;
+      const pos = result.investment_positions || result.positions || 0;
+      const txns = result.investment_transactions || result.transactions || 0;
+      const wl = result.watch_lists || result.watchLists || 0;
+      showToast(`Imported: ${accts} accounts, ${pos} positions, ${txns} transactions, ${wl} watch lists`);
     } catch (err) { showToast('Import failed: ' + err.message); }
   });
 

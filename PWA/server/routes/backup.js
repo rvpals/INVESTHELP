@@ -79,7 +79,9 @@ function restoreGeneric(data) {
   if (!tablesData) throw new Error("Invalid v6 backup: missing 'tables' key");
 
   const existingTables = discoverTables();
-  const sortedForInsert = topologicalSort(existingTables);
+  const backupTableNames = Object.keys(tablesData);
+  const tablesToRestore = existingTables.filter(t => backupTableNames.includes(t));
+  const sortedForInsert = topologicalSort(tablesToRestore);
   const sortedForDelete = [...sortedForInsert].reverse();
 
   const tx = db.transaction(() => {
