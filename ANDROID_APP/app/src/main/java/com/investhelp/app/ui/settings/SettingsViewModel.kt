@@ -5,6 +5,7 @@ import android.net.Uri
 import androidx.documentfile.provider.DocumentFile
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.investhelp.app.data.local.DatabaseProvider
 import com.investhelp.app.data.local.dao.DefinitionDao
 import com.investhelp.app.data.local.dao.InvestmentAccountDao
 import com.investhelp.app.data.local.dao.InvestmentItemDao
@@ -59,7 +60,19 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import android.util.Base64
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.addJsonObject
+import kotlinx.serialization.json.buildJsonArray
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.intOrNull
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.put
 import java.io.BufferedReader
 import java.io.InputStreamReader
 import java.time.LocalDate
@@ -162,6 +175,7 @@ data class SettingsUiState(
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
+    private val dbProvider: DatabaseProvider,
     private val accountDao: InvestmentAccountDao,
     private val itemDao: InvestmentItemDao,
     private val transactionDao: InvestmentTransactionDao,
@@ -464,6 +478,98 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
+    private val EXCLUDED_TABLES = setOf(
+        "room_master_table", "android_metadata", "sqlite_sequence"
+    )
+
+    private fun discoverTables(): List<String> {
+        val db = dbProvider.database.openHelper.readableDatabase
+        val cursor = db.query("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")
+        val tables = mutableListOf<String>()
+        while (cursor.moveToNext()) {
+            val name = cursor.getString(0)
+            if (name !in EXCLUDED_TABLES && !name.startsWith("sqlite_")) {
+                tables.add(name)
+            }
+        }
+        cursor.close()
+        return tables
+    }
+
+    private fun getTableColumns(tableName: String): List<Pair<String, String>> {
+        val db = dbProvider.database.openHelper.readableDatabase
+        val cursor = db.query("PRAGMA table_info($tableName)")
+        val columns = mutableListOf<Pair<String, String>>()
+        while (cursor.moveToNext()) {
+            val colName = cursor.getString(1)
+            val colType = cursor.getString(2).uppercase()
+            columns.add(colName to colType)
+        }
+        cursor.close()
+        return columns
+    }
+
+    private fun getForeignKeyParents(tableName: String): List<String> {
+        val db = dbProvider.database.openHelper.readableDatabase
+        val cursor = db.query("PRAGMA foreign_key_list($tableName)")
+        val parents = mutableListOf<String>()
+        while (cursor.moveToNext()) {
+            parents.add(cursor.getString(2))
+        }
+        cursor.close()
+        return parents.distinct()
+    }
+
+    private fun topologicalSort(tables: List<String>): List<String> {
+        val deps = tables.associateWith { getForeignKeyParents(it).filter { p -> p in tables } }
+        val sorted = mutableListOf<String>()
+        val visited = mutableSetOf<String>()
+        val visiting = mutableSetOf<String>()
+
+        fun visit(table: String) {
+            if (table in visited) return
+            if (table in visiting) { sorted.add(table); visited.add(table); return }
+            visiting.add(table)
+            for (parent in deps[table] ?: emptyList()) {
+                visit(parent)
+            }
+            visiting.remove(table)
+            visited.add(table)
+            sorted.add(table)
+        }
+
+        for (table in tables) visit(table)
+        return sorted
+    }
+
+    private fun exportTableToJson(tableName: String): JsonArray {
+        val db = dbProvider.database.openHelper.readableDatabase
+        val columns = getTableColumns(tableName)
+        val cursor = db.query("SELECT * FROM $tableName")
+        val rows = buildJsonArray {
+            while (cursor.moveToNext()) {
+                addJsonObject {
+                    for ((i, col) in columns.withIndex()) {
+                        val (colName, colType) = col
+                        if (cursor.isNull(i)) {
+                            put(colName, JsonNull)
+                        } else when {
+                            colType.contains("BLOB") -> {
+                                val bytes = cursor.getBlob(i)
+                                put(colName, Base64.encodeToString(bytes, Base64.NO_WRAP))
+                            }
+                            colType.contains("INT") -> put(colName, cursor.getLong(i))
+                            colType.contains("REAL") || colType.contains("FLOAT") || colType.contains("DOUBLE") -> put(colName, cursor.getDouble(i))
+                            else -> put(colName, cursor.getString(i))
+                        }
+                    }
+                }
+            }
+        }
+        cursor.close()
+        return rows
+    }
+
     fun exportData() {
         val folderUri = _uiState.value.backupFolderUri
         if (folderUri == null) {
@@ -475,75 +581,20 @@ class SettingsViewModel @Inject constructor(
 
         viewModelScope.launch {
             try {
-                val accounts = accountDao.getAllAccountsSnapshot()
-                val items = itemDao.getAllItemsSnapshot()
-                val transactions = transactionDao.getAllTransactionsSnapshot()
-                val perfRecords = accountPerformanceDao.getAllRecordsSnapshot()
-                val watchLists = watchListDao.getAllWatchListsSnapshot()
-                val watchListItems = watchListDao.getAllItemsSnapshot()
-                val changeHistoryRecords = changeHistoryDao.getAllRecordsSnapshot()
-                val definitions = definitionDao.getAllDefinitionsSnapshot()
-                val sqlLibraryEntries = sqlLibraryDao.getAllSnapshot()
-                val aiLibraryEntries = aiLibraryDao.getAllSnapshot()
-
-                val backupData = BackupData(
-                    version = 5,
-                    accounts = accounts.map {
-                        BackupAccount(it.id, it.name, it.description, it.initialValue)
-                    },
-                    items = items.map {
-                        BackupItem(
-                            ticker = it.ticker,
-                            name = it.name,
-                            type = it.type.name,
-                            currentPrice = it.currentPrice,
-                            quantity = it.quantity,
-                            dayGainLoss = it.dayGainLoss,
-                            value = it.value,
-                            dayHigh = it.dayHigh,
-                            dayLow = it.dayLow,
-                            dividendRate = it.dividendRate
-                        )
-                    },
-                    transactions = transactions.map {
-                        BackupTransaction(
-                            it.id, it.date.toEpochDay(), it.time?.toSecondOfDay(),
-                            it.action.name, ticker = it.ticker,
-                            numberOfShares = it.numberOfShares,
-                            pricePerShare = it.pricePerShare,
-                            totalAmount = it.totalAmount, note = it.note
-                        )
-                    },
-                    performanceRecords = perfRecords.map {
-                        BackupPerformanceRecord(it.id, it.accountId, it.totalValue, it.date.toEpochDay(), it.note)
-                    },
-                    watchLists = watchLists.map {
-                        BackupWatchList(it.id, it.name)
-                    },
-                    watchListItems = watchListItems.map {
-                        BackupWatchListItem(
-                            it.id, it.watchListId, it.ticker, it.shares, it.priceWhenAdded,
-                            it.addedDate.toEpochDay(),
-                            it.reminderDateTime?.let { dt -> dt.atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli() },
-                            it.reminderMessage
-                        )
-                    },
-                    changeHistory = changeHistoryRecords.map {
-                        BackupChangeHistory(it.id, it.date.toEpochDay(), it.etfValue, it.stockValue, it.totalValue,
-                            it.dailyChangeEtf, it.dailyChangeStock, it.dailyChangeTotal)
-                    },
-                    definitions = definitions.map {
-                        BackupDefinition(it.id, it.name, it.description)
-                    },
-                    sqlLibrary = sqlLibraryEntries.map {
-                        BackupSqlLibrary(it.id, it.name, it.description, it.category, it.sql)
-                    },
-                    aiLibrary = aiLibraryEntries.map {
-                        BackupAiLibrary(it.id, it.name, it.description, it.promptText)
+                val jsonString = withContext(Dispatchers.IO) {
+                    val tables = discoverTables()
+                    val tablesJson = buildJsonObject {
+                        for (table in tables) {
+                            put(table, exportTableToJson(table))
+                        }
                     }
-                )
+                    val root = buildJsonObject {
+                        put("version", 6)
+                        put("tables", tablesJson)
+                    }
+                    root.toString()
+                }
 
-                val jsonString = json.encodeToString(BackupData.serializer(), backupData)
                 val timestamp = LocalDateTime.now().format(
                     DateTimeFormatter.ofPattern("yyyy-MM-dd_HHmmss")
                 )
@@ -583,114 +634,14 @@ class SettingsViewModel @Inject constructor(
                     } ?: throw Exception("Cannot read backup file.")
                 }
 
-                val backupData = json.decodeFromString(BackupData.serializer(), jsonString)
+                val root = Json.parseToJsonElement(jsonString).jsonObject
+                val version = root["version"]?.jsonPrimitive?.intOrNull ?: 1
 
-                // Delete in reverse dependency order
-                aiLibraryDao.deleteAll()
-                sqlLibraryDao.deleteAll()
-                definitionDao.deleteAll()
-                changeHistoryDao.deleteAll()
-                watchListDao.deleteAllItems()
-                watchListDao.deleteAllLists()
-                accountPerformanceDao.deleteAll()
-                transactionDao.deleteAll()
-                itemDao.deleteAll()
-                accountDao.deleteAll()
-
-                // Insert in dependency order
-                for (a in backupData.accounts) {
-                    accountDao.insertAccount(
-                        InvestmentAccountEntity(a.id, a.name, a.description, a.initialValue)
-                    )
+                if (version >= 6) {
+                    restoreGeneric(root)
+                } else {
+                    restoreLegacy(jsonString)
                 }
-                for (i in backupData.items) {
-                    val ticker = i.ticker.ifBlank { "UNKNOWN" }
-                    if (backupData.version >= 2) {
-                        itemDao.upsertItem(
-                            InvestmentItemEntity(
-                                ticker = ticker,
-                                name = i.name,
-                                type = InvestmentType.valueOf(i.type),
-                                currentPrice = i.currentPrice,
-                                quantity = i.quantity,
-                                dayGainLoss = i.dayGainLoss,
-                                value = i.value,
-                                dayHigh = i.dayHigh,
-                                dayLow = i.dayLow,
-                                dividendRate = i.dividendRate
-                            )
-                        )
-                    } else {
-                        itemDao.upsertItem(
-                            InvestmentItemEntity(
-                                ticker = ticker,
-                                name = i.name,
-                                type = InvestmentType.valueOf(i.type),
-                                currentPrice = i.currentPrice,
-                                quantity = i.numShares,
-                                dayGainLoss = 0.0,
-                                value = i.numShares * i.currentPrice
-                            )
-                        )
-                    }
-                }
-                for (t in backupData.transactions) {
-                    transactionDao.insertTransaction(
-                        InvestmentTransactionEntity(
-                            t.id,
-                            LocalDate.ofEpochDay(t.dateEpochDay),
-                            t.timeSecondOfDay?.let { LocalTime.ofSecondOfDay(it.toLong()) },
-                            TransactionAction.valueOf(t.action),
-                            t.ticker,
-                            t.numberOfShares, t.pricePerShare,
-                            t.totalAmount, t.note
-                        )
-                    )
-                }
-                for (p in backupData.performanceRecords) {
-                    accountPerformanceDao.insertRecord(
-                        AccountPerformanceEntity(p.id, p.accountId, p.totalValue, LocalDate.ofEpochDay(p.dateEpochDay), p.note)
-                    )
-                }
-                for (wl in backupData.watchLists) {
-                    watchListDao.insertWatchList(WatchListEntity(wl.id, wl.name))
-                }
-                for (wli in backupData.watchListItems) {
-                    watchListDao.insertItem(
-                        WatchListItemEntity(
-                            wli.id, wli.watchListId, wli.ticker, wli.shares, wli.priceWhenAdded,
-                            LocalDate.ofEpochDay(wli.addedDateEpochDay),
-                            wli.reminderDateTimeEpochMs?.let { LocalDateTime.ofInstant(java.time.Instant.ofEpochMilli(it), java.time.ZoneId.systemDefault()) },
-                            wli.reminderMessage
-                        )
-                    )
-                }
-                for (ch in backupData.changeHistory) {
-                    changeHistoryDao.upsertRecord(
-                        ChangeHistoryEntity(ch.id, LocalDate.ofEpochDay(ch.dateEpochDay), ch.etfValue, ch.stockValue, ch.totalValue,
-                            ch.dailyChangeEtf, ch.dailyChangeStock, ch.dailyChangeTotal)
-                    )
-                }
-                for (d in backupData.definitions) {
-                    definitionDao.insertDefinition(DefinitionEntity(d.id, d.name, d.description))
-                }
-                for (s in backupData.sqlLibrary) {
-                    sqlLibraryDao.insert(SqlLibraryEntity(s.id, s.name, s.description, s.category, s.sql))
-                }
-                for (a in backupData.aiLibrary) {
-                    aiLibraryDao.insert(AiLibraryEntity(a.id, a.name, a.description, a.promptText))
-                }
-
-                val extraCounts = mutableListOf<String>()
-                if (backupData.performanceRecords.isNotEmpty()) extraCounts.add("${backupData.performanceRecords.size} perf records")
-                if (backupData.watchLists.isNotEmpty()) extraCounts.add("${backupData.watchLists.size} watch lists")
-                if (backupData.changeHistory.isNotEmpty()) extraCounts.add("${backupData.changeHistory.size} history records")
-
-                _uiState.value = _uiState.value.copy(
-                    isRestoring = false,
-                    message = "Restored ${backupData.accounts.size} accounts, ${backupData.items.size} items, ${backupData.transactions.size} transactions" +
-                        if (extraCounts.isNotEmpty()) ", ${extraCounts.joinToString(", ")}" else "" + "."
-                )
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
                     isRestoring = false,
@@ -698,6 +649,185 @@ class SettingsViewModel @Inject constructor(
                 )
             }
         }
+    }
+
+    private suspend fun restoreGeneric(root: JsonObject) {
+        val tablesData = root["tables"]?.jsonObject
+            ?: throw Exception("Invalid v6 backup: missing 'tables' key.")
+
+        withContext(Dispatchers.IO) {
+            val db = dbProvider.database.openHelper.writableDatabase
+            val existingTables = discoverTables()
+            val backupTableNames = tablesData.keys
+            val tablesToRestore = existingTables.filter { it in backupTableNames }
+            val sortedForInsert = topologicalSort(tablesToRestore)
+            val sortedForDelete = sortedForInsert.reversed()
+
+            db.beginTransaction()
+            try {
+                for (table in sortedForDelete) {
+                    db.execSQL("DELETE FROM $table")
+                }
+
+                for (table in sortedForInsert) {
+                    val rows = tablesData[table]?.jsonArray ?: continue
+                    if (rows.isEmpty()) continue
+                    val columns = getTableColumns(table)
+                    val colNames = columns.map { it.first }
+                    val colTypes = columns.associate { it.first to it.second }
+                    val placeholders = colNames.joinToString(",") { "?" }
+                    val insertSql = "INSERT OR REPLACE INTO $table (${colNames.joinToString(",")}) VALUES ($placeholders)"
+
+                    for (rowElement in rows) {
+                        val row = rowElement.jsonObject
+                        val bindArgs = colNames.map { colName ->
+                            val value = row[colName]
+                            if (value == null || value is JsonNull) {
+                                null
+                            } else {
+                                val type = colTypes[colName] ?: "TEXT"
+                                val content = value.jsonPrimitive.content
+                                when {
+                                    type.contains("BLOB") -> Base64.decode(content, Base64.NO_WRAP)
+                                    type.contains("INT") -> content.toLongOrNull() ?: content
+                                    type.contains("REAL") || type.contains("FLOAT") || type.contains("DOUBLE") ->
+                                        content.toDoubleOrNull() ?: content
+                                    else -> content
+                                }
+                            }
+                        }.toTypedArray()
+                        db.execSQL(insertSql, bindArgs)
+                    }
+                }
+
+                db.setTransactionSuccessful()
+            } finally {
+                db.endTransaction()
+            }
+        }
+
+        val tableCounts = tablesData.entries
+            .filter { it.value.jsonArray.isNotEmpty() }
+            .map { "${it.key}: ${it.value.jsonArray.size}" }
+
+        _uiState.value = _uiState.value.copy(
+            isRestoring = false,
+            message = "Restored ${tablesData.size} tables (${tableCounts.joinToString(", ")})"
+        )
+    }
+
+    private suspend fun restoreLegacy(jsonString: String) {
+        val backupData = json.decodeFromString(BackupData.serializer(), jsonString)
+
+        withContext(Dispatchers.IO) {
+            val db = dbProvider.database.openHelper.writableDatabase
+            val existingTables = discoverTables()
+            val sortedForDelete = topologicalSort(existingTables).reversed()
+
+            db.beginTransaction()
+            try {
+                for (table in sortedForDelete) {
+                    db.execSQL("DELETE FROM $table")
+                }
+                db.setTransactionSuccessful()
+            } finally {
+                db.endTransaction()
+            }
+        }
+
+        for (a in backupData.accounts) {
+            accountDao.insertAccount(
+                InvestmentAccountEntity(a.id, a.name, a.description, a.initialValue)
+            )
+        }
+        for (i in backupData.items) {
+            val ticker = i.ticker.ifBlank { "UNKNOWN" }
+            if (backupData.version >= 2) {
+                itemDao.upsertItem(
+                    InvestmentItemEntity(
+                        ticker = ticker,
+                        name = i.name,
+                        type = InvestmentType.valueOf(i.type),
+                        currentPrice = i.currentPrice,
+                        quantity = i.quantity,
+                        dayGainLoss = i.dayGainLoss,
+                        value = i.value,
+                        dayHigh = i.dayHigh,
+                        dayLow = i.dayLow,
+                        dividendRate = i.dividendRate
+                    )
+                )
+            } else {
+                itemDao.upsertItem(
+                    InvestmentItemEntity(
+                        ticker = ticker,
+                        name = i.name,
+                        type = InvestmentType.valueOf(i.type),
+                        currentPrice = i.currentPrice,
+                        quantity = i.numShares,
+                        dayGainLoss = 0.0,
+                        value = i.numShares * i.currentPrice
+                    )
+                )
+            }
+        }
+        for (t in backupData.transactions) {
+            transactionDao.insertTransaction(
+                InvestmentTransactionEntity(
+                    t.id,
+                    LocalDate.ofEpochDay(t.dateEpochDay),
+                    t.timeSecondOfDay?.let { LocalTime.ofSecondOfDay(it.toLong()) },
+                    TransactionAction.valueOf(t.action),
+                    t.ticker,
+                    t.numberOfShares, t.pricePerShare,
+                    t.totalAmount, t.note
+                )
+            )
+        }
+        for (p in backupData.performanceRecords) {
+            accountPerformanceDao.insertRecord(
+                AccountPerformanceEntity(p.id, p.accountId, p.totalValue, LocalDate.ofEpochDay(p.dateEpochDay), p.note)
+            )
+        }
+        for (wl in backupData.watchLists) {
+            watchListDao.insertWatchList(WatchListEntity(wl.id, wl.name))
+        }
+        for (wli in backupData.watchListItems) {
+            watchListDao.insertItem(
+                WatchListItemEntity(
+                    wli.id, wli.watchListId, wli.ticker, wli.shares, wli.priceWhenAdded,
+                    LocalDate.ofEpochDay(wli.addedDateEpochDay),
+                    wli.reminderDateTimeEpochMs?.let { LocalDateTime.ofInstant(java.time.Instant.ofEpochMilli(it), java.time.ZoneId.systemDefault()) },
+                    wli.reminderMessage
+                )
+            )
+        }
+        for (ch in backupData.changeHistory) {
+            changeHistoryDao.upsertRecord(
+                ChangeHistoryEntity(ch.id, LocalDate.ofEpochDay(ch.dateEpochDay), ch.etfValue, ch.stockValue, ch.totalValue,
+                    ch.dailyChangeEtf, ch.dailyChangeStock, ch.dailyChangeTotal)
+            )
+        }
+        for (d in backupData.definitions) {
+            definitionDao.insertDefinition(DefinitionEntity(d.id, d.name, d.description))
+        }
+        for (s in backupData.sqlLibrary) {
+            sqlLibraryDao.insert(SqlLibraryEntity(s.id, s.name, s.description, s.category, s.sql))
+        }
+        for (a in backupData.aiLibrary) {
+            aiLibraryDao.insert(AiLibraryEntity(a.id, a.name, a.description, a.promptText))
+        }
+
+        val extraCounts = mutableListOf<String>()
+        if (backupData.performanceRecords.isNotEmpty()) extraCounts.add("${backupData.performanceRecords.size} perf records")
+        if (backupData.watchLists.isNotEmpty()) extraCounts.add("${backupData.watchLists.size} watch lists")
+        if (backupData.changeHistory.isNotEmpty()) extraCounts.add("${backupData.changeHistory.size} history records")
+
+        _uiState.value = _uiState.value.copy(
+            isRestoring = false,
+            message = "Restored ${backupData.accounts.size} accounts, ${backupData.items.size} items, ${backupData.transactions.size} transactions" +
+                if (extraCounts.isNotEmpty()) ", ${extraCounts.joinToString(", ")}" else "" + "."
+        )
     }
 
     // --- CSV Import ---

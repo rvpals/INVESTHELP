@@ -153,6 +153,13 @@ function showAbout() {
       <div class="dialog-title">About InvestHelp</div>
       <p>InvestHelp PWA v1.0</p>
       <p class="text-sm text-muted mt-8">Investment tracking progressive web app.</p>
+      <hr style="border-color:var(--border-color);margin:12px 0 8px">
+      <p class="text-sm" style="font-weight:600">What's New</p>
+      <ul class="text-sm text-muted" style="padding-left:20px;margin-top:4px">
+        <li>Positions tabs: flat layout with STOCK/ETF/Analysis/Dividend (icon + equal width)</li>
+        <li>Dividend tab: total annual income, Stock/ETF exploding pie charts, sortable tables</li>
+        <li>Generic backup/restore (v6) — auto-discovers all tables via sqlite_master</li>
+      </ul>
       <div class="mt-16">
         <button class="btn btn-outline w-full" id="refresh-app-btn">&#128260; Refresh App</button>
         <p class="text-xs text-muted mt-4 text-center">Clears cached files and reloads with latest code</p>

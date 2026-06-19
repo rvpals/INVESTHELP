@@ -6,10 +6,8 @@ import kotlinx.serialization.Serializable
 @Serializable object AccountListRoute
 @Serializable data class AccountDetailRoute(val accountId: Long)
 @Serializable data class AccountFormRoute(val accountId: Long = -1)
-@Serializable object ItemListRoute
 @Serializable data class ItemDetailRoute(val ticker: String)
 @Serializable data class ItemFormRoute(val ticker: String = "", val accountId: Long = -1)
-@Serializable data class ItemStatisticsRoute(val ticker: String)
 @Serializable object TransactionListRoute
 @Serializable data class TransactionFormRoute(val transactionId: Long = -1)
 @Serializable data class AnalyzePriceRoute(val ticker: String)

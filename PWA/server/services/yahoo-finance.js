@@ -4,13 +4,29 @@ let cookies = '';
 async function refreshCrumb() {
   try {
     const r1 = await fetch('https://fc.yahoo.com/cupcake', { redirect: 'manual' });
-    cookies = r1.headers.get('set-cookie') || '';
+    if (r1.headers.getSetCookie) {
+      cookies = r1.headers.getSetCookie().join('; ');
+    } else {
+      cookies = r1.headers.get('set-cookie') || '';
+    }
     const r2 = await fetch('https://query2.finance.yahoo.com/v1/test/getcrumb', {
       headers: { Cookie: cookies }
     });
-    crumb = await r2.text();
+    if (!r2.ok) {
+      console.error(`Crumb fetch returned ${r2.status}`);
+      crumb = null;
+      return;
+    }
+    const text = await r2.text();
+    if (text && text.length < 50 && !text.includes('<')) {
+      crumb = text;
+    } else {
+      console.error('Invalid crumb response:', text.substring(0, 100));
+      crumb = null;
+    }
   } catch (err) {
     console.error('Crumb refresh failed:', err.message);
+    crumb = null;
   }
 }
 
@@ -25,6 +41,47 @@ async function fetchQuote(ticker) {
   const quotes = result.indicators?.quote?.[0] || {};
   const highs = (quotes.high || []).filter(v => v != null && v > 0);
   const lows = (quotes.low || []).filter(v => v != null && v > 0);
+
+  let dividendRate = meta.trailingAnnualDividendRate || 0;
+
+  // v8 meta often omits dividendRate — fall back to v10 summaryDetail with crumb auth
+  if (!dividendRate) {
+    const enc = encodeURIComponent(ticker);
+    try {
+      if (!crumb) await refreshCrumb();
+      if (crumb) {
+        const sdUrl = `https://query2.finance.yahoo.com/v10/finance/quoteSummary/${enc}?modules=summaryDetail&crumb=${encodeURIComponent(crumb)}`;
+        const sdResp = await fetch(sdUrl, { headers: { Cookie: cookies } });
+        if (sdResp.status === 401 || sdResp.status === 403) {
+          await refreshCrumb();
+          if (crumb) {
+            const retry = await fetch(
+              `https://query2.finance.yahoo.com/v10/finance/quoteSummary/${enc}?modules=summaryDetail&crumb=${encodeURIComponent(crumb)}`,
+              { headers: { Cookie: cookies } }
+            );
+            if (retry.ok) {
+              const d = await retry.json();
+              dividendRate = d.quoteSummary?.result?.[0]?.summaryDetail?.trailingAnnualDividendRate?.raw || 0;
+            }
+          }
+        } else if (sdResp.ok) {
+          const sdData = await sdResp.json();
+          dividendRate = sdData.quoteSummary?.result?.[0]?.summaryDetail?.trailingAnnualDividendRate?.raw || 0;
+        }
+      }
+      // Try without crumb as last resort
+      if (!dividendRate) {
+        const sdResp2 = await fetch(`https://query2.finance.yahoo.com/v10/finance/quoteSummary/${enc}?modules=summaryDetail`);
+        if (sdResp2.ok) {
+          const sdData2 = await sdResp2.json();
+          dividendRate = sdData2.quoteSummary?.result?.[0]?.summaryDetail?.trailingAnnualDividendRate?.raw || 0;
+        }
+      }
+    } catch (err) {
+      console.error(`Dividend rate v10 fallback failed for ${ticker}:`, err.message);
+    }
+  }
+
   return {
     price: meta.regularMarketPrice,
     previousClose: meta.chartPreviousClose || meta.previousClose || 0,
@@ -32,7 +89,7 @@ async function fetchQuote(ticker) {
     dayHigh: highs.length ? Math.max(...highs) : 0,
     dayLow: lows.length ? Math.min(...lows) : 0,
     quoteType: meta.instrumentType || meta.quoteType || null,
-    dividendRate: meta.trailingAnnualDividendRate || 0,
+    dividendRate,
   };
 }
 

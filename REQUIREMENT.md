@@ -4,7 +4,7 @@
 Android app to track personal investments.
 
 ## Storage
-- Room (SQLite) for local storage, version 17
+- Room (SQLite) for local storage, version 30
 - No encryption — database opens directly on app launch
 
 ## Data Objects
@@ -27,6 +27,8 @@ Android app to track personal investments.
 - Total gain/loss
 - Day high price (from Yahoo Finance regularMarketDayHigh)
 - Day low price (from Yahoo Finance regularMarketDayLow)
+- Dividend rate (trailing annual per share from Yahoo Finance; stored in investment_positions)
+- Logo (BLOB, cached company logo from CDN)
 - Auto-created when a transaction references a new ticker (defaults to Stock type)
 
 ### Investment Transaction
@@ -87,6 +89,7 @@ Android app to track personal investments.
 ### Items (unified screen combining item metadata + position tracking)
 - **Pie chart** — collapsible chart section showing allocation by ticker value
 - **STOCK/ETF tabs** — filter items by type
+- **Dividend tab** — aggregate annual dividend view; "Total Annual Dividend Income" summary card at top; separate Stock and ETF cards each with exploding pie chart (largest slice offset) and sortable data table (columns: Ticker, Shares, Div/Share, Annual, %); sort options: Annual Dividend, Div/Share, Ticker, Shares; only dividend-paying tickers shown; clickable rows navigate to item detail
 - **Sort dropdown** — sort items by Ticker (A-Z), Total Value (descending), or Current Price (descending); defaults to Total Value
 - **Items list** — card-style rows with alternating background colors; each row shows:
   - Left: 3D ticker icon + Ticker (bold, larger) with company name (smaller, italic) below
@@ -182,13 +185,19 @@ Android app to track personal investments.
 - Delete items respects "Warn before delete" setting
 
 ### Backup & Restore
-- Export all data to JSON file (v5 format; includes all 10 tables)
-- v5 exports: accounts, positions, transactions, performance records, watch lists, watch list items, change history, definitions, SQL library, AI library
-- Restore from JSON backup file (supports v1, v2, v3, v4, and v5 formats)
+- Export all data to JSON file (**v6 generic format**; auto-discovers all tables via `sqlite_master`)
+- v6 export format: `{"version":6,"tables":{"table_name":[{row},...],...}}` — one entry per table, every row included
+- v6 BLOB columns (e.g. logo): base64-encoded in JSON
+- v6 restore: FK-safe topological sort — children deleted first, parents inserted first; entire restore wrapped in a single DB transaction for atomicity
+- v6 extensible: new database tables are automatically included in future exports without code changes
+- Restore from JSON backup file (v6+ uses generic restore; v1-v5 uses legacy typed restore for backward compatibility)
 - v1 backward compatibility: assigns items to first account, maps numShares to quantity
 - v2 backward compatibility: ignores accountId field on items
 - v3/v4 backward compatibility: imports accounts, positions, transactions only (extra tables empty)
-- Compatible between Android app and PWA web app (same JSON format)
+- v5 backward compatibility: imports all 10 known tables via legacy typed path
+- Compatible between Android app and PWA web app (same v6 JSON format)
+- Android auto-backup (onStop): writes v6 JSON to selected backup folder; oldest files pruned to configured limit; 30-minute cooldown guard prevents duplicate writes
+- PWA auto-refresh auto-backup: uses shared `exportAllTablesGeneric()` — same output as manual export button
 
 ### Application Log
 - In-memory log (AppLog singleton) captures price fetch results, refresh summaries, and per-ticker errors
@@ -218,9 +227,9 @@ Android app to track personal investments.
 
 ### Overview
 - Progressive web app version of InvestHelp
-- Node.js + Express server with better-sqlite3 (same SQLite schema as Android Room v29)
+- Node.js + Express server with better-sqlite3 (same SQLite schema as Android Room v30)
 - Vanilla HTML/CSS/JS frontend — no framework, no build step
-- Same backup format (v5 JSON) — data portable between Android and PWA
+- Same backup format (v6 generic JSON) — data portable between Android and PWA
 - `START_APP.bat` to launch on Windows
 
 ### Architecture
@@ -230,5 +239,10 @@ Android app to track personal investments.
 - Yahoo Finance calls are server-side (no CORS issues)
 - Configurable Yahoo Finance proxy URL for restricted networks
 - Auto-refresh runs as server-side cron (works even when browser is closed)
+- Service worker with network-first caching; "Refresh App" button in About to force cache bust
+- Static snapshot.html generated after every Refresh All for offline viewing
+- Server log capture (500 entries) viewable in Settings > Server Log tab
+- Item detail action buttons: Edit, Delete, Yahoo Finance, Simulate, Watch List, Full Report
+- Full Yahoo Report dialog with tabbed sections (Market Data, Valuation, Financials, Profile)
 - UI preferences (theme, pin states, card order) stored in browser localStorage
 - Data-affecting settings stored in server SQLite `settings` table

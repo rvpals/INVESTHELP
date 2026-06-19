@@ -1,0 +1,175 @@
+================================================================================
+Session: 2026-06-08
+================================================================================
+
+## PWA Changes
+
+### New Features
+- Service worker re-added with network-first caching strategy for JS/CSS/HTML
+  - Cache-first for images/fonts; API calls never cached
+  - "Refresh App" button in About dialog to force cache bust and reload
+  - Versioned cache (investhelp-v1) with old cache cleanup on activate
+- Portfolio snapshot generator (snapshot.js)
+  - Generates static snapshot.html after every Refresh All
+  - Self-contained HTML with portfolio summary cards and positions table
+  - Dark/light mode support via prefers-color-scheme
+- Server Log viewer in Settings > Server Log tab
+  - In-memory log capture (500 entries) intercepting console.log/error/warn
+  - View and clear log from the UI
+- Item detail action buttons bar: Edit, Delete, Yahoo Finance, Simulate, Watch List, Report
+- Full Yahoo Report dialog with tabbed sections (Market Data, Valuation, Financials, Profile)
+- Add to Watch List dialog from item detail screen
+- Deployment shell scripts: start_server.sh, full_reset_server.sh
+
+### Bug Fixes
+- Fixed Daily Glance gain/loss color: was using total position value (always positive)
+  instead of actual daily change amount for color class
+- Fixed NDA scan crash: scanData.avgVolume20Day and closingVolume undefined from Yahoo;
+  defaulted to 0
+- Fixed Yahoo Analysis 500 error: added 3-tier fallback (v10+crumb → v10 → v8 chart)
+- Fixed backup import missing watch list tables: changed INSERT to INSERT OR REPLACE
+- Improved dividend rate fetch: v8 chart meta often omits trailingAnnualDividendRate;
+  added v10 summaryDetail fallback with crumb auth, then without crumb as last resort
+- Removed broken version/git info from About dialog (was hanging on NAS)
+
+### UI Improvements
+- Settings Preferences tab reorganized into collapsible cards:
+  General, Theme, Next Day Actions, Dashboard Cards, Market Indices
+- Settings Data Management tab: Backup & Restore, Import Data collapsible cards
+- Tab styling: 1px solid borders, rounded top corners, hover highlight, active background
+
+## Android Changes
+
+### New Features
+- Dividend rate tracking: DB migration v29→v30 adds dividendRate column
+  - Fetched from Yahoo Finance trailingAnnualDividendRate (v8 chart meta)
+  - Also updated from v10 summaryDetail during analysis fetch
+  - Displayed on positions list ("Div: $X.XX/yr") and item detail cards
+- CSV Performance import: account name mapping dialog for matching CSV account names
+  to existing app accounts (explicit mapping → case-insensitive match → default account)
+
+### Build & DevOps
+- Moved all Android files into ANDROID_APP/ subfolder
+- Centralized environment config in env.bat (JAVA_HOME, proxy settings)
+  - All batch scripts (build_apk, create_signature, install_dependency, start_emulator)
+    now source env.bat instead of hardcoding paths
+- create_signature.bat: generates signing keystore + keystore.properties
+- run_once.bat: first-time setup for gitignored config files
+- install_dependency.bat: fixed "was unexpected at this time" error with delayed expansion
+  for paths containing spaces (C:\Program Files)
+- build.gradle.kts: guarded signing config behind keystorePropertiesFile.exists()
+  so builds don't crash when keystore.properties is missing
+- build.gradle.kts: changed file() to rootProject.file() for storeFile path resolution
+- gradle.properties: added corporate proxy settings (systemProp.http(s).proxyHost/Port)
+
+## Documentation
+- Created PWA_BUILD_GUIDE.md: comprehensive guide for building PWA apps covering
+  architecture, SPA routing, service workers, SQLite, theming, external APIs,
+  backup/restore, CSV import, deployment gotchas, and new project checklist
+- Created refresh_from_github.bat: Windows batch script for pulling latest code
+- Updated all MD files (CLAUDE.md, TODO.md, ISSUES.md, REQUIREMENT.md, TO_TEST.md)
+
+## Commits (this session)
+- 89d784b Centralize env config (JAVA_HOME, proxy) in env.bat, fix batch scripts
+- d04492b Fix Daily Glance gain/loss color, improve dividend rate fetch with crumb auth
+- 6368af3 Add first-time setup script for gitignored Android config files
+- 6859e3d Fix keystore path resolution after ANDROID_APP folder move
+- 6085527 Add batch script to generate Android signing keystore and properties
+- 8e03b0e Fix release build crash when keystore.properties is missing
+- 5561eea Add service worker back with network-first caching, Refresh App button, PWA build guide
+
+================================================================================
+Session: 2026-06-08 (continued)
+================================================================================
+
+## Android Changes
+
+### New Features
+- Dividend tab added to Positions screen (4th tab with Payments icon)
+  - ScrollableTabRow to accommodate 4 tabs (STOCK, ETF, Analysis, Dividend)
+  - "Total Annual Dividend Income" summary card (blue #1565C0, bold)
+  - Separate Stock and ETF DividendPieCard composables
+  - Exploding pie chart: Canvas drawArc with offset on largest slice
+  - Color-coded legend with per-ticker percentage
+  - Sortable data table with 4 sort options (Annual Dividend, Div/Share, Ticker, Shares)
+  - Toggle sort direction by clicking active sort button
+  - Columns: Ticker, Shares, Div/Share, Annual, %
+  - Alternating row colors, clickable rows navigate to item detail
+  - Only tickers with dividendRate > 0 and quantity > 0 shown
+  - Empty state message when no dividend-paying positions exist
+
+## PWA Changes
+
+### New Features
+- Dividend tab added to Positions screen (4th tab)
+  - "Total Annual Dividend Income" summary card
+  - Separate Stock and ETF dividend cards with exploding pie charts
+  - Largest slice offset via custom Canvas rendering (not shared pie-chart component)
+  - Ticker labels inside slices, color-coded legend with percentages
+  - Sort buttons (Annual, Div/Share, Ticker, Shares) with toggle direction
+  - Data table using existing data-table CSS (alternating rows, gridlines, hover)
+  - Clickable rows navigate to item detail
+  - Only dividend-paying tickers shown; empty state for no dividends
+
+## Help & About Updates (Android + PWA)
+- Android About dialog: added "What's New" section with recent feature summary
+- Android help.html: added Dividend Tab section under Items with full feature description
+- PWA About dialog: added "What's New" section with recent feature summary
+- PWA help.js: added Dividend Tab section and updated Positions tab description
+- APK filename now includes version: investhelp_v<version>.apk (via applicationVariants in build.gradle.kts)
+- Android Positions tabs: replaced ScrollableTabRow with flat Row layout (all 4 tabs always visible)
+  - Equal-width tabs with icon + label, selected tab highlighted with primaryContainer background
+  - Fixes issue where 4th Dividend tab was not visible/scrollable on some devices
+
+================================================================================
+Session: 2026-06-09
+================================================================================
+
+## Android Changes
+
+### Backup/Restore Overhaul — Generic Table-Based System (v6)
+- Replaced hardcoded per-table export with generic `sqlite_master` table discovery
+  - Queries `sqlite_master` for all user tables dynamically
+  - Exports every row from every table as raw data
+  - BLOB columns (e.g. logo) base64-encoded in JSON
+  - New tables automatically included without code changes
+- New backup format v6: `{"version":6,"tables":{"table_name":[{row},...],...}}`
+- Restore: v6+ uses generic raw SQL `INSERT OR REPLACE` per table; v1-v5 uses legacy typed restore for backward compat
+- Topological sort via `PRAGMA foreign_key_list` for FK-safe delete (children first) and insert (parents first) order
+- All delete + insert operations wrapped in a single database transaction for atomicity
+- Injected `DatabaseProvider` into `SettingsViewModel` for raw SQL access
+- Auto-backup in `MainActivity.onStop()` also updated to use generic export
+- Fixes: watch_lists, watch_list_items, definitions, sql_library, ai_library not restoring after uninstall+restore
+- Also now backs up tables not previously included: csv_import_mappings, csv_named_mappings
+
+## PWA Changes
+
+### Backup/Restore Overhaul — Generic Table-Based System (v6)
+- Replaced hardcoded per-table export with generic `sqlite_master` table discovery
+- Shared `exportAllTablesGeneric()` function used by both `/export` route and `performAutoBackup()`
+- Restore: v6+ uses generic approach; v1-v5 uses legacy restore with improved `INSERT OR REPLACE`
+- Topological sort for FK-safe table ordering
+- BLOB columns handled as base64 strings, decoded to Buffer on restore
+- Settings table now automatically included in backup
+
+## Android — Positions Screen Fix & Dead Code Cleanup
+
+### Bug Fix
+- Dividend tab was not visible on Positions screen — it was added to `ItemListScreen.kt` which is dead code (never navigated to); the bottom nav routes to `PositionDetailScreen.kt` via `PositionDetailRoute`
+- Fixed by adding Dividend tab (with full implementation) to `PositionDetailScreen.kt`
+
+### Tab Layout Overhaul
+- Replaced `TabRow` (3 tabs: Stocks, ETF, Analysis) with flat `Row` layout (4 tabs: STOCK, ETF, Analysis, Dividend)
+- Each tab has icon (ShowChart, TrendingUp, Analytics, Payments) + label
+- Equal width via `weight(1f)`, selected tab highlighted with `primaryContainer` background
+- Matches the pattern used in `ItemListScreen.kt` and documented in CLAUDE.md
+
+### Dead Code Removal
+- Deleted `ItemListScreen.kt` — full screen with Stock/ETF/Analysis/Dividend tabs, but never navigated to (no route in NavHost, not imported anywhere)
+- Deleted `ItemStatisticsScreen.kt` — route defined in NavRoutes.kt but never wired into NavHost; functionality already exists inline in ItemDetailScreen's Transactions tab
+- Removed `ItemListRoute` and `ItemStatisticsRoute` from NavRoutes.kt
+- Updated ARCHITECTURE.md: removed ItemListScreen reference, added positions/ folder entry
+
+### Documentation
+- Updated About dialog "What's New" section (Android + PWA)
+- Updated TODO.md, ISSUES.md, TO_TEST.md, ARCHITECTURE.md, change_log.txt

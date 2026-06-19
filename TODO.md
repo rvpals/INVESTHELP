@@ -228,6 +228,53 @@
 - [x] PWA web app: Node.js + Express + better-sqlite3 server with vanilla JS frontend (64 files)
 - [x] PWA: Yahoo Finance proxy setting for networks where Yahoo is blocked
 - [x] PWA: configurable proxy URL in Settings with test connection button
+- [x] PWA: dividend rate tracking (DB migration, entity, UI display on positions + item detail)
+- [x] PWA: Settings UI reorganized with collapsible cards (General, Theme, NDA, Dashboard Cards, Market Indices; Backup & Restore, Import Data)
+- [x] PWA: tab styling improvements (borders, hover effect, active highlight)
+- [x] PWA: item detail action buttons (Edit, Delete, Yahoo, Simulate, Watch List, Report)
+- [x] PWA: Full Yahoo Report dialog with tabbed sections (Market Data, Valuation, Financials, Profile)
+- [x] PWA: Server Log viewer in Settings tab
+- [x] PWA: portfolio snapshot generation (static HTML after Refresh All)
+- [x] PWA: service worker with network-first caching + "Refresh App" button in About
+- [x] PWA: start_server.sh and full_reset_server.sh deployment scripts
+- [x] PWA: fix NDA scan crash (undefined volume data)
+- [x] PWA: fix Yahoo analysis 500 error (3-tier fallback: v10+crumb, v10, v8 chart)
+- [x] PWA: fix backup import missing watch list tables (INSERT OR REPLACE)
+- [x] PWA: fix Daily Glance gain/loss color (was using total value instead of daily change)
+- [x] PWA: improve dividend rate fetch with crumb auth fallback
+- [x] Android: Dividend tab in Positions screen — 4th tab with total annual income, Stock/ETF exploding pie charts, sortable data tables (Annual Dividend, Div/Share, Ticker, Shares); only dividend-paying tickers shown
+- [x] PWA: Dividend tab in Positions screen — matches Android: total income card, Stock/ETF cards with exploding pie charts, sort buttons, data tables with clickable rows
+- [x] Android + PWA: Help screens updated with Dividend tab documentation
+- [x] Android + PWA: About dialogs updated with "What's New" section
+- [x] Android: APK filename includes version number (investhelp_v<version>.apk)
+- [x] Android: Positions tabs replaced ScrollableTabRow with flat Row (all 4 tabs always visible)
+- [x] Android: dividend rate tracking (DB migration v29-v30, entity, UI display)
+- [x] Android: CSV Performance import account name mapping dialog
+- [x] Android: moved all files into ANDROID_APP/ subfolder
+- [x] Android: centralized env config in env.bat (JAVA_HOME, proxy)
+- [x] Android: build scripts (build_apk, create_signature, run_once, install_dependency)
+- [x] Android: fix release build when keystore.properties missing
+- [x] Android: fix keystore path resolution (rootProject.file for storeFile)
+- [x] Android: corporate proxy support in gradle.properties
+- [x] PWA Build Guide (PWA_BUILD_GUIDE.md)
+- [x] refresh_from_github.bat for Windows
+
+- [x] Backup/restore v6: generic table-based export — auto-discovers all tables via `sqlite_master`, exports every row in `{"version":6,"tables":{"table_name":[{row},...],...}}` format
+- [x] Backup/restore v6: BLOB columns base64-encoded
+- [x] Backup/restore v6: FK-safe topological sort for delete (children first) and insert (parents first) order
+- [x] Backup/restore v6: all deletes and inserts wrapped in a single DB transaction for atomicity
+- [x] Backup/restore v6: new tables automatically included in future exports without code changes
+- [x] Backup/restore v6: backward compatible — v6+ uses generic restore; v1-v5 uses legacy typed restore
+- [x] Android: SettingsViewModel injected with DatabaseProvider for generic backup export
+- [x] Android: MainActivity auto-backup in onStop() uses generic v6 export
+- [x] PWA: backup.js rewritten with generic exportAllTablesGeneric() + shared with auto-refresh service
+- [x] Android + PWA: Help/About screens updated with v6 backup details
+
+- [x] Android: Positions screen Dividend tab fixed — was added to dead ItemListScreen.kt instead of PositionDetailScreen.kt (the actual screen rendered by bottom nav)
+- [x] Android: Positions tabs use flat Row layout with icons (STOCK/ETF/Analysis/Dividend), equal width, primaryContainer highlight
+- [x] Android: deleted dead code — ItemListScreen.kt (never navigated to), ItemStatisticsScreen.kt (route existed but not wired in NavHost)
+- [x] Android: removed unused routes ItemListRoute and ItemStatisticsRoute from NavRoutes.kt
+- [x] Android: ARCHITECTURE.md updated with positions/ folder, removed ItemListScreen reference
 
 ## Pending
 - [ ] Fix deprecation warning: Icons.Filled.OpenInNew -> Icons.AutoMirrored.Filled.OpenInNew (ItemDetailScreen.kt)

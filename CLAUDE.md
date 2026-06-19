@@ -13,7 +13,7 @@ Investment tracking app with Android native + PWA web app.
 - **Min SDK:** 29, Target SDK: 35
 - **Architecture:** MVVM + Repository pattern
 - **DI:** Hilt (KSP)
-- **Database:** Room, version 29
+- **Database:** Room, version 30
 - **Navigation:** Compose Navigation (type-safe routes)
 - **Splash:** AndroidX SplashScreen API (core-splashscreen 1.0.1)
 - **Charts:** Custom Canvas-drawn (pie chart, line chart) — no external chart library
@@ -25,7 +25,7 @@ Investment tracking app with Android native + PWA web app.
 - `data/repository/` - Repository interfaces and implementations
 - `di/` - Hilt modules (DatabaseModule, RepositoryModule)
 - `model/` - Domain models and enums
-- `ui/` - Compose screens organized by feature (dashboard, account, item, transaction, simulation, sqlexplorer, performance, watchlist, help)
+- `ui/` - Compose screens organized by feature (dashboard, account, item, positions, transaction, simulation, sqlexplorer, performance, watchlist, help)
 - `ui/components/` - Reusable UI components (CollapsibleCard, ConfirmDeleteDialog, DateRangePicker)
 
 ## Key Design Decisions
@@ -38,11 +38,12 @@ Investment tracking app with Android native + PWA web app.
 - Navigation routes use ticker strings (not Long IDs) for item detail, form, and statistics
 - DatabaseProvider pattern: DB opens lazily on first access
 - CASCADE deletes: removing account removes associated performance records (transactions and items are not tied to accounts)
-- Items screen: 3 tabs with icons — STOCK (ShowChart), ETF (TrendingUp), Analysis (Analytics); STOCK/ETF tabs have pie chart + item list; Analysis tab has Stock and ETF exploding pie chart cards
+- Items screen: 4 tabs in a flat Row layout — STOCK (ShowChart), ETF (TrendingUp), Analysis (Analytics), Dividend (Payments); all tabs always visible with equal width, selected tab highlighted with primaryContainer background; STOCK/ETF tabs have pie chart + item list; Analysis tab has Stock and ETF exploding pie chart cards; Dividend tab has total annual income summary + Stock/ETF dividend cards with exploding pie charts and sortable tables
 - Items screen: Refresh All toolbar action
 - Items screen: sort-by dropdown (Ticker, Total Value, Current Price) above items list; defaults to Total Value descending
 - Items screen: brokerage-style card rows with thin dividers; each row shows TickerIcon3D + ticker (bold) + uppercase company name on left, current price with day change $ and % below, total position value on right with daily gain/loss badge (green/red chip)
 - Items screen: annual dividend income line ("Div: $X.XX/yr") shown below price when dividendRate > 0; blue color (#1565C0)
+- Items screen Dividend tab: "Total Annual Dividend Income" summary card at top (blue, bold); separate "Stock" and "ETF" DividendPieCard sections; each card has exploding pie chart (largest slice offset), color-coded legend with % per ticker, sort buttons (Annual Dividend, Div/Share, Ticker, Shares), and data table (Ticker, Shares, Div/Share, Annual, %); only shows tickers with dividendRate > 0 and quantity > 0; clickable rows navigate to item detail
 - Items screen: only Edit button per row (no Delete in table); Delete available in Edit dialog
 - TickerIcon3D: gradient-filled rounded-corner (10dp) box with shadow; color derived from ticker hash; white letter fallback; company logo overlay from companiesmarketcap.com CDN via Coil
 - Company full name fetched from Yahoo Finance `shortName` during price refresh
@@ -107,7 +108,9 @@ Investment tracking app with Android native + PWA web app.
 - SQL Result screen: full screen with editable SQL query card, result grid (vertical+horizontal scroll, clickable cells for full-screen detail), Export to CSV button; auto-executes on load
 - SQL Library: `sql_library` table (id, name, description, category, sql) for persisting reusable queries
 - Settings: backup folder URI persisted to SharedPreferences; restored on ViewModel init
-- Backup format v5: exports all 10 tables (accounts, positions, transactions, performance records, watch lists + items, change history, definitions, SQL library, AI library); v1/v2/v3/v4 backward compat on restore; compatible between Android app and PWA
+- Backup format v6: generic table-based — auto-discovers all tables via `sqlite_master`, exports every row from every table as `{"version":6,"tables":{"table_name":[{row},...],...}}`; BLOB columns base64-encoded; topological sort for FK-safe delete/insert order; new tables automatically included without code changes
+- Backup restore: v6+ uses generic restore (raw SQL INSERT OR REPLACE per table); v1-v5 uses legacy typed restore via BackupData model for backward compat
+- Backup compatible between Android app and PWA
 - Transaction list: each card shows G/L = (currentPrice - pricePerShare) * numberOfShares; green for positive, red for negative
 - Settings Data Management: "Import Data" section with CSV position import; column mapping dialog with 3-row preview, auto-mapping with brokerage aliases (Price→currentPrice, Description→name, Symbol→ticker, etc.), account selector, progress bar; upserts into investment_items
 - CSV Import: `parseNumeric()` strips commas from numbers (handles brokerage formats like "92,150.62"); non-data rows (blank lines, FOOTNOTES) filtered out during import
@@ -171,7 +174,7 @@ Investment tracking app with Android native + PWA web app.
 - Transaction list: multi-select mode via long-press; contextual top bar with selection count, Select All, and Delete; bulk delete respects "Warn before delete" setting
 - LocalDateTime stored as epoch seconds (UTC) via TypeConverter; LocalDate stored as epoch days
 - Help screen: accessible from hamburger menu; loads `assets/help.html` via WebView; styled HTML with dark/light theme support; covers all features with navigation overview grid, per-section guides, and tips
-- About dialog: version displayed dynamically from BuildConfig (versionName + versionCode)
+- About dialog: version displayed dynamically from BuildConfig (versionName + versionCode); "What's New" section with recent feature changelog
 - Build: `buildConfig = true` enabled in build features for BuildConfig access
 - Build: auto-increment versioning via `version.properties` (VERSION_MAJOR, VERSION_MINOR, VERSION_CODE); minor version and version code increment after each assembleDebug/assembleRelease
 
@@ -181,8 +184,11 @@ Located in `PWA/` folder. Node.js + Express + better-sqlite3 server with vanilla
 - **Frontend:** 18 screens, 11 components, HTML5 Canvas charts, hash-based SPA router
 - **Database:** Same SQLite schema as Android Room v29 (12 tables + settings)
 - **No build step:** vanilla JS modules, no framework
-- **Yahoo Finance:** Server-side direct fetch calls (no CORS issues since server-side)
-- **Backup:** Same v5 JSON format — data portable between Android and PWA
+- **Yahoo Finance:** Server-side direct fetch calls (no CORS issues since server-side); v10 summaryDetail with crumb auth for dividend rate
+- **Service Worker:** Network-first for JS/CSS/HTML, cache-first for assets; "Refresh App" button in About to force cache bust
+- **Snapshot:** Static `snapshot.html` generated after every Refresh All — offline-viewable portfolio summary
+- **Server Log:** In-memory log capture (500 entries); viewable in Settings > Server Log tab
+- **Backup:** Same v6 generic JSON format — data portable between Android and PWA
 - **Run:** `START_APP.bat` or `npm start` from PWA/ folder → http://localhost:3000
 - **Dependencies:** express, better-sqlite3, multer (installed via `npm install`)
 
@@ -204,12 +210,15 @@ All PWA code is inside the `PWA/` folder:
     - `definitions.js` - Metric definitions
     - `sql-library.js` - Saved SQL queries
     - `ai-library.js` - AI prompt library
-    - `backup.js` - Backup export/import (v5 JSON)
+    - `backup.js` - Backup export/import (v6 generic JSON, v1-v5 legacy compat)
     - `sql-explorer.js` - Raw SQL execution
     - `yahoo.js` - Yahoo Finance proxy routes
   - `services/` - Business logic services
-    - `yahoo-finance.js` - Yahoo Finance API (direct fetch, no proxy)
+    - `yahoo-finance.js` - Yahoo Finance API (direct fetch, crumb auth for v10)
     - `csv-parser.js` - CSV parsing with auto-mapping aliases
+    - `auto-refresh.js` - Periodic price refresh, change history, auto-backup, snapshot generation
+    - `snapshot.js` - Static HTML portfolio snapshot generator
+    - `app-log.js` - In-memory server log capture (intercepts console.log/error/warn)
 - `PWA/public/` - Frontend (vanilla JS, no build step)
   - `index.html` - SPA shell
   - `css/styles.css` - Global styles (dark/light theme)
@@ -219,7 +228,7 @@ All PWA code is inside the `PWA/` folder:
   - `js/preferences.js` - localStorage preferences with defaults
   - `js/screens/` - Screen modules (one per route)
     - `dashboard.js` - Dashboard with collapsible cards (Portfolio Summary, Market Indices, Daily Glance, Positions, Position Details)
-    - `items.js` - Positions list with Stock/ETF/Analysis tabs
+    - `items.js` - Positions list with Stock/ETF/Analysis/Dividend tabs
     - `item-detail.js` - Single ticker detail (Details, Price History, Transactions tabs + Investing Performance chart)
     - `item-form.js` - Add/edit position form
     - `transaction-list.js` - Transaction list with multi-select
@@ -246,16 +255,47 @@ All PWA code is inside the `PWA/` folder:
     - `toast.js` - Toast notifications
   - `js/utils/` - Utility modules
     - `format.js` - Currency, percent, date formatting
+  - `sw.js` - Service worker (network-first caching, force-refresh via message)
 - `PWA/package.json` - Node.js dependencies
 - `PWA/START_APP.bat` - Windows launcher script
+- `PWA/start_server.sh` - Linux/NAS launcher (stop, pull, restart)
+- `PWA/full_reset_server.sh` - Full reset (backup DB, hard reset, restore DB, restart)
 
 ## Build (Android)
 Open `ANDROID_APP/` in Android Studio and sync Gradle. Requires JDK 17+.
-Set `JAVA_HOME` to JDK 17 path if building from CLI:
+
+### Batch Scripts (in ANDROID_APP/)
+All scripts source `env.bat` for shared config (JAVA_HOME, proxy settings).
+- `env.bat` - Shared environment config (JAVA_HOME path, corporate proxy)
+- `build_apk.bat` - Clean + assembleRelease, opens output folder
+- `create_signature.bat` - Generate signing keystore + keystore.properties
+- `run_once.bat` - First-time setup (keystore.properties, local.properties, keystore generation)
+- `install_dependency.bat` - Download/install JDK 17 + Android SDK command-line tools
+- `start_emulator.bat` - Launch emulator, build debug, install and run app
+
+### Building from CLI
 ```
 cd ANDROID_APP
-JAVA_HOME="E:/Prog/Java/jdk-17" ./gradlew assembleRelease
+build_apk.bat
 ```
+Or manually:
+```
+cd ANDROID_APP
+set JAVA_HOME=C:\Program Files\jdk-17.0.2
+gradlew assembleRelease
+```
+
+### First-Time Setup on New Machine
+Run `run_once.bat` to create gitignored config files, or manually:
+1. Set JAVA_HOME in `env.bat`
+2. Run `create_signature.bat` to generate keystore
+3. Run `install_dependency.bat` to install Android SDK
+4. Run `build_apk.bat` to build
+
+### Corporate Proxy
+Proxy configured in two places:
+- `env.bat` — `PROXY` variable used by batch scripts (curl downloads)
+- `gradle.properties` — `systemProp.http(s).proxyHost/Port` used by Gradle wrapper (Java networking)
 
 ## Versioning
 - Version managed via `ANDROID_APP/version.properties` (VERSION_MAJOR, VERSION_MINOR, VERSION_CODE)

@@ -33,7 +33,6 @@ export async function render(container) {
     <div class="tab-bar mb-16">
       <button class="tab active" data-tab="prefs">Preferences</button>
       <button class="tab" data-tab="data">Data Management</button>
-      <button class="tab" data-tab="log">Server Log</button>
     </div>
     <div id="settings-content"></div>
   </div>`;
@@ -52,7 +51,6 @@ export async function render(container) {
     const el = document.getElementById('settings-content');
     if (activeTab === 'prefs') renderPrefs(el, serverSettings);
     else if (activeTab === 'data') renderData(el);
-    else if (activeTab === 'log') renderServerLog(el);
   }
   renderTab();
 }
@@ -350,7 +348,11 @@ async function renderData(el) {
     if (!file) return;
     try {
       const result = await backup.import(file);
-      showToast(`Imported: ${result.accounts || 0} accounts, ${result.positions || 0} positions, ${result.transactions || 0} transactions, ${result.watchLists || 0} watch lists`);
+      const accts = result.investment_accounts || result.accounts || 0;
+      const pos = result.investment_positions || result.positions || 0;
+      const txns = result.investment_transactions || result.transactions || 0;
+      const wl = result.watch_lists || result.watchLists || 0;
+      showToast(`Imported: ${accts} accounts, ${pos} positions, ${txns} transactions, ${wl} watch lists`);
     } catch (err) { showToast('Import failed: ' + err.message); }
   });
 
@@ -632,51 +634,3 @@ function showAccountMappingDialog(csvNames, appAccounts) {
   });
 }
 
-async function renderServerLog(el) {
-  el.innerHTML = `
-    <div class="flex justify-between items-center mb-8">
-      <h3>Server Log</h3>
-      <div class="flex gap-8">
-        <button class="btn btn-sm btn-outline" id="log-refresh">&#8635; Refresh</button>
-        <button class="btn btn-sm btn-error" id="log-clear">Clear</button>
-      </div>
-    </div>
-    <div id="log-entries"><div class="flex items-center gap-8"><div class="spinner"></div> <span class="text-sm text-muted">Loading...</span></div></div>
-  `;
-
-  async function loadLog() {
-    const logEl = document.getElementById('log-entries');
-    try {
-      const resp = await fetch('/api/server-log');
-      const entries = await resp.json();
-      if (entries.length === 0) {
-        logEl.innerHTML = '<div class="text-sm text-muted p-16 text-center">No log entries</div>';
-        return;
-      }
-      logEl.innerHTML = `
-        <div class="text-xs text-muted mb-4">${entries.length} entries (newest first)</div>
-        <div style="max-height:500px;overflow-y:auto;font-family:monospace;font-size:12px;background:var(--surface-variant);border-radius:8px;padding:8px">
-          ${entries.map(e => {
-            const color = e.level === 'ERROR' ? 'var(--error)' : e.level === 'WARN' ? '#FF8F00' : 'var(--on-surface)';
-            return `<div style="padding:2px 0;border-bottom:1px solid color-mix(in srgb, var(--outline) 10%, transparent)"><span class="text-muted">${e.time}</span> <span style="color:${color};font-weight:${e.level !== 'INFO' ? 'bold' : 'normal'}">[${e.level}]</span> ${escapeHtml(e.msg)}</div>`;
-          }).join('')}
-        </div>
-      `;
-    } catch (err) {
-      logEl.innerHTML = `<div class="text-sm" style="color:var(--error)">Failed to load log: ${err.message}</div>`;
-    }
-  }
-
-  document.getElementById('log-refresh').addEventListener('click', loadLog);
-  document.getElementById('log-clear').addEventListener('click', async () => {
-    await fetch('/api/server-log', { method: 'DELETE' });
-    showToast('Log cleared');
-    loadLog();
-  });
-
-  loadLog();
-}
-
-function escapeHtml(str) {
-  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-}

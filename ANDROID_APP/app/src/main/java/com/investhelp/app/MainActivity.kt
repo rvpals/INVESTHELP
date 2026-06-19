@@ -42,6 +42,7 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -90,20 +91,14 @@ import com.investhelp.app.ui.navigation.WatchListRoute
 import com.investhelp.app.ui.navigation.PositionDetailRoute
 import com.investhelp.app.ui.navigation.HelpRoute
 import androidx.compose.material.icons.filled.HelpOutline
-import com.investhelp.app.data.local.dao.InvestmentAccountDao
-import com.investhelp.app.data.local.dao.InvestmentItemDao
-import com.investhelp.app.data.local.dao.InvestmentTransactionDao
-import com.investhelp.app.model.BackupAccount
-import com.investhelp.app.model.BackupData
-import com.investhelp.app.model.BackupItem
-import com.investhelp.app.model.BackupTransaction
+import android.util.Base64
+import com.investhelp.app.data.local.DatabaseProvider
 import com.investhelp.app.ui.settings.SettingsViewModel
 import com.investhelp.app.ui.theme.InvestHelpTheme
 import com.investhelp.app.ui.theme.ThemePreferences
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
-import kotlinx.serialization.json.Json
 import java.text.NumberFormat
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
@@ -126,12 +121,9 @@ val bottomNavItems = listOf(
 @AndroidEntryPoint
 class MainActivity : AppCompatActivity() {
 
-    @Inject lateinit var accountDao: InvestmentAccountDao
-    @Inject lateinit var itemDao: InvestmentItemDao
-    @Inject lateinit var transactionDao: InvestmentTransactionDao
+    @Inject lateinit var dbProvider: DatabaseProvider
 
     private var pendingTicker: String? = null
-    private val json = Json { prettyPrint = true }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
@@ -170,6 +162,66 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private val EXCLUDED_TABLES = setOf("room_master_table", "android_metadata", "sqlite_sequence")
+
+    private fun exportAllTablesGeneric(): String {
+        val db = dbProvider.database.openHelper.readableDatabase
+        val tablesCursor = db.query("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")
+        val tables = mutableListOf<String>()
+        while (tablesCursor.moveToNext()) {
+            val name = tablesCursor.getString(0)
+            if (name !in EXCLUDED_TABLES && !name.startsWith("sqlite_")) tables.add(name)
+        }
+        tablesCursor.close()
+
+        val sb = StringBuilder()
+        sb.append("{\"version\":6,\"tables\":{")
+        tables.forEachIndexed { tIdx, table ->
+            if (tIdx > 0) sb.append(",")
+            sb.append("\"$table\":[")
+            val colCursor = db.query("PRAGMA table_info($table)")
+            val cols = mutableListOf<Pair<String, String>>()
+            while (colCursor.moveToNext()) {
+                cols.add(colCursor.getString(1) to colCursor.getString(2).uppercase())
+            }
+            colCursor.close()
+
+            val dataCursor = db.query("SELECT * FROM $table")
+            var rIdx = 0
+            while (dataCursor.moveToNext()) {
+                if (rIdx > 0) sb.append(",")
+                sb.append("{")
+                cols.forEachIndexed { cIdx, (colName, colType) ->
+                    if (cIdx > 0) sb.append(",")
+                    sb.append("\"$colName\":")
+                    if (dataCursor.isNull(cIdx)) {
+                        sb.append("null")
+                    } else when {
+                        colType.contains("BLOB") -> {
+                            val bytes = dataCursor.getBlob(cIdx)
+                            sb.append("\"${Base64.encodeToString(bytes, Base64.NO_WRAP)}\"")
+                        }
+                        colType.contains("INT") -> sb.append(dataCursor.getLong(cIdx))
+                        colType.contains("REAL") || colType.contains("FLOAT") || colType.contains("DOUBLE") ->
+                            sb.append(dataCursor.getDouble(cIdx))
+                        else -> {
+                            val str = dataCursor.getString(cIdx)
+                                .replace("\\", "\\\\").replace("\"", "\\\"")
+                                .replace("\n", "\\n").replace("\r", "\\r").replace("\t", "\\t")
+                            sb.append("\"$str\"")
+                        }
+                    }
+                }
+                sb.append("}")
+                rIdx++
+            }
+            dataCursor.close()
+            sb.append("]")
+        }
+        sb.append("}}")
+        return sb.toString()
+    }
+
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
@@ -194,40 +246,7 @@ class MainActivity : AppCompatActivity() {
             )
             runBlocking(Dispatchers.IO) {
                 try {
-                    val accounts = accountDao.getAllAccountsSnapshot()
-                    val items = itemDao.getAllItemsSnapshot()
-                    val transactions = transactionDao.getAllTransactionsSnapshot()
-
-                    val backupData = BackupData(
-                        accounts = accounts.map {
-                            BackupAccount(it.id, it.name, it.description, it.initialValue)
-                        },
-                        items = items.map {
-                            BackupItem(
-                                ticker = it.ticker,
-                                name = it.name,
-                                type = it.type.name,
-                                currentPrice = it.currentPrice,
-                                quantity = it.quantity,
-                                dayGainLoss = it.dayGainLoss,
-                                value = it.value,
-                                dayHigh = it.dayHigh,
-                                dayLow = it.dayLow,
-                                dividendRate = it.dividendRate
-                            )
-                        },
-                        transactions = transactions.map {
-                            BackupTransaction(
-                                it.id, it.date.toEpochDay(), it.time?.toSecondOfDay(),
-                                it.action.name, ticker = it.ticker,
-                                numberOfShares = it.numberOfShares,
-                                pricePerShare = it.pricePerShare,
-                                totalAmount = it.totalAmount, note = it.note
-                            )
-                        }
-                    )
-
-                    val jsonString = json.encodeToString(BackupData.serializer(), backupData)
+                    val jsonString = exportAllTablesGeneric()
                     val timestamp = LocalDateTime.now().format(
                         DateTimeFormatter.ofPattern("yyyy-MM-dd_HHmmss")
                     )
@@ -287,6 +306,18 @@ fun GlobalTopBar(navController: NavHostController) {
                     Text(
                         "Investment tracking app for managing portfolios, positions, and transactions.",
                         style = MaterialTheme.typography.bodyMedium
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    HorizontalDivider()
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text("What's New", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        "• Positions tabs: flat Row layout with STOCK/ETF/Analysis/Dividend (icon + equal width)\n" +
+                        "• Dividend tab: total annual income, Stock/ETF exploding pie charts, sortable tables\n" +
+                        "• Generic backup/restore (v6) — auto-discovers all tables via sqlite_master\n" +
+                        "• Removed dead code: ItemListScreen, ItemStatisticsScreen, unused routes",
+                        style = MaterialTheme.typography.bodySmall
                     )
                 }
             },
