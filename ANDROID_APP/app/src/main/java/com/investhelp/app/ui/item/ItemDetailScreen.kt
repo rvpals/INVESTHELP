@@ -84,6 +84,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Fullscreen
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.PlaylistAdd
 import androidx.compose.material.icons.filled.Save
@@ -124,6 +125,7 @@ fun ItemDetailScreen(
     onEditItem: () -> Unit,
     onSimulate: (ticker: String, shares: Double) -> Unit,
     onAi: (ticker: String) -> Unit,
+    onVolatility: (ticker: String, shares: Double) -> Unit,
     onBack: () -> Unit
 ) {
     LaunchedEffect(ticker) {
@@ -371,6 +373,9 @@ fun ItemDetailScreen(
                     }
                     IconButton(onClick = { onSimulate(ticker, item?.quantity ?: 0.0) }) {
                         Icon(Icons.AutoMirrored.Filled.TrendingUp, contentDescription = "Simulate")
+                    }
+                    IconButton(onClick = { onVolatility(ticker, item?.quantity ?: 0.0) }) {
+                        Icon(Icons.Default.BarChart, contentDescription = "Volatility")
                     }
                     IconButton(onClick = { showAddToWatchList = true }) {
                         Icon(Icons.Default.PlaylistAdd, contentDescription = "Add to Watch List")

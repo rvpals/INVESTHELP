@@ -568,8 +568,9 @@ private fun WatchListCardContent(
     onNavigateToWatchList: () -> Unit
 ) {
     val currencyFormat = NumberFormat.getCurrencyInstance(Locale.US)
-    val sharesFormat = DecimalFormat("#,##0.##")
     val dividerColor = MaterialTheme.colorScheme.outline
+    val gainColor = Color(0xFF388E3C)
+    val lossColor = MaterialTheme.colorScheme.error
 
     Column(modifier = Modifier.fillMaxWidth()) {
         watchLists.forEachIndexed { listIndex, watchList ->
@@ -608,18 +609,26 @@ private fun WatchListCardContent(
                     )
                     VerticalDivider(color = dividerColor)
                     Text(
-                        "Shares",
+                        "Chg %",
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.Bold,
-                        modifier = Modifier.weight(0.7f),
+                        modifier = Modifier.weight(0.85f),
                         textAlign = TextAlign.End
                     )
                     VerticalDivider(color = dividerColor)
                     Text(
-                        "Added",
+                        "Chg \$",
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.Bold,
-                        modifier = Modifier.weight(0.8f),
+                        modifier = Modifier.weight(1f),
+                        textAlign = TextAlign.End
+                    )
+                    VerticalDivider(color = dividerColor)
+                    Text(
+                        "Added \$",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.weight(0.9f),
                         textAlign = TextAlign.End
                     )
                 }
@@ -627,6 +636,12 @@ private fun WatchListCardContent(
 
                 val altColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
                 watchList.items.forEachIndexed { index, item ->
+                    val isLoading = item.currentPrice == 0.0
+                    val changeColor = when {
+                        isLoading -> MaterialTheme.colorScheme.onSurfaceVariant
+                        item.changeAmount >= 0 -> gainColor
+                        else -> lossColor
+                    }
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -643,16 +658,27 @@ private fun WatchListCardContent(
                         )
                         VerticalDivider(color = dividerColor)
                         Text(
-                            sharesFormat.format(item.shares),
+                            if (isLoading) "--"
+                            else "${if (item.changePercent >= 0) "+" else ""}${"%.2f".format(item.changePercent)}%",
                             style = MaterialTheme.typography.bodySmall,
-                            modifier = Modifier.weight(0.7f),
+                            color = changeColor,
+                            modifier = Modifier.weight(0.85f),
+                            textAlign = TextAlign.End
+                        )
+                        VerticalDivider(color = dividerColor)
+                        Text(
+                            if (isLoading) "--"
+                            else "${if (item.changeAmount >= 0) "+" else ""}${currencyFormat.format(item.changeAmount)}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = changeColor,
+                            modifier = Modifier.weight(1f),
                             textAlign = TextAlign.End
                         )
                         VerticalDivider(color = dividerColor)
                         Text(
                             currencyFormat.format(item.priceWhenAdded),
                             style = MaterialTheme.typography.bodySmall,
-                            modifier = Modifier.weight(0.8f),
+                            modifier = Modifier.weight(0.9f),
                             textAlign = TextAlign.End
                         )
                     }

@@ -23,6 +23,7 @@ app.use('/api/backup', require('./routes/backup'));
 app.use('/api/csv-import', require('./routes/csv-import'));
 app.use('/api/sql', require('./routes/sql-explorer'));
 app.use('/api/settings', require('./routes/settings'));
+app.use('/api/volatility', require('./routes/volatility'));
 
 // Version info
 // Server log

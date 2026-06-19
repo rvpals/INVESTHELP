@@ -53,6 +53,12 @@
 - Clicking legend rows navigates to item detail
 - Wrapped in CollapsibleCard with pin persistence
 
+### Watch List Dashboard Card
+- Collapsible card in Dashboard showing watch lists at a glance
+- Table columns: Ticker, Chg% (change since added, color-coded), Chg$ (profit/loss in $, color-coded), Added$ (price when added)
+- Live prices fetched per ticker after DB load; "--" shown in muted color while loading
+- Change % = `(currentPrice - priceWhenAdded) / priceWhenAdded × 100`; Change $ = `(currentPrice - priceWhenAdded) × shares`
+
 ### Position Details
 - Horizontally scrollable table with gridlines
 - Columns: Ticker (3D icon), Shares, Price, Value
@@ -287,6 +293,20 @@ Three tabs: **Details**, **Price History**, **Transactions** (ScrollableTabRow)
 - Grid columns: Ticker, Shares, Price, Value, Allocation %, Return %, Action, Reasoning
 - Configurable thresholds in Settings > Preferences > "Next-Day Actions Thresholds"
 
+## 52-Week Volatility
+
+- Accessible via BarChart icon (📊) in Item Detail top bar
+- Available on both Android and PWA
+- **Position Value Card**: primary-container background; ticker + company name; large position value (currentPrice × shares)
+- **52-Week Range Card**: Canvas-drawn range bar showing where current price sits within 52W Low–High range; percentage badge ("X% of range"); low/high labels
+- **Annualized Volatility Card**: large % in label color; badge (Low/Moderate/High/Very High); stats (Daily Std Dev, sessions, method); 4-cell scale legend
+- **Math**: log returns `ln(close[i]/close[i-1])`, sample σ ÷ (n-1), annualized `× √252 × 100`
+- **Label thresholds**: <15% Low, <30% Moderate, <60% High, >60% Very High
+- **Cache**: 1-hour in-memory per ticker; Refresh button bypasses cache
+- **Data sources**: Yahoo Finance v8 chart (365d daily closes) + quoteSummary (52W High/Low) + v8 quote (current price)
+- **PWA route**: `GET /api/volatility/:ticker` with Map-based cache; `?force=true` to bypass
+- **PWA screen**: HiDPI canvas using CSS `--primary` / `--surface-variant` custom properties
+
 ## AI (Artificial Intelligence)
 
 - Accessible via sparkle icon (✨) on Item Detail top bar
@@ -318,10 +338,10 @@ Three tabs: **Details**, **Price History**, **Transactions** (ScrollableTabRow)
 ## PWA Web App
 
 - Full web version of InvestHelp in `PWA/` folder
-- **Server**: Node.js + Express + better-sqlite3 (same SQLite schema as Android Room v29)
+- **Server**: Node.js + Express + better-sqlite3 (same SQLite schema as Android Room v30)
 - **Frontend**: Vanilla HTML/CSS/JS — no framework, no build step
-- **16 API routes**: accounts, positions, transactions, performance, watchlists, change-history, definitions, csv-mappings, sql-library, ai-library, yahoo, refresh, backup, csv-import, sql-explorer, settings
-- **18 screens**: dashboard, positions, item-detail, item-form, transaction-list/form, simulation, account-list/detail/form, performance, watchlist, settings, sql-explorer, ai-ticker, next-day-actions, analyze-price, help
+- **17 API routes**: accounts, positions, transactions, performance, watchlists, change-history, definitions, csv-mappings, sql-library, ai-library, yahoo, refresh, backup, csv-import, sql-explorer, settings, volatility
+- **19 screens**: dashboard, positions, item-detail, item-form, transaction-list/form, simulation, account-list/detail/form, performance, watchlist, settings, sql-explorer, ai-ticker, next-day-actions, analyze-price, help, volatility
 - **11 components**: top-bar, bottom-nav, collapsible-card, confirm-dialog, data-table, pie-chart, line-chart, mini-chart, ticker-icon, filter-chips, date-range-picker
 - **22 color themes** with dark mode via CSS custom properties
 - **Yahoo Finance proxy**: configurable proxy URL in Settings > Preferences for restricted networks; supports prepend-style (corsproxy.io) and replace-style (self-hosted); test button verifies connectivity

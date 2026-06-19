@@ -136,3 +136,8 @@ export const settings = {
   getAll: () => get('/api/settings'),
   set:    (key, value) => put(`/api/settings/${key}`, { value }),
 };
+
+export const volatility = {
+  get: (ticker, force = false) =>
+    get(`/api/volatility/${encodeURIComponent(ticker)}${force ? '?force=true' : ''}`),
+};

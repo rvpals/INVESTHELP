@@ -39,6 +39,8 @@ import com.investhelp.app.ui.watchlist.WatchListScreen
 import com.investhelp.app.ui.watchlist.WatchListViewModel
 import com.investhelp.app.ui.help.HelpScreen
 import com.investhelp.app.ui.positions.PositionDetailScreen
+import com.investhelp.app.ui.volatility.VolatilityScreen
+import com.investhelp.app.ui.volatility.VolatilityViewModel
 
 @Composable
 fun InvestHelpNavHost(
@@ -124,6 +126,9 @@ fun InvestHelpNavHost(
                 },
                 onAi = { ticker ->
                     navController.navigate(AiTickerRoute(ticker = ticker))
+                },
+                onVolatility = { ticker, shares ->
+                    navController.navigate(VolatilityRoute(ticker = ticker, shares = shares))
                 },
                 onBack = { navController.popBackStack() }
             )
@@ -276,6 +281,17 @@ fun InvestHelpNavHost(
 
         composable<HelpRoute> {
             HelpScreen()
+        }
+
+        composable<VolatilityRoute> { backStackEntry ->
+            val route = backStackEntry.toRoute<VolatilityRoute>()
+            val viewModel: VolatilityViewModel = hiltViewModel()
+            VolatilityScreen(
+                ticker = route.ticker,
+                shares = route.shares,
+                viewModel = viewModel,
+                onBack = { navController.popBackStack() }
+            )
         }
     }
 }

@@ -4,7 +4,6 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.investhelp.app.data.local.entity.ChangeHistoryEntity
-import com.investhelp.app.data.local.entity.WatchListItemEntity
 import com.investhelp.app.data.remote.StockPriceService
 import com.investhelp.app.data.repository.AccountRepository
 import com.investhelp.app.data.repository.ChangeHistoryRepository
@@ -25,6 +24,7 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.time.LocalDate
@@ -63,10 +63,19 @@ data class DashboardUiState(
     val overallDailyByType: List<OverallDailyByType> = emptyList()
 )
 
+data class DashboardWatchListItem(
+    val ticker: String,
+    val shares: Double,
+    val priceWhenAdded: Double,
+    val currentPrice: Double = 0.0,
+    val changeAmount: Double = 0.0,
+    val changePercent: Double = 0.0
+)
+
 data class DashboardWatchList(
     val id: Long,
     val name: String,
-    val items: List<WatchListItemEntity>
+    val items: List<DashboardWatchListItem>
 )
 
 @HiltViewModel
@@ -140,6 +149,7 @@ class DashboardViewModel @Inject constructor(
 
     private val _dashboardWatchLists = MutableStateFlow<List<DashboardWatchList>>(emptyList())
     val dashboardWatchLists: StateFlow<List<DashboardWatchList>> = _dashboardWatchLists.asStateFlow()
+    private var watchListPriceFetchJob: Job? = null
 
     fun setWatchListCardVisible(visible: Boolean) {
         prefs.edit().putBoolean(SettingsViewModel.KEY_CARD_VISIBLE_WATCH_LIST, visible).apply()
@@ -185,15 +195,59 @@ class DashboardViewModel @Inject constructor(
             watchListRepository.getAllWatchLists().collectLatest { lists ->
                 val itemFlows = lists.take(2).map { watchList ->
                     watchListRepository.getItemsByWatchList(watchList.id)
-                        .map { items -> DashboardWatchList(watchList.id, watchList.name, items.take(5)) }
+                        .map { items ->
+                            DashboardWatchList(
+                                watchList.id, watchList.name,
+                                items.take(5).map { entity ->
+                                    DashboardWatchListItem(
+                                        ticker = entity.ticker,
+                                        shares = entity.shares,
+                                        priceWhenAdded = entity.priceWhenAdded
+                                    )
+                                }
+                            )
+                        }
                 }
                 if (itemFlows.isEmpty()) {
                     _dashboardWatchLists.value = emptyList()
                 } else {
                     combine(itemFlows) { it.toList() }.collect { dashboardLists ->
                         _dashboardWatchLists.value = dashboardLists
+                        watchListPriceFetchJob?.cancel()
+                        watchListPriceFetchJob = viewModelScope.launch {
+                            fetchWatchListPrices(dashboardLists)
+                        }
                     }
                 }
+            }
+        }
+    }
+
+    private suspend fun fetchWatchListPrices(lists: List<DashboardWatchList>) {
+        val uniqueTickers = lists.flatMap { it.items }.map { it.ticker }.distinct()
+        for (ticker in uniqueTickers) {
+            try {
+                val quote = stockPriceService.fetchQuote(ticker)
+                val currentPrice = quote.price
+                _dashboardWatchLists.value = _dashboardWatchLists.value.map { watchList ->
+                    watchList.copy(
+                        items = watchList.items.map { item ->
+                            if (item.ticker == ticker) {
+                                val priceDiff = currentPrice - item.priceWhenAdded
+                                val changePct = if (item.priceWhenAdded > 0)
+                                    priceDiff / item.priceWhenAdded * 100.0 else 0.0
+                                val changeAmt = priceDiff * item.shares
+                                item.copy(
+                                    currentPrice = currentPrice,
+                                    changeAmount = changeAmt,
+                                    changePercent = changePct
+                                )
+                            } else item
+                        }
+                    )
+                }
+            } catch (e: Exception) {
+                AppLog.log("Dashboard watch list price $ticker: ${e.message}")
             }
         }
     }
@@ -302,6 +356,10 @@ class DashboardViewModel @Inject constructor(
 
                 if (prefs.getBoolean(SettingsViewModel.KEY_AUTO_UPDATE_CHANGE_HISTORY, false)) {
                     recordChangeHistory()
+                }
+                watchListPriceFetchJob?.cancel()
+                watchListPriceFetchJob = viewModelScope.launch {
+                    fetchWatchListPrices(_dashboardWatchLists.value)
                 }
             } finally {
                 _isRefreshing.value = false

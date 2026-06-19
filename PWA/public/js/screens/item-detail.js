@@ -35,6 +35,7 @@ export async function render(container, { ticker }) {
       <button class="btn btn-sm btn-outline" id="btn-delete" title="Delete" style="color:var(--error);border-color:var(--error)">&#128465; Delete</button>
       <button class="btn btn-sm btn-outline" id="btn-yahoo" title="Yahoo Finance">&#128279; Yahoo</button>
       <button class="btn btn-sm btn-outline" id="btn-simulate" title="Simulate">&#128200; Simulate</button>
+      <button class="btn btn-sm btn-outline" id="btn-volatility" title="Volatility Analysis">&#128202; Volatility</button>
       <button class="btn btn-sm btn-outline" id="btn-watchlist" title="Add to Watch List">&#9734; Watch List</button>
       <button class="btn btn-sm btn-outline" id="btn-report" title="Full Yahoo Report">&#9432; Report</button>
     </div>
@@ -61,6 +62,9 @@ export async function render(container, { ticker }) {
   });
   document.getElementById('btn-simulate')?.addEventListener('click', () => {
     navigate(`#/simulation/${ticker}/${p.quantity || 0}`);
+  });
+  document.getElementById('btn-volatility')?.addEventListener('click', () => {
+    navigate(`#/volatility/${ticker}/${p.quantity || 0}`);
   });
   document.getElementById('btn-watchlist')?.addEventListener('click', () => showAddToWatchListDialog(ticker, p.currentPrice));
   document.getElementById('btn-report')?.addEventListener('click', () => showFullReportDialog(ticker));

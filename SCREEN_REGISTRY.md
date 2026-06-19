@@ -34,7 +34,7 @@ Use this to reference any screen or component by ID. Example: "In Screen #01, Co
 | C1 | Portfolio Summary Card | Collapsible; total value (headlineLarge bold centered), day/all percentages, mini line chart of change_history, click chart opens Change History dialog |
 | C2 | Market Indices Row | Horizontally scrollable small cards (NASDAQ, S&P 500, Dow, Gold, etc.); shows price + daily change; long-press drag to reorder; click opens Yahoo Finance |
 | C3 | Daily Glance Card | Collapsible; "Overall Daily" section (Stock/ETF totals), per-share toggle, top 5 gainers, top 5 losers; clickable rows to item detail |
-| C4 | Watch List Card | Collapsible; watch list sections with table (Ticker, Shares, Added Price); "View All Watch Lists" button |
+| C4 | Watch List Card | Collapsible; watch list sections with table (Ticker, Chg%, Chg$, Added$); live prices fetched per ticker; values color-coded green/red; "--" while loading |
 | C5 | Positions Pie Chart Card | Collapsible; pie chart of all items by ticker; legend grid (top 20 + "More" button); clickable rows to item detail |
 | C6 | Position Details Card | Collapsible; horizontally scrollable table (icon, shares, price, cost, value, change $, change %); clickable rows to item detail |
 | C7 | Change History Dialog | Full-screen; zoomable multi-series chart (Total/ETF/Stock lines); "Change Value This Week" summary; data table (Date, ETF, Stock, Total, daily changes) |
@@ -269,6 +269,22 @@ Use this to reference any screen or component by ID. Example: "In Screen #01, Co
 |----|-----------|-------------|
 | C1 | Version Display | Dynamic from BuildConfig (versionName + versionCode) |
 | C2 | Show Log Button | Opens scrollable log viewer (newest first) with clear button |
+
+---
+
+## Screen #20: 52-Week Volatility
+
+| ID | Component | Description |
+|----|-----------|-------------|
+| C1 | Top Bar | "52-Week Volatility [ticker]", back nav, Refresh button |
+| C2 | Position Value Card | Primary-container background; ticker + company name; large position value (currentPrice × shares) |
+| C3 | 52-Week Range Card | Canvas range bar (gray track, primary fill, white dot with border at current-price position); 52W Low / 52W High labels; current price + "X% of range" badge |
+| C4 | Annualized Volatility Card | Large % in label color; badge (Low/Moderate/High/Very High); stat rows (Daily Std Dev, Annualized, Trading sessions, Method); 4-cell volatility scale legend |
+
+> **Entry point:** BarChart icon (📊) in Item Detail top bar  
+> **Route:** `VolatilityRoute(ticker, shares)` (Android) / `#/volatility/:ticker/:shares` (PWA)  
+> **Cache:** 1-hour in-memory per ticker; Refresh bypasses cache  
+> **Math:** log returns `ln(close[i]/close[i-1])`, sample σ ÷ (n-1), annualized `× √252 × 100`
 
 ---
 

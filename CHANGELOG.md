@@ -1,5 +1,29 @@
 # Changelog
 
+## v1.51 (Build 52) - 2026-06-18
+
+### Added
+- **52-Week Volatility screen** (Android): new screen accessible via BarChart icon in Item Detail top bar
+  - Position value card (primary-container) showing current price × shares
+  - 52-week range bar (Canvas-drawn): gray track, primary fill, white dot with border at current price position
+  - Annualized volatility card: large % in volatility-label color, labeled badge (Low/Moderate/High/Very High), daily std dev stat row, trading session count, method note, 4-cell volatility scale legend
+  - Math: log returns `ln(close[i]/close[i-1])`, sample σ (÷ n-1), annualized `× √252 × 100`; label thresholds: <15% Low, <30% Moderate, <60% High, else Very High
+  - 1-hour in-memory cache per ticker; Refresh button bypasses cache
+  - New files: `VolatilityCalculator.kt`, `VolatilityViewModel.kt`, `VolatilityScreen.kt`, `VolatilityRoute` nav entry
+- **52-Week Volatility screen** (PWA): equivalent web screen at `#/volatility/:ticker/:shares`
+  - Server route `GET /api/volatility/:ticker` with 1-hour Map-based cache and `?force=true` bypass
+  - HiDPI canvas range bar using CSS `--primary` / `--surface-variant` custom properties
+  - `📊 Volatility` button added to Item Detail screen
+  - New files: `PWA/server/routes/volatility.js`, `PWA/public/js/screens/volatility.js`
+  - `volatility` export added to `api.js`; route registered in `app.js` and `server/index.js`
+
+### Changed
+- **Dashboard Watch List card** (Android): columns updated from "Ticker / Shares / Added Price" to "Ticker / Chg% / Chg$ / Added$"
+  - Live price fetched per ticker after watch lists load; shows "--" in `onSurfaceVariant` while loading
+  - Change % = `(currentPrice - priceWhenAdded) / priceWhenAdded × 100`; Change $ = `(currentPrice - priceWhenAdded) × shares`
+  - Values color-coded green (gain) / red (loss)
+  - `DashboardWatchListItem` data class added to `DashboardViewModel`; `fetchWatchListPrices()` runs as cancellable coroutine job
+
 ## PWA v1.0 - 2026-06-01
 
 ### Added

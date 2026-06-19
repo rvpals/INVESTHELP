@@ -27,7 +27,7 @@ com.investhelp.app/
 ├── MainActivity.kt              # Single activity, top bar, bottom nav, navigation host, auto-backup on exit
 ├── data/
 │   ├── local/
-│   │   ├── AppDatabase.kt       # Room database (version 29) with all DAOs and migrations
+│   │   ├── AppDatabase.kt       # Room database (version 30) with all DAOs and migrations
 │   │   ├── DatabaseProvider.kt  # Lazy database initialization pattern
 │   │   ├── dao/                 # Room DAO interfaces
 │   │   └── entity/              # Room entity classes
@@ -41,6 +41,8 @@ com.investhelp.app/
 │   └── RepositoryModule.kt      # Hilt module for repositories
 ├── model/
 │   └── *.kt                     # Domain models and enums
+├── util/
+│   └── VolatilityCalculator.kt  # Pure math: log-return volatility, range position, label
 └── ui/
     ├── account/                 # AccountListScreen, AccountDetailScreen, AccountViewModel
     ├── components/              # CollapsibleCard, ConfirmDeleteDialog, DateRangePicker
@@ -54,12 +56,13 @@ com.investhelp.app/
     ├── sqlexplorer/             # SqlExplorerScreen, SqlExplorerViewModel
     ├── theme/                   # Theme.kt, AppTheme.kt, ThemePreferences.kt, Color.kt, Type.kt
     ├── transaction/             # TransactionListScreen, TransactionFormScreen, AnalyzePriceScreen
+    ├── volatility/              # VolatilityScreen, VolatilityViewModel
     └── watchlist/               # WatchListScreen, WatchListViewModel
 ```
 
 ## Database
 
-### Room Database (version 29)
+### Room Database (version 30)
 
 **Entities:**
 | Table | Primary Key | Description |
@@ -103,6 +106,9 @@ com.investhelp.app/
 - v24->v25: Add definitions table for metric definitions
 - v25->v26: Add unique index on investment_transactions (date, action, ticker, totalAmount)
 - v26->v27: Rename investment_items to investment_positions, remove cost and totalGainLoss columns
+- v27->v28: Create sql_library table for saved SQL queries
+- v28->v29: Create ai_library table with 3 seed prompts
+- v29->v30: Add dividendRate column to investment_positions
 
 ### DatabaseProvider
 Lazy initialization pattern: database opens on first access, not at app startup.
