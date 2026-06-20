@@ -9,7 +9,7 @@
 - Spinner shown during price refresh
 - Refresh status bar: temporary bar below top bar showing "Updating [TICKER]" with price/share, change $ and change % (color-coded green/red); auto-hides when complete
 - Watch List icon button (star, purple) for quick access to Watch Lists
-- Hamburger menu: Accounts, Performance, Simulation, Settings, SQL Explorer, Help, About
+- Hamburger menu: Accounts, Performance, Simulation, Next Day Actions, Volatility Analysis, Settings, SQL Explorer, Help, About
 
 ### Dashboard Portfolio Summary
 - Collapsible "Portfolio Summary" card with pin persistence
@@ -292,6 +292,22 @@ Three tabs: **Details**, **Price History**, **Transactions** (ScrollableTabRow)
 - Summary chips at top showing count per action type
 - Grid columns: Ticker, Shares, Price, Value, Allocation %, Return %, Action, Reasoning
 - Configurable thresholds in Settings > Preferences > "Next-Day Actions Thresholds"
+
+## Volatility Analysis
+
+- Accessible from hamburger menu (purple BarChart icon)
+- Available on both Android and PWA (`#/volatility-analysis`)
+- **Two tabs**: Stocks and ETFs — shows all positions of each type
+- **Grouped display**: positions sorted into Low / Moderate / High / Very High volatility groups
+  - Color-coded headers: Low=green, Moderate=orange, High=red-orange, Very High=dark red
+  - Each group shows colored dot, label, range, and count badge
+  - Items within each group sorted by vol% ascending
+- **Each row**: gradient ticker icon + ticker (bold) + company name | vol% colored badge + position value
+- **Live progress bar** while fetching (X / Y tickers loaded); Loading and Failed sections shown at bottom
+- **Clicking a row** navigates to item detail for that ticker
+- **Refresh button** force-clears the 1-hour cache and re-fetches all tickers
+- **Data sources**: 365-day daily closes + quoteSummary (52W High/Low) + live quote per ticker
+- **Math**: same log-return σ annualized ×√252 as per-ticker volatility screen
 
 ## 52-Week Volatility
 

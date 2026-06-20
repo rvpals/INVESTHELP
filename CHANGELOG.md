@@ -1,5 +1,28 @@
 # Changelog
 
+## v1.60 (Build 61) - 2026-06-19
+
+### Added
+- **Volatility Analysis screen** (Android): new menu item in hamburger menu (purple BarChart icon)
+  - Two tabs: Stocks and ETFs, showing all positions of each type
+  - Fetches 365-day price history, analysis info, and live quote concurrently per ticker
+  - Groups positions by volatility level: Low (<15%), Moderate (15–30%), High (30–60%), Very High (>60%)
+  - Color-coded group headers (green/orange/red-orange/dark red) with count badge
+  - Each row: gradient ticker icon + ticker + company name | vol% badge + position value
+  - Live progress bar while fetching (X/Y tickers); loading and error rows shown at bottom
+  - Clicking any row navigates to item detail
+  - 1-hour in-memory cache per ticker; Refresh button force-clears cache
+  - New files: `VolatilityAnalysisViewModel.kt`, `VolatilityAnalysisScreen.kt`, `VolatilityAnalysisRoute`
+- **Volatility Analysis screen** (PWA): same feature at `#/volatility-analysis`
+  - Sequential fetch with live progress bar and tab switching without re-fetching
+  - Reuses existing `/api/volatility/:ticker` server route
+  - Added to hamburger menu and route registered in `app.js`
+  - New file: `PWA/public/js/screens/volatility-analysis.js`
+- **build_android_apk.md**: troubleshooting guide for JDK setup, pause-hang issue, signing problems, and locked file fixes
+
+### Fixed
+- `env.bat` JAVA_HOME corrected from `C:\Program Files\jdk-17.0.2` to `E:\Prog\Java\jdk-17`
+
 ## v1.51 (Build 52) - 2026-06-18
 
 ### Added

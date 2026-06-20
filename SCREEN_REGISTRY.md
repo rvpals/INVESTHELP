@@ -11,7 +11,7 @@ Use this to reference any screen or component by ID. Example: "In Screen #01, Co
 - Daily change amount in parentheses (color-coded)
 - Day/All percentage row
 - Spinner during refresh
-- Hamburger menu (Accounts, Performance, Watch List, Settings, SQL Explorer, Help, About)
+- Hamburger menu (Accounts, Performance, Simulation, Next Day Actions, Volatility Analysis, Settings, SQL Explorer, Help, About)
 
 ### G2: Refresh Status Bar
 - Below top bar, shows "Updating [TICKER]" with price, change $, change %
@@ -272,7 +272,9 @@ Use this to reference any screen or component by ID. Example: "In Screen #01, Co
 
 ---
 
-## Screen #20: 52-Week Volatility
+## Screen #20: 52-Week Volatility (Per-Ticker)
+
+
 
 | ID | Component | Description |
 |----|-----------|-------------|
@@ -285,6 +287,25 @@ Use this to reference any screen or component by ID. Example: "In Screen #01, Co
 > **Route:** `VolatilityRoute(ticker, shares)` (Android) / `#/volatility/:ticker/:shares` (PWA)  
 > **Cache:** 1-hour in-memory per ticker; Refresh bypasses cache  
 > **Math:** log returns `ln(close[i]/close[i-1])`, sample σ ÷ (n-1), annualized `× √252 × 100`
+
+---
+
+## Screen #21: Volatility Analysis (All Positions)
+
+| ID | Component | Description |
+|----|-----------|-------------|
+| C1 | Top Bar | "Volatility Analysis", back nav, Refresh button |
+| C2 | Tab Row | Stocks (N) / ETFs (N) — filters list without re-fetching |
+| C3 | Progress Bar | Linear progress + "Fetching X / Y…" label while data loads |
+| C4 | Group Headers | Low / Moderate / High / Very High — colored dot + label + range + count badge |
+| C5 | Position Rows | Gradient ticker icon + ticker (bold) + company name | vol% badge (label color) + position value; clickable → item detail |
+| C6 | Loading Section | "Loading" header + spinner rows for in-flight tickers |
+| C7 | Failed Section | "Failed" header + error rows for tickers that couldn't be fetched |
+
+> **Entry point:** Hamburger menu → "Volatility Analysis" (purple BarChart icon)
+> **Route:** `VolatilityAnalysisRoute` (Android) / `#/volatility-analysis` (PWA)
+> **Groups:** Low <15%, Moderate 15–30%, High 30–60%, Very High >60%
+> **Cache:** 1-hour per ticker; Refresh force-clears all
 
 ---
 

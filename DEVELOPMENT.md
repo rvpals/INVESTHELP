@@ -12,8 +12,9 @@
 2. Open in Android Studio and sync Gradle
 3. If building from CLI, set JAVA_HOME:
    ```bash
-   JAVA_HOME="/path/to/jdk-17" ./gradlew assembleRelease
+   JAVA_HOME="E:/Prog/Java/jdk-17" ./gradlew assembleRelease
    ```
+   > **Note:** On this machine, JDK 17 is at `E:\Prog\Java\jdk-17`. The system default Java (in PATH) is Java 8 which is too old. Always build from Git Bash or set JAVA_HOME explicitly. See `build_android_apk.md` for full troubleshooting guide.
 
 ## Build Commands
 
@@ -55,7 +56,7 @@ When modifying the Room database schema:
 3. Register the migration in the database builder
 4. Update `CLAUDE.md` and `ISSUES.md` with migration notes
 
-Current version: **29**
+Current version: **30**
 
 ## Key Conventions
 

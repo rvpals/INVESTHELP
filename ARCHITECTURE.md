@@ -57,7 +57,7 @@ com.investhelp.app/
     ├── sqlexplorer/             # SqlExplorerScreen, SqlExplorerViewModel
     ├── theme/                   # Theme.kt, AppTheme.kt, ThemePreferences.kt, Color.kt, Type.kt
     ├── transaction/             # TransactionListScreen, TransactionFormScreen, AnalyzePriceScreen
-    ├── volatility/              # VolatilityScreen, VolatilityViewModel
+    ├── volatility/              # VolatilityScreen, VolatilityViewModel, VolatilityAnalysisScreen, VolatilityAnalysisViewModel
     └── watchlist/               # WatchListScreen, WatchListViewModel
 ```
 
