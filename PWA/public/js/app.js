@@ -34,6 +34,7 @@ route('/ai-ticker/:ticker', async (app, p) => { const m = await import('./screen
 route('/next-day-actions', async (app) => { const m = await import('./screens/next-day-actions.js'); await m.render(app); });
 route('/help', async (app) => { const m = await import('./screens/help.js'); await m.render(app); });
 route('/volatility/:ticker/:shares', async (app, p) => { const m = await import('./screens/volatility.js'); await m.render(app, p); });
+route('/volatility-analysis', async (app) => { const m = await import('./screens/volatility-analysis.js'); await m.render(app); });
 
 // Update bottom nav on route change
 window.addEventListener('hashchange', updateBottomNav);

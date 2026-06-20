@@ -4,7 +4,7 @@
 ::  Edit these paths for your machine
 :: ============================================
 
-if not defined JAVA_HOME set JAVA_HOME=C:\Program Files\jdk-17.0.2
+if not defined JAVA_HOME set JAVA_HOME=E:\Prog\Java\jdk-17
 
 :: Proxy settings (leave empty if not behind a proxy)
 set PROXY=http://proxy-server.bms.com:8080

@@ -124,6 +124,7 @@ function toggleMenu() {
     <button class="menu-item" data-route="#/performance">&#128200; Performance</button>
     <button class="menu-item" data-route="#/simulation/SPY/1">&#128202; Simulation</button>
     <button class="menu-item" data-route="#/next-day-actions">&#128197; Next Day Actions</button>
+    <button class="menu-item" data-route="#/volatility-analysis">&#128200; Volatility Analysis</button>
     <div class="menu-divider"></div>
     <button class="menu-item" data-route="#/settings">&#9881; Settings</button>
     <button class="menu-item" data-route="#/sql-explorer">&#128451; SQL Explorer</button>

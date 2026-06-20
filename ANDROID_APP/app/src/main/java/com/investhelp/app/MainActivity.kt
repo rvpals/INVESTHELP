@@ -91,6 +91,8 @@ import com.investhelp.app.ui.navigation.WatchListRoute
 import com.investhelp.app.ui.navigation.PositionDetailRoute
 import com.investhelp.app.ui.navigation.HelpRoute
 import androidx.compose.material.icons.filled.HelpOutline
+import androidx.compose.material.icons.filled.BarChart
+import com.investhelp.app.ui.navigation.VolatilityAnalysisRoute
 import android.util.Base64
 import com.investhelp.app.data.local.DatabaseProvider
 import com.investhelp.app.ui.settings.SettingsViewModel
@@ -605,6 +607,18 @@ fun GlobalTopBar(navController: NavHostController) {
                         }
                     },
                     leadingIcon = { Icon3D(Icons.Default.HelpOutline, null, Color(0xFF00838F), iconSize = 16.dp, boxSize = 28.dp) }
+                )
+                DropdownMenuItem(
+                    text = { Text("Volatility Analysis") },
+                    onClick = {
+                        menuExpanded = false
+                        navController.navigate(VolatilityAnalysisRoute) {
+                            popUpTo(DashboardRoute) { saveState = true }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    },
+                    leadingIcon = { Icon3D(Icons.Default.BarChart, null, Color(0xFF7B1FA2), iconSize = 16.dp, boxSize = 28.dp) }
                 )
                 HorizontalDivider()
                 DropdownMenuItem(
