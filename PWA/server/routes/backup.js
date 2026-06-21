@@ -8,7 +8,10 @@ const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 
 
 const BACKUP_DIR = path.join(__dirname, '..', '..', 'backups');
 
-const EXCLUDED_TABLES = new Set(['sqlite_sequence', 'sqlite_stat1']);
+const EXCLUDED_TABLES = new Set([
+  'sqlite_sequence', 'sqlite_stat1',
+  'volatility_cache',  // cached computed data — regenerated on demand, not user data
+]);
 
 function discoverTables() {
   return db.prepare("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name").all()

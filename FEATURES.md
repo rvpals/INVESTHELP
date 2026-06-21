@@ -245,8 +245,9 @@ Three tabs: **Details**, **Price History**, **Transactions** (ScrollableTabRow)
   - Detailed import result log after completion: summary counts (New/Updated/Skipped) + per-ticker entries showing status and field changes
 - Named mapping profiles stored in `csv_named_mappings` table
 - Backup folder selection (persisted)
-- Export to JSON (v5 format) — includes all 10 tables: accounts, positions, transactions, performance records, watch lists, watch list items, change history, definitions, SQL library, AI library
-- Restore from JSON (v1/v2/v3/v4/v5 compatible)
+- Export to JSON (v6 generic format) — auto-discovers all tables; export success message shows "CSV mappings: X active, Y named" to confirm mapping data was captured
+- Restore from JSON (v1/v2/v3/v4/v5/v6 compatible); restore success message shows CSV mapping row counts
+- `volatility_cache` table excluded from backups (cached computed data — regenerated on demand)
 - Backup format compatible between Android app and PWA web app
 - **Automatic Back Up when quitting**: toggle (default: off); when on, automatically exports a backup JSON file when the app goes to background (with 30-minute cooldown to prevent excessive backups)
 - **Number of automatic backup to keep**: configurable limit (default: 10); oldest auto-backup files are deleted when the count exceeds the limit
@@ -295,6 +296,9 @@ Three tabs: **Details**, **Price History**, **Transactions** (ScrollableTabRow)
 
 ## Volatility Analysis
 
+- Results cached to `volatility_cache` DB table; loads instantly from cache on re-open
+- "Last calculated on MMM d, yyyy h:mm a" banner shown when cache is present
+- Refresh button clears cache and re-fetches all tickers from Yahoo Finance
 - Accessible from hamburger menu (purple BarChart icon)
 - Available on both Android and PWA (`#/volatility-analysis`)
 - **Two tabs**: Stocks and ETFs — shows all positions of each type
@@ -354,7 +358,7 @@ Three tabs: **Details**, **Price History**, **Transactions** (ScrollableTabRow)
 ## PWA Web App
 
 - Full web version of InvestHelp in `PWA/` folder
-- **Server**: Node.js + Express + better-sqlite3 (same SQLite schema as Android Room v30)
+- **Server**: Node.js + Express + better-sqlite3 (same SQLite schema as Android Room v31)
 - **Frontend**: Vanilla HTML/CSS/JS — no framework, no build step
 - **17 API routes**: accounts, positions, transactions, performance, watchlists, change-history, definitions, csv-mappings, sql-library, ai-library, yahoo, refresh, backup, csv-import, sql-explorer, settings, volatility
 - **19 screens**: dashboard, positions, item-detail, item-form, transaction-list/form, simulation, account-list/detail/form, performance, watchlist, settings, sql-explorer, ai-ticker, next-day-actions, analyze-price, help, volatility
@@ -364,6 +368,6 @@ Three tabs: **Details**, **Price History**, **Transactions** (ScrollableTabRow)
 - **Charts**: HTML5 Canvas — line chart (zoom/pan/tap-to-select), pie chart, mini sparkline
 - **Auto-refresh**: server-side cron (works with browser closed)
 - **SQL Explorer**: direct SQLite access — full SQL support
-- **Backup**: v5 JSON format compatible with Android app (all 10 tables)
+- **Backup**: v6 generic JSON format compatible with Android app; `volatility_cache` excluded
 - **Launch**: `START_APP.bat` (Windows) or `npm start` → http://localhost:3000
 - **Dependencies**: express, better-sqlite3, multer

@@ -479,7 +479,8 @@ class SettingsViewModel @Inject constructor(
     }
 
     private val EXCLUDED_TABLES = setOf(
-        "room_master_table", "android_metadata", "sqlite_sequence"
+        "room_master_table", "android_metadata", "sqlite_sequence",
+        "volatility_cache"  // cached computed data — regenerated on demand, not user data
     )
 
     private fun discoverTables(): List<String> {
@@ -581,18 +582,21 @@ class SettingsViewModel @Inject constructor(
 
         viewModelScope.launch {
             try {
-                val jsonString = withContext(Dispatchers.IO) {
+                val (jsonString, rowCounts) = withContext(Dispatchers.IO) {
                     val tables = discoverTables()
+                    val counts = mutableMapOf<String, Int>()
                     val tablesJson = buildJsonObject {
                         for (table in tables) {
-                            put(table, exportTableToJson(table))
+                            val rows = exportTableToJson(table)
+                            put(table, rows)
+                            counts[table] = rows.size
                         }
                     }
                     val root = buildJsonObject {
                         put("version", 6)
                         put("tables", tablesJson)
                     }
-                    root.toString()
+                    Pair(root.toString(), counts)
                 }
 
                 val timestamp = LocalDateTime.now().format(
@@ -610,9 +614,14 @@ class SettingsViewModel @Inject constructor(
                     } ?: throw Exception("Cannot write to backup file.")
                 }
 
+                val csvInfo = buildString {
+                    val ci = rowCounts["csv_import_mappings"] ?: 0
+                    val cn = rowCounts["csv_named_mappings"] ?: 0
+                    append(" | CSV mappings: $ci active, $cn named")
+                }
                 _uiState.value = _uiState.value.copy(
                     isExporting = false,
-                    message = "Exported to $fileName"
+                    message = "Exported to $fileName$csvInfo"
                 )
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
@@ -706,13 +715,14 @@ class SettingsViewModel @Inject constructor(
             }
         }
 
-        val tableCounts = tablesData.entries
-            .filter { it.value.jsonArray.isNotEmpty() }
-            .map { "${it.key}: ${it.value.jsonArray.size}" }
-
+        val csvInfo = buildString {
+            val ci = tablesData["csv_import_mappings"]?.jsonArray?.size ?: 0
+            val cn = tablesData["csv_named_mappings"]?.jsonArray?.size ?: 0
+            append(" | CSV mappings: $ci active, $cn named")
+        }
         _uiState.value = _uiState.value.copy(
             isRestoring = false,
-            message = "Restored ${tablesData.size} tables (${tableCounts.joinToString(", ")})"
+            message = "Restored ${tablesData.size} tables$csvInfo"
         )
     }
 

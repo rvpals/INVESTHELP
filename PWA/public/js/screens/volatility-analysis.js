@@ -17,13 +17,23 @@ function hexToRgba(hex, a) {
   return `rgba(${r},${g},${b},${a})`;
 }
 
+function formatTimestamp(epochSeconds) {
+  if (!epochSeconds) return '';
+  const d = new Date(epochSeconds * 1000);
+  return d.toLocaleString(undefined, {
+    month: 'short', day: 'numeric', year: 'numeric',
+    hour: 'numeric', minute: '2-digit',
+  });
+}
+
 export async function render(container) {
   container.innerHTML = `<div class="screen">
     <div class="flex items-center gap-8 mb-16">
       <button class="btn btn-sm btn-outline" onclick="history.back()">&#8592; Back</button>
       <h2 style="flex:1">Volatility Analysis</h2>
-      <button class="btn btn-sm btn-outline" id="btn-refresh">&#8635; Refresh</button>
+      <button class="btn btn-sm btn-outline" id="btn-refresh" title="Refresh all volatility data">&#8635; Refresh</button>
     </div>
+    <div id="va-last-calc" style="display:none;padding:4px 16px 8px;font-size:12px;color:var(--on-surface-variant,#49454F);background:color-mix(in srgb,var(--surface-variant,#E7E0EC) 40%,transparent)"></div>
     <div id="va-body">
       <div class="text-center p-32">
         <div class="spinner"></div>
@@ -33,13 +43,60 @@ export async function render(container) {
   </div>`;
 
   let activeTab = 0; // 0 = Stocks, 1 = ETFs
-  let results = [];  // { ticker, name, type, shares, value, vol, error, loading }
+  let results = [];  // { ticker, name, type, shares, vol, error, loading }
   let running = false;
+  let lastCalculatedAt = null;
+
+  function showLastCalc(epochSeconds) {
+    lastCalculatedAt = epochSeconds;
+    const el = document.getElementById('va-last-calc');
+    if (!el) return;
+    if (epochSeconds) {
+      el.textContent = `Last calculated on ${formatTimestamp(epochSeconds)}`;
+      el.style.display = '';
+    } else {
+      el.style.display = 'none';
+    }
+  }
+
+  // --- Load from DB cache first ---
+  try {
+    const cached = await volatilityApi.getCache();
+    if (cached.items && cached.items.length > 0) {
+      results = cached.items.map(row => ({
+        ticker: row.ticker,
+        name: row.companyName || row.ticker,
+        type: row.type,
+        shares: row.shares,
+        vol: {
+          ticker: row.ticker,
+          companyName: row.companyName,
+          currentPrice: row.currentPrice,
+          annualizedVolPct: row.annualizedVolPct,
+          dailyStdDevPct: row.dailyStdDevPct,
+          volatilityLabel: row.volatilityLabel,
+          low52w: row.low52w,
+          high52w: row.high52w,
+          rangePositionPct: row.rangePositionPct,
+          sampleCount: row.sampleCount,
+        },
+        error: null,
+        loading: false,
+      }));
+      showLastCalc(cached.lastCalculatedAt);
+      renderAll();
+    } else {
+      runAnalysis(false);
+    }
+  } catch (_) {
+    runAnalysis(false);
+  }
 
   async function runAnalysis(force = false) {
     if (running) return;
     running = true;
-    document.getElementById('btn-refresh')?.setAttribute('disabled', 'true');
+    const btn = document.getElementById('btn-refresh');
+    if (btn) btn.setAttribute('disabled', 'true');
 
     let allPositions;
     try {
@@ -48,6 +105,7 @@ export async function render(container) {
       document.getElementById('va-body').innerHTML =
         `<div class="card p-16 text-center"><div class="text-muted">Failed to load positions: ${err.message}</div></div>`;
       running = false;
+      if (btn) btn.removeAttribute('disabled');
       return;
     }
 
@@ -56,31 +114,55 @@ export async function render(container) {
       document.getElementById('va-body').innerHTML =
         `<div class="card p-16 text-center"><div class="text-muted">No Stock or ETF positions found.</div></div>`;
       running = false;
+      if (btn) btn.removeAttribute('disabled');
       return;
     }
 
-    // Prime results with loading state
     results = eligible.map(p => ({
       ticker: p.ticker, name: p.name, type: p.type,
-      shares: p.quantity, value: p.value,
+      shares: p.quantity,
       vol: null, error: null, loading: true,
     }));
     renderAll();
 
-    // Fetch one-by-one, updating incrementally
+    const successful = [];
+
     for (let i = 0; i < eligible.length; i++) {
       const p = eligible[i];
       try {
         const vol = await volatilityApi.get(p.ticker, force);
         results[i] = { ...results[i], vol, loading: false };
+        successful.push({ ...results[i], vol });
       } catch (err) {
         results[i] = { ...results[i], error: err.message || 'Failed', loading: false };
       }
       renderAll();
     }
 
+    // Save successful results to DB cache
+    if (successful.length > 0) {
+      try {
+        const cacheItems = successful.map(r => ({
+          ticker: r.ticker,
+          companyName: r.vol.companyName ?? r.name ?? null,
+          type: r.type,
+          shares: r.shares,
+          currentPrice: r.vol.currentPrice,
+          annualizedVolPct: r.vol.annualizedVolPct,
+          dailyStdDevPct: r.vol.dailyStdDevPct,
+          volatilityLabel: r.vol.volatilityLabel,
+          low52w: r.vol.low52w,
+          high52w: r.vol.high52w,
+          rangePositionPct: r.vol.rangePositionPct,
+          sampleCount: r.vol.sampleCount,
+        }));
+        const saved = await volatilityApi.saveCache(cacheItems);
+        showLastCalc(saved.calculatedAt);
+      } catch (_) { /* non-fatal */ }
+    }
+
     running = false;
-    document.getElementById('btn-refresh')?.removeAttribute('disabled');
+    if (btn) btn.removeAttribute('disabled');
   }
 
   function renderAll() {
@@ -95,7 +177,6 @@ export async function render(container) {
     const loaded = currentList.filter(r => !r.loading).length;
     const showProgress = loaded < total;
 
-    // Group loaded items
     const grouped = {};
     for (const label of LABEL_ORDER) {
       grouped[label] = currentList
@@ -128,7 +209,6 @@ export async function render(container) {
         </div>` : ''}
     `;
 
-    // Groups
     for (const label of LABEL_ORDER) {
       const group = grouped[label];
       if (!group.length) continue;
@@ -164,7 +244,6 @@ export async function render(container) {
 
     body.innerHTML = html;
 
-    // Tab listeners
     body.querySelectorAll('[data-tab]').forEach(btn => {
       btn.addEventListener('click', () => {
         activeTab = parseInt(btn.dataset.tab);
@@ -172,7 +251,6 @@ export async function render(container) {
       });
     });
 
-    // Row click listeners
     body.querySelectorAll('[data-ticker]').forEach(el => {
       el.addEventListener('click', () => navigate(`#/item/${el.dataset.ticker}`));
     });
@@ -180,11 +258,10 @@ export async function render(container) {
 
   function groupHeader(label, range, count, color) {
     const bg = color.startsWith('#') ? hexToRgba(color, 0.08) : 'rgba(0,0,0,0.04)';
-    const textColor = color;
     return `<div class="flex items-center gap-8 px-16 py-8"
       style="background:${bg};border-bottom:1px solid color-mix(in srgb,var(--outline,#ccc) 30%,transparent)">
       <div style="width:8px;height:8px;border-radius:50%;background:${color};flex-shrink:0"></div>
-      <span style="font-size:11px;font-weight:700;letter-spacing:.5px;color:${textColor};text-transform:uppercase">${label}</span>
+      <span style="font-size:11px;font-weight:700;letter-spacing:.5px;color:${color};text-transform:uppercase">${label}</span>
       ${range ? `<span style="font-size:11px;color:${color};opacity:.7">${range}</span>` : ''}
       <span style="margin-left:auto;font-size:11px;font-weight:700;color:${color};
         background:${color.startsWith('#') ? hexToRgba(color, 0.15) : 'rgba(0,0,0,.1)'};
@@ -194,9 +271,8 @@ export async function render(container) {
 
   function itemRow(item, labelColor) {
     const vol = item.vol;
-    const posValue = vol ? vol.currentPrice * item.shares : item.value;
+    const posValue = vol ? vol.currentPrice * item.shares : 0;
     const volPct = vol ? vol.annualizedVolPct.toFixed(1) + '%' : '—';
-    const bg = labelColor.startsWith('#') ? hexToRgba(labelColor, 0.10) : 'transparent';
     const badgeBg = labelColor.startsWith('#') ? hexToRgba(labelColor, 0.12) : 'rgba(0,0,0,.08)';
 
     return `<div class="flex items-center gap-12 px-16 py-10 clickable" data-ticker="${item.ticker}"
@@ -220,10 +296,10 @@ export async function render(container) {
     </div>`;
   }
 
-  document.getElementById('btn-refresh').addEventListener('click', () => {
+  document.getElementById('btn-refresh').addEventListener('click', async () => {
     results = [];
+    showLastCalc(null);
+    try { await volatilityApi.clearCache(); } catch (_) { /* non-fatal */ }
     runAnalysis(true);
   });
-
-  runAnalysis(false);
 }

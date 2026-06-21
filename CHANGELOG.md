@@ -1,5 +1,24 @@
 # Changelog
 
+## v1.61 (Build 62) - 2026-06-20
+
+### Added
+- **Volatility Analysis caching** (Android): results now persisted to new `volatility_cache` Room table (DB v31)
+  - On app open, cached results load instantly without network calls
+  - "Last calculated on MMM d, yyyy h:mm a" banner shown below tab row when cache is present
+  - Refresh button clears DB cache and forces full re-fetch
+  - `volatility_cache` excluded from backup exports (cached data, not user data)
+- **Volatility Analysis caching** (PWA): same behavior — cache stored in `volatility_cache` SQLite table
+  - `GET /api/volatility/cache/all` returns all cached rows + `lastCalculatedAt` epoch
+  - `POST /api/volatility/cache/bulk` bulk-upserts after live fetch completes
+  - `DELETE /api/volatility/cache/all` clears cache on Refresh
+  - Refresh button and "Last calculated on" banner match Android behavior
+- **Backup diagnostics**: export success message now includes "| CSV mappings: X active, Y named" row counts so users can confirm their column mappings were captured
+- **Restore diagnostics**: restore success message shows the same CSV mapping counts
+
+### Fixed
+- `VolatilityAnalysisViewModel`: `async`/`await` used inside `suspend fun` without `coroutineScope` — replaced with simple sequential for loop (compile error on release build)
+
 ## v1.60 (Build 61) - 2026-06-19
 
 ### Added

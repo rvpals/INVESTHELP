@@ -164,7 +164,10 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private val EXCLUDED_TABLES = setOf("room_master_table", "android_metadata", "sqlite_sequence")
+    private val EXCLUDED_TABLES = setOf(
+        "room_master_table", "android_metadata", "sqlite_sequence",
+        "volatility_cache"  // cached computed data — regenerated on demand, not user data
+    )
 
     private fun exportAllTablesGeneric(): String {
         val db = dbProvider.database.openHelper.readableDatabase

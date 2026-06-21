@@ -36,6 +36,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -85,6 +88,7 @@ fun VolatilityAnalysisScreen(
 ) {
     val items by viewModel.items.collectAsStateWithLifecycle()
     val isInitialLoading by viewModel.isInitialLoading.collectAsStateWithLifecycle()
+    val lastCalculatedAt by viewModel.lastCalculatedAt.collectAsStateWithLifecycle()
 
     val stocks = items.filter { it.type == InvestmentType.Stock }
     val etfs = items.filter { it.type == InvestmentType.ETF }
@@ -120,6 +124,23 @@ fun VolatilityAnalysisScreen(
                     selected = selectedTab == 1,
                     onClick = { selectedTab = 1 },
                     text = { Text("ETFs (${etfs.size})") }
+                )
+            }
+
+            if (lastCalculatedAt != null) {
+                val formatted = remember(lastCalculatedAt) {
+                    val instant = Instant.ofEpochSecond(lastCalculatedAt!!)
+                    val fmt = DateTimeFormatter.ofPattern("MMM d, yyyy h:mm a").withZone(ZoneId.systemDefault())
+                    fmt.format(instant)
+                }
+                Text(
+                    text = "Last calculated on $formatted",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
+                        .padding(horizontal = 16.dp, vertical = 6.dp)
                 )
             }
 

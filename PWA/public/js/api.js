@@ -138,6 +138,9 @@ export const settings = {
 };
 
 export const volatility = {
-  get: (ticker, force = false) =>
+  get:        (ticker, force = false) =>
     get(`/api/volatility/${encodeURIComponent(ticker)}${force ? '?force=true' : ''}`),
+  getCache:   () => get('/api/volatility/cache/all'),
+  saveCache:  (items) => post('/api/volatility/cache/bulk', { items }),
+  clearCache: () => del('/api/volatility/cache/all'),
 };

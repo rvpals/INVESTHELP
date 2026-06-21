@@ -6,6 +6,8 @@ import androidx.room.TypeConverters
 import com.investhelp.app.data.local.converter.Converters
 import com.investhelp.app.data.local.dao.ChangeHistoryDao
 import com.investhelp.app.data.local.dao.CsvImportMappingDao
+import com.investhelp.app.data.local.dao.VolatilityCacheDao
+import com.investhelp.app.data.local.entity.VolatilityCacheEntity
 import com.investhelp.app.data.local.dao.DefinitionDao
 import com.investhelp.app.data.local.dao.InvestmentAccountDao
 import com.investhelp.app.data.local.dao.InvestmentItemDao
@@ -40,9 +42,10 @@ import com.investhelp.app.data.local.entity.WatchListItemEntity
         ChangeHistoryEntity::class,
         DefinitionEntity::class,
         SqlLibraryEntity::class,
-        AiLibraryEntity::class
+        AiLibraryEntity::class,
+        VolatilityCacheEntity::class
     ],
-    version = 30,
+    version = 31,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -57,4 +60,5 @@ abstract class InvestHelpDatabase : RoomDatabase() {
     abstract fun definitionDao(): DefinitionDao
     abstract fun sqlLibraryDao(): SqlLibraryDao
     abstract fun aiLibraryDao(): AiLibraryDao
+    abstract fun volatilityCacheDao(): VolatilityCacheDao
 }

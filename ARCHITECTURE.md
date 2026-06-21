@@ -63,7 +63,7 @@ com.investhelp.app/
 
 ## Database
 
-### Room Database (version 30)
+### Room Database (version 31)
 
 **Entities:**
 | Table | Primary Key | Description |
@@ -78,6 +78,7 @@ com.investhelp.app/
 | `csv_named_mappings` | `id` (auto) | Named/reusable CSV mapping profiles |
 | `change_history` | `id` (auto) | Daily portfolio value snapshots (ETF/Stock/Total) + daily change values |
 | `definitions` | `term` | Metric definitions for analysis info popups |
+| `volatility_cache` | `ticker` | Cached volatility analysis results (excluded from backups) |
 
 **Key Relationships:**
 - Transactions reference tickers directly (no FK, account-independent)
@@ -107,6 +108,10 @@ com.investhelp.app/
 - v24->v25: Add definitions table for metric definitions
 - v25->v26: Add unique index on investment_transactions (date, action, ticker, totalAmount)
 - v26->v27: Rename investment_items to investment_positions, remove cost and totalGainLoss columns
+- v27->v28: Create sql_library table
+- v28->v29: Create ai_library table with 3 seed prompts
+- v29->v30: Add dividendRate column to investment_positions
+- v30->v31: Create volatility_cache table (ticker PK, all vol metrics + calculatedAt epoch seconds)
 - v27->v28: Create sql_library table for saved SQL queries
 - v28->v29: Create ai_library table with 3 seed prompts
 - v29->v30: Add dividendRate column to investment_positions

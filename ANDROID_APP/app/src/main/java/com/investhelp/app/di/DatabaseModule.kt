@@ -11,6 +11,7 @@ import com.investhelp.app.data.local.dao.InvestmentItemDao
 import com.investhelp.app.data.local.dao.InvestmentTransactionDao
 import com.investhelp.app.data.local.dao.AiLibraryDao
 import com.investhelp.app.data.local.dao.SqlLibraryDao
+import com.investhelp.app.data.local.dao.VolatilityCacheDao
 import com.investhelp.app.data.local.dao.WatchListDao
 import dagger.Module
 import dagger.Provides
@@ -78,5 +79,10 @@ object DatabaseModule {
     @Provides
     fun provideAiLibraryDao(dbProvider: DatabaseProvider): AiLibraryDao {
         return dbProvider.database.aiLibraryDao()
+    }
+
+    @Provides
+    fun provideVolatilityCacheDao(dbProvider: DatabaseProvider): VolatilityCacheDao {
+        return dbProvider.database.volatilityCacheDao()
     }
 }

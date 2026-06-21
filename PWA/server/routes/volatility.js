@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const yahoo = require('../services/yahoo-finance');
+const db = require('../db');
 
 // In-memory cache: ticker → { data, fetchedAt }
 const cache = new Map();
@@ -28,6 +29,60 @@ function volatilityLabel(pct) {
   if (pct < 60) return 'High';
   return 'Very High';
 }
+
+// --- DB cache routes (must be declared before /:ticker) ---
+
+router.get('/cache/all', (req, res) => {
+  try {
+    const rows = db.prepare('SELECT * FROM volatility_cache ORDER BY type, annualizedVolPct ASC').all();
+    const lastCalculatedAt = rows.length
+      ? Math.max(...rows.map(r => r.calculatedAt))
+      : null;
+    res.json({ items: rows, lastCalculatedAt });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/cache/bulk', (req, res) => {
+  try {
+    const { items } = req.body;
+    if (!Array.isArray(items) || items.length === 0) return res.json({ saved: 0 });
+    const now = Math.floor(Date.now() / 1000);
+    const stmt = db.prepare(`
+      INSERT OR REPLACE INTO volatility_cache
+        (ticker, companyName, type, shares, currentPrice,
+         annualizedVolPct, dailyStdDevPct, volatilityLabel,
+         low52w, high52w, rangePositionPct, sampleCount, calculatedAt)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+    const tx = db.transaction(() => {
+      for (const item of items) {
+        stmt.run(
+          item.ticker, item.companyName ?? null, item.type, item.shares,
+          item.currentPrice, item.annualizedVolPct, item.dailyStdDevPct,
+          item.volatilityLabel, item.low52w, item.high52w,
+          item.rangePositionPct, item.sampleCount, now
+        );
+      }
+    });
+    tx();
+    res.json({ saved: items.length, calculatedAt: now });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.delete('/cache/all', (req, res) => {
+  try {
+    db.prepare('DELETE FROM volatility_cache').run();
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// --- Per-ticker live fetch ---
 
 router.get('/:ticker', async (req, res) => {
   const key = req.params.ticker.toUpperCase();

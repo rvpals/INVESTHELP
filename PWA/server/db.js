@@ -129,9 +129,49 @@ db.exec(`
     key   TEXT PRIMARY KEY,
     value TEXT NOT NULL DEFAULT ''
   );
+
+  CREATE TABLE IF NOT EXISTS volatility_cache (
+    ticker           TEXT PRIMARY KEY,
+    companyName      TEXT,
+    type             TEXT NOT NULL DEFAULT '',
+    shares           REAL NOT NULL DEFAULT 0,
+    currentPrice     REAL NOT NULL DEFAULT 0,
+    annualizedVolPct REAL NOT NULL DEFAULT 0,
+    dailyStdDevPct   REAL NOT NULL DEFAULT 0,
+    volatilityLabel  TEXT NOT NULL DEFAULT '',
+    low52w           REAL NOT NULL DEFAULT 0,
+    high52w          REAL NOT NULL DEFAULT 0,
+    rangePositionPct REAL NOT NULL DEFAULT 0,
+    sampleCount      INTEGER NOT NULL DEFAULT 0,
+    calculatedAt     INTEGER NOT NULL DEFAULT 0
+  );
 `);
 
 // Schema migrations for existing databases
+try {
+  const tables = db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all().map(r => r.name);
+  if (!tables.includes('volatility_cache')) {
+    db.exec(`CREATE TABLE IF NOT EXISTS volatility_cache (
+      ticker           TEXT PRIMARY KEY,
+      companyName      TEXT,
+      type             TEXT NOT NULL DEFAULT '',
+      shares           REAL NOT NULL DEFAULT 0,
+      currentPrice     REAL NOT NULL DEFAULT 0,
+      annualizedVolPct REAL NOT NULL DEFAULT 0,
+      dailyStdDevPct   REAL NOT NULL DEFAULT 0,
+      volatilityLabel  TEXT NOT NULL DEFAULT '',
+      low52w           REAL NOT NULL DEFAULT 0,
+      high52w          REAL NOT NULL DEFAULT 0,
+      rangePositionPct REAL NOT NULL DEFAULT 0,
+      sampleCount      INTEGER NOT NULL DEFAULT 0,
+      calculatedAt     INTEGER NOT NULL DEFAULT 0
+    )`);
+    console.log('Migration: created volatility_cache table');
+  }
+} catch (e) {
+  console.error('Migration check for volatility_cache failed:', e.message);
+}
+
 try {
   const cols = db.prepare("PRAGMA table_info(investment_positions)").all().map(c => c.name);
   if (!cols.includes('logo')) {
