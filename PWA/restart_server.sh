@@ -2,10 +2,10 @@
 
 cd "$(dirname "$0")"
 
-PORT=${PORT:-3001}
+PORT=${PORT:-3000}
 
 echo "Killing existing InvestHelp server..."
-pkill -f "node server/index.js" 2>/dev/null
+sudo pkill -f "node server/index.js" 2>/dev/null
 sleep 1
 
 echo "Starting PWA server on port $PORT..."

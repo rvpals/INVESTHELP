@@ -19,7 +19,7 @@ if git diff --name-only HEAD@{1} HEAD 2>/dev/null | grep -q "package.json"; then
     npm install
 fi
 
-PORT=${PORT:-3001}
+PORT=${PORT:-3000}
 echo "Starting PWA server on port $PORT..."
 PORT=$PORT nohup node server/index.js > server.log 2>&1 &
 sleep 2
