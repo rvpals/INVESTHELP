@@ -43,6 +43,8 @@ import com.investhelp.app.ui.volatility.VolatilityScreen
 import com.investhelp.app.ui.volatility.VolatilityViewModel
 import com.investhelp.app.ui.volatility.VolatilityAnalysisScreen
 import com.investhelp.app.ui.volatility.VolatilityAnalysisViewModel
+import com.investhelp.app.ui.correlation.CorrelationMatrixScreen
+import com.investhelp.app.ui.correlation.CorrelationMatrixViewModel
 
 @Composable
 fun InvestHelpNavHost(
@@ -304,6 +306,14 @@ fun InvestHelpNavHost(
                     navController.navigate(ItemDetailRoute(ticker))
                 },
                 onBack = { navController.popBackStack() }
+            )
+        }
+
+        composable<CorrelationMatrixRoute> {
+            val viewModel: CorrelationMatrixViewModel = hiltViewModel()
+            CorrelationMatrixScreen(
+                viewModel = viewModel,
+                onNavigateBack = { navController.popBackStack() }
             )
         }
     }

@@ -24,6 +24,7 @@ app.use('/api/csv-import', require('./routes/csv-import'));
 app.use('/api/sql', require('./routes/sql-explorer'));
 app.use('/api/settings', require('./routes/settings'));
 app.use('/api/volatility', require('./routes/volatility'));
+app.use('/api/correlation', require('./routes/correlation'));
 
 // Version info
 // Server log

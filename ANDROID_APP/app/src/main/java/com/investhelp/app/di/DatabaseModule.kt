@@ -4,6 +4,7 @@ import android.content.Context
 import com.investhelp.app.data.local.DatabaseProvider
 import com.investhelp.app.data.local.dao.AccountPerformanceDao
 import com.investhelp.app.data.local.dao.ChangeHistoryDao
+import com.investhelp.app.data.local.dao.CorrelationCacheDao
 import com.investhelp.app.data.local.dao.CsvImportMappingDao
 import com.investhelp.app.data.local.dao.DefinitionDao
 import com.investhelp.app.data.local.dao.InvestmentAccountDao
@@ -84,5 +85,10 @@ object DatabaseModule {
     @Provides
     fun provideVolatilityCacheDao(dbProvider: DatabaseProvider): VolatilityCacheDao {
         return dbProvider.database.volatilityCacheDao()
+    }
+
+    @Provides
+    fun provideCorrelationCacheDao(dbProvider: DatabaseProvider): CorrelationCacheDao {
+        return dbProvider.database.correlationCacheDao()
     }
 }

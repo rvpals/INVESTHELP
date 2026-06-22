@@ -10,7 +10,8 @@ const BACKUP_DIR = path.join(__dirname, '..', '..', 'backups');
 
 const EXCLUDED_TABLES = new Set([
   'sqlite_sequence', 'sqlite_stat1',
-  'volatility_cache',  // cached computed data — regenerated on demand, not user data
+  'volatility_cache',   // cached computed data — regenerated on demand, not user data
+  'correlation_cache',  // cached computed data — regenerated on demand, not user data
 ]);
 
 function discoverTables() {

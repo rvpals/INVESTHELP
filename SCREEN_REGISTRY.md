@@ -11,7 +11,7 @@ Use this to reference any screen or component by ID. Example: "In Screen #01, Co
 - Daily change amount in parentheses (color-coded)
 - Day/All percentage row
 - Spinner during refresh
-- Hamburger menu (Accounts, Performance, Simulation, Next Day Actions, Volatility Analysis, Settings, SQL Explorer, Help, About)
+- Hamburger menu (Accounts, Performance, Simulation, Next Day Actions, Volatility Analysis, Correlation Matrix, Settings, SQL Explorer, Help, About)
 
 ### G2: Refresh Status Bar
 - Below top bar, shows "Updating [TICKER]" with price, change $, change %
@@ -306,6 +306,28 @@ Use this to reference any screen or component by ID. Example: "In Screen #01, Co
 > **Route:** `VolatilityAnalysisRoute` (Android) / `#/volatility-analysis` (PWA)
 > **Groups:** Low <15%, Moderate 15–30%, High 30–60%, Very High >60%
 > **Cache:** 1-hour per ticker; Refresh force-clears all
+
+---
+
+## Screen #22: Correlation Matrix
+
+| ID | Component | Description |
+|----|-----------|-------------|
+| C1 | Top Bar | "Correlation Matrix" title, subtitle "Based on 1 year of daily returns", back nav, Share/Export icon (when data loaded), Refresh icon |
+| C2 | Last Calculated Banner | "Calculated on MMM d, yyyy at h:mm a" — right-aligned below top bar |
+| C3 | Failed Tickers Banner | Error card listing tickers excluded due to insufficient history |
+| C4 | Explainer Card | Collapsible; "What it measures", colour scale legend (5 bands), "What to look for", diagonal note |
+| C5 | Filter Toggle | FilterChip ("Highlight ≥ 0.75 only"): dims non-diagonal cells with v < 0.75 to 20% opacity |
+| C6 | Matrix Grid | N×N table; rotated column headers (-45°); sticky row labels; 68dp cells with colour coding; horizontal scroll with snap-to-column; click non-diagonal cell → detail dialog |
+| C7 | Cell Detail Dialog | Correlation value + label (e.g. "highly correlated") + plain-English explanation for the pair |
+| C8 | Market Sensitivity Row | Colour-coded chips showing each ticker's Pearson correlation vs SPY/S&P 500 |
+| C9 | Portfolio Insights Card | Average correlation, most correlated pair, most diversifying ticker, high-correlation warning (avg > 0.70) |
+| C10 | Share / Export | Android: Save PNG to Pictures/InvestHelp/ + Intent.ACTION_SEND; PWA: download via HTML Canvas toDataURL |
+
+> **Entry point:** Hamburger menu → "Correlation Matrix" (Android: teal GridOn icon; PWA: ⊡)
+> **Route:** `CorrelationMatrixRoute` (Android) / `#/correlation` (PWA)
+> **Math:** Pearson correlation of daily % returns; inner-join on timestamps across all tickers; SPY fetched as market benchmark
+> **Cache:** DB-persisted single row (`correlation_cache`); excluded from backup; Refresh clears and recomputes
 
 ---
 

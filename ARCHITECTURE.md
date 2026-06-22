@@ -42,7 +42,8 @@ com.investhelp.app/
 ├── model/
 │   └── *.kt                     # Domain models and enums
 ├── util/
-│   └── VolatilityCalculator.kt  # Pure math: log-return volatility, range position, label
+│   ├── VolatilityCalculator.kt  # Pure math: log-return volatility, range position, label
+│   └── CorrelationUtils.kt      # Pure math: Pearson correlation, daily returns, matrix build, insights
 └── ui/
     ├── account/                 # AccountListScreen, AccountDetailScreen, AccountViewModel
     ├── components/              # CollapsibleCard, ConfirmDeleteDialog, DateRangePicker
@@ -58,12 +59,13 @@ com.investhelp.app/
     ├── theme/                   # Theme.kt, AppTheme.kt, ThemePreferences.kt, Color.kt, Type.kt
     ├── transaction/             # TransactionListScreen, TransactionFormScreen, AnalyzePriceScreen
     ├── volatility/              # VolatilityScreen, VolatilityViewModel, VolatilityAnalysisScreen, VolatilityAnalysisViewModel
+    ├── correlation/             # CorrelationMatrixScreen, CorrelationMatrixViewModel, CorrelationMatrixUiState
     └── watchlist/               # WatchListScreen, WatchListViewModel
 ```
 
 ## Database
 
-### Room Database (version 31)
+### Room Database (version 32)
 
 **Entities:**
 | Table | Primary Key | Description |
@@ -79,6 +81,7 @@ com.investhelp.app/
 | `change_history` | `id` (auto) | Daily portfolio value snapshots (ETF/Stock/Total) + daily change values |
 | `definitions` | `term` | Metric definitions for analysis info popups |
 | `volatility_cache` | `ticker` | Cached volatility analysis results (excluded from backups) |
+| `correlation_cache` | `id` (=1) | Single-row cache: full N×N correlation matrix + market correlation as JSON (excluded from backups) |
 
 **Key Relationships:**
 - Transactions reference tickers directly (no FK, account-independent)
@@ -112,9 +115,7 @@ com.investhelp.app/
 - v28->v29: Create ai_library table with 3 seed prompts
 - v29->v30: Add dividendRate column to investment_positions
 - v30->v31: Create volatility_cache table (ticker PK, all vol metrics + calculatedAt epoch seconds)
-- v27->v28: Create sql_library table for saved SQL queries
-- v28->v29: Create ai_library table with 3 seed prompts
-- v29->v30: Add dividendRate column to investment_positions
+- v31->v32: Create correlation_cache table (id PK=1, tickersJson, matrixJson, marketCorrelationJson, failedTickersJson, calculatedAt)
 
 ### DatabaseProvider
 Lazy initialization pattern: database opens on first access, not at app startup.

@@ -9,7 +9,7 @@
 - Spinner shown during price refresh
 - Refresh status bar: temporary bar below top bar showing "Updating [TICKER]" with price/share, change $ and change % (color-coded green/red); auto-hides when complete
 - Watch List icon button (star, purple) for quick access to Watch Lists
-- Hamburger menu: Accounts, Performance, Simulation, Next Day Actions, Volatility Analysis, Settings, SQL Explorer, Help, About
+- Hamburger menu: Accounts, Performance, Simulation, Next Day Actions, Volatility Analysis, Correlation Matrix, Settings, SQL Explorer, Help, About
 
 ### Dashboard Portfolio Summary
 - Collapsible "Portfolio Summary" card with pin persistence
@@ -293,6 +293,25 @@ Three tabs: **Details**, **Price History**, **Transactions** (ScrollableTabRow)
 - Summary chips at top showing count per action type
 - Grid columns: Ticker, Shares, Price, Value, Allocation %, Return %, Action, Reasoning
 - Configurable thresholds in Settings > Preferences > "Next-Day Actions Thresholds"
+
+## Correlation Matrix
+
+- Accessible from hamburger menu → "Correlation Matrix" (Android: teal GridOn icon; PWA: ⊡)
+- Available on both Android (`CorrelationMatrixRoute`) and PWA (`#/correlation`)
+- **Computes Pearson correlation** of 1-year daily % returns for all Stock/ETF positions; also calculates each ticker's correlation vs SPY as a market benchmark
+- **Color-coded N×N grid**: red ≥0.75 (highly correlated), orange ≥0.50 (moderate), yellow ≥0.25 (low), green ≥0.00 (uncorrelated), blue <0.00 (inverse); diagonal always dark gray = 1.0
+- **Scroll behaviour**: 68dp cells, rotated column headers (-45°), horizontal scroll with snap-to-column boundary; row labels sticky on left
+- **Filter toggle**: "Highlight ≥ 0.75 only" chips — dims cells below threshold to 20% opacity so high-correlation pairs stand out
+- **Explainer card**: collapsible card explaining what correlation means, the 5-band colour scale, what to look for, and why the diagonal is 1.0
+- **Cell tap**: opens modal dialog with correlation value, label (e.g. "highly correlated"), and plain-English explanation for that specific pair
+- **Market sensitivity row**: colour-coded chips showing each ticker's Pearson vs SPY (how closely it tracks the S&P 500)
+- **Portfolio insights**: average correlation across all pairs, most correlated pair, most diversifying ticker, high-correlation warning (avg > 0.70)
+- **Share / Export PNG**: renders entire matrix on a Canvas with 80px cells, colour legend, and rotated headers → saved to device (MediaStore on Android, download link on PWA)
+- **Cache**: single-row DB table `correlation_cache` stores full matrix JSON; loads instantly from cache on re-open; excluded from backup exports
+- **Last calculated timestamp** + Refresh button (clears cache, re-fetches and recomputes)
+- **Failed tickers banner**: positions with insufficient price history (<10 days) are excluded and listed
+- **Math**: inner-join all ticker timestamps → `dailyReturn[i] = (close[i] - close[i-1]) / close[i-1]` → sample Pearson r = Σ(da·db) / √(Σda² · Σdb²), clamped to [-1.0, 1.0]
+- **Android JUnit tests**: `CorrelationUtilsTest.kt` — 14 tests covering all math utilities
 
 ## Volatility Analysis
 

@@ -1,5 +1,34 @@
 # Changelog
 
+## v1.62 (Build 63) - 2026-06-21
+
+### Added
+- **Correlation Matrix screen** (Android + PWA): new analytics screen showing pairwise Pearson correlation of 1-year daily returns for all Stock/ETF positions, plus S&P 500 market sensitivity row
+  - **Android:** accessible from hamburger menu → "Correlation Matrix" (teal GridOn icon)
+    - New files: `CorrelationMatrixScreen.kt`, `CorrelationMatrixViewModel.kt`, `CorrelationUtils.kt`, `CorrelationCacheDao.kt`, `CorrelationCacheEntity.kt`
+    - DB v32: new `correlation_cache` table (single row id=1; full N×N matrix + market correlation stored as JSON strings)
+    - Color-coded N×N grid: red ≥0.75, orange ≥0.50, yellow ≥0.25, green ≥0.00, blue <0.00; diagonal dark gray
+    - 68dp cells (up from 52dp) with horizontal scroll snap: snaps to nearest column boundary when user lifts finger
+    - **Filter toggle** (FilterChip, `rememberSaveable`): "Highlight ≥ 0.75 only" dims other cells to 20% opacity
+    - Collapsible explainer card with colour legend, what-to-look-for guidance, and diagonal note
+    - Tap any non-diagonal cell → AlertDialog with value, label, and plain-English explanation
+    - Market sensitivity row: colour-coded chips showing each ticker's Pearson vs SPY
+    - Portfolio insights card: average correlation, most correlated pair, most diversifying ticker, high-corr warning (avg > 0.70)
+    - **Share / Export PNG**: Share icon in TopAppBar → `renderMatrixBitmap` draws 80px-cell Canvas → saved via `MediaStore.Images.Media.EXTERNAL_CONTENT_URI` → `Intent.ACTION_SEND` with `FLAG_GRANT_READ_URI_PERMISSION`; no `WRITE_EXTERNAL_STORAGE` needed (minSdk=29)
+    - Last calculated timestamp + Refresh button (clears cache, re-fetches in parallel)
+    - Failed tickers banner for positions with insufficient price history
+    - JUnit tests: `CorrelationUtilsTest.kt` — 14 tests covering `dailyReturns`, `pearson`, `alignPriceSeries`, `buildMatrix`, `averageCorrelation`, `mostCorrelatedPair`, `mostDiversifyingTicker`
+  - **PWA:** accessible from hamburger menu → "⊡ Correlation Matrix" at route `#/correlation`
+    - New files: `PWA/server/routes/correlation.js`, `PWA/public/js/screens/correlation.js`
+    - `POST /api/correlation/compute`: fetches Yahoo Finance 1-year daily history for all positions + SPY server-side (parallel Promise.all), inner-joins timestamps, computes Pearson matrix, caches in DB; returns JSON
+    - `GET /api/correlation/cache`: returns cached result or `{ noCache: true }`
+    - `DELETE /api/correlation/cache`: clears cache for forced recompute
+    - PWA SQLite: new `correlation_cache` table; excluded from backup exports (computed data)
+    - CSS `scroll-snap-type: x mandatory` for column snap; sticky row labels via `position: sticky; left: 0`
+    - Filter toggle pill button: dims cells with v < 0.75 to 20% opacity when active
+    - Cell click → modal dialog with value and explanation
+    - **Download PNG**: renders matrix on an off-screen HTML Canvas with `roundRect`, colour legend, rotated column headers → `canvas.toDataURL('image/png')` → `<a download>` click
+
 ## v1.61 (Build 62) - 2026-06-20
 
 ### Added

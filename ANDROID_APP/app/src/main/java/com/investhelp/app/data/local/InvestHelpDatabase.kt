@@ -5,8 +5,10 @@ import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import com.investhelp.app.data.local.converter.Converters
 import com.investhelp.app.data.local.dao.ChangeHistoryDao
+import com.investhelp.app.data.local.dao.CorrelationCacheDao
 import com.investhelp.app.data.local.dao.CsvImportMappingDao
 import com.investhelp.app.data.local.dao.VolatilityCacheDao
+import com.investhelp.app.data.local.entity.CorrelationCacheEntity
 import com.investhelp.app.data.local.entity.VolatilityCacheEntity
 import com.investhelp.app.data.local.dao.DefinitionDao
 import com.investhelp.app.data.local.dao.InvestmentAccountDao
@@ -43,9 +45,10 @@ import com.investhelp.app.data.local.entity.WatchListItemEntity
         DefinitionEntity::class,
         SqlLibraryEntity::class,
         AiLibraryEntity::class,
-        VolatilityCacheEntity::class
+        VolatilityCacheEntity::class,
+        CorrelationCacheEntity::class
     ],
-    version = 31,
+    version = 32,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -61,4 +64,5 @@ abstract class InvestHelpDatabase : RoomDatabase() {
     abstract fun sqlLibraryDao(): SqlLibraryDao
     abstract fun aiLibraryDao(): AiLibraryDao
     abstract fun volatilityCacheDao(): VolatilityCacheDao
+    abstract fun correlationCacheDao(): CorrelationCacheDao
 }

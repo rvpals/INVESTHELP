@@ -144,3 +144,9 @@ export const volatility = {
   saveCache:  (items) => post('/api/volatility/cache/bulk', { items }),
   clearCache: () => del('/api/volatility/cache/all'),
 };
+
+export const correlation = {
+  getCache:   () => get('/api/correlation/cache'),
+  compute:    () => post('/api/correlation/compute', {}),
+  clearCache: () => del('/api/correlation/cache'),
+};

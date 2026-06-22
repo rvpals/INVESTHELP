@@ -145,11 +145,31 @@ db.exec(`
     sampleCount      INTEGER NOT NULL DEFAULT 0,
     calculatedAt     INTEGER NOT NULL DEFAULT 0
   );
+
+  CREATE TABLE IF NOT EXISTS correlation_cache (
+    id                    INTEGER PRIMARY KEY DEFAULT 1,
+    tickersJson           TEXT NOT NULL DEFAULT '[]',
+    matrixJson            TEXT NOT NULL DEFAULT '[]',
+    marketCorrelationJson TEXT NOT NULL DEFAULT '{}',
+    failedTickersJson     TEXT NOT NULL DEFAULT '[]',
+    calculatedAt          INTEGER NOT NULL DEFAULT 0
+  );
 `);
 
 // Schema migrations for existing databases
 try {
   const tables = db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all().map(r => r.name);
+  if (!tables.includes('correlation_cache')) {
+    db.exec(`CREATE TABLE IF NOT EXISTS correlation_cache (
+      id                    INTEGER PRIMARY KEY DEFAULT 1,
+      tickersJson           TEXT NOT NULL DEFAULT '[]',
+      matrixJson            TEXT NOT NULL DEFAULT '[]',
+      marketCorrelationJson TEXT NOT NULL DEFAULT '{}',
+      failedTickersJson     TEXT NOT NULL DEFAULT '[]',
+      calculatedAt          INTEGER NOT NULL DEFAULT 0
+    )`);
+    console.log('Migration: created correlation_cache table');
+  }
   if (!tables.includes('volatility_cache')) {
     db.exec(`CREATE TABLE IF NOT EXISTS volatility_cache (
       ticker           TEXT PRIMARY KEY,
