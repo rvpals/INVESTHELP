@@ -153,11 +153,16 @@ function showAbout() {
   overlay.innerHTML = `
     <div class="dialog">
       <div class="dialog-title">About InvestHelp</div>
-      <p>InvestHelp PWA v1.0</p>
+      <p>InvestHelp PWA <strong>v1.62</strong></p>
       <p class="text-sm text-muted mt-8">Investment tracking progressive web app.</p>
       <hr style="border-color:var(--border-color);margin:12px 0 8px">
       <p class="text-sm" style="font-weight:600">What's New</p>
       <ul class="text-sm text-muted" style="padding-left:20px;margin-top:4px">
+        <li><strong>v1.62</strong> — Correlation Matrix: pairwise Pearson correlation of 1-year daily returns, filter toggle (≥0.75 highlight), market sensitivity vs SPY, portfolio insights, PNG download</li>
+        <li><strong>v1.61</strong> — Volatility Analysis caching: results persist to DB, "Last calculated on" banner, Refresh clears cache</li>
+        <li><strong>v1.60</strong> — Volatility Analysis screen: all Stock/ETF positions grouped by Low/Moderate/High/Very High volatility with live progress bar</li>
+        <li><strong>v1.51</strong> — 52-Week Volatility per ticker, Dashboard Watch List live price columns (Chg%, Chg$, Added$)</li>
+        <li>Next Day Actions scanner: STOP LOSS / TRIM PROFITS / REBALANCE / STRONG BUY / HOLD signals</li>
         <li>Positions tabs: flat layout with STOCK/ETF/Analysis/Dividend (icon + equal width)</li>
         <li>Dividend tab: total annual income, Stock/ETF exploding pie charts, sortable tables</li>
         <li>Generic backup/restore (v6) — auto-discovers all tables via sqlite_master</li>
