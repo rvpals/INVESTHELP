@@ -122,7 +122,12 @@ export const backup = {
     const form = new FormData();
     form.append('file', file);
     const r = await fetch('/api/backup/import', { method: 'POST', body: form });
-    return r.json();
+    let data;
+    try { data = await r.json(); } catch {
+      throw new Error(`Server returned HTTP ${r.status} — body was not JSON (possible reverse-proxy size limit)`);
+    }
+    if (!r.ok) throw new Error(data.error || `Import failed (HTTP ${r.status})`);
+    return data;
   },
   list: () => get('/api/backup/list'),
 };
