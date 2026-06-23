@@ -110,11 +110,15 @@ function explainerCardHtml() {
 }
 
 function matrixGridHtml(tickers, matrix, filterHighCorr) {
-  const cellW = '68px';
+  const cellW  = '68px';
   const labelW = '80px';
+  const n      = tickers.length;
 
+  // Column headers — each <th> is sticky to the top of the scroll container
   const headerCells = tickers.map(t => `
-    <th style="min-width:${cellW};max-width:${cellW};padding:0;vertical-align:bottom;scroll-snap-align:start;height:84px;border:none;background:transparent">
+    <th style="min-width:${cellW};max-width:${cellW};padding:0;vertical-align:bottom;
+      scroll-snap-align:start;height:84px;border:none;
+      position:sticky;top:0;z-index:3;background:var(--surface,#FFFBFE)">
       <div style="width:${cellW};height:84px;position:relative;overflow:hidden">
         <div style="position:absolute;bottom:8px;left:50%;transform-origin:left bottom;
           transform:translateX(-50%) rotate(-45deg);white-space:nowrap;font-size:11px;
@@ -124,45 +128,60 @@ function matrixGridHtml(tickers, matrix, filterHighCorr) {
       </div>
     </th>`).join('');
 
+  // Data rows — with column ticker hint inside each cell + separator bands between rows
   const dataRows = tickers.map((rowTicker, i) => {
-    const cells = tickers.map((_, j) => {
-      const v = matrix[i][j];
-      const isDiag = i === j;
-      const bg = isDiag ? '#424242' : correlationColor(v);
-      const textColor = isDiag ? '#fff' : cellTextColor(v);
+    const cells = tickers.map((colTicker, j) => {
+      const v          = matrix[i][j];
+      const isDiag     = i === j;
+      const bg         = isDiag ? '#424242' : correlationColor(v);
+      const textColor  = isDiag ? '#fff' : cellTextColor(v);
       const isFiltered = filterHighCorr && !isDiag && (v === null || v < 0.75);
-      const opacity = isFiltered ? '0.2' : '1';
-      const cursor = isDiag ? 'default' : 'pointer';
+      const opacity    = isFiltered ? '0.2' : '1';
+      const cursor     = isDiag ? 'default' : 'pointer';
+      const hint       = isDiag ? '' : `
+        <div style="font-size:9px;font-weight:700;opacity:0.85;line-height:1;margin-bottom:3px;
+          max-width:calc(${cellW} - 8px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+          ${colTicker}
+        </div>`;
       return `<td style="min-width:${cellW};max-width:${cellW};height:${cellW};padding:1px;scroll-snap-align:start;border:none"
           ${!isDiag ? `data-cell="${i},${j}"` : ''}>
           <div style="width:calc(${cellW} - 2px);height:calc(${cellW} - 2px);background:${bg};border-radius:4px;
-            display:flex;align-items:center;justify-content:center;
-            color:${textColor};font-size:11px;font-weight:${isDiag ? '700' : '400'};
-            cursor:${cursor};opacity:${opacity};transition:opacity .15s;user-select:none">
-            ${isDiag ? '1.00' : fmt(v)}
+            display:flex;flex-direction:column;align-items:center;justify-content:center;
+            color:${textColor};cursor:${cursor};opacity:${opacity};transition:opacity .15s;user-select:none">
+            ${hint}
+            <div style="font-size:11px;font-weight:${isDiag ? '700' : '600'}">${isDiag ? '1.00' : fmt(v)}</div>
           </div>
         </td>`;
     }).join('');
 
+    // 5px separator band between rows (not after the last row)
+    const separator = i < n - 1
+      ? `<tr><td colspan="${n + 1}" style="height:5px;padding:0;background:var(--surface-variant,#E7E0EC)"></td></tr>`
+      : '';
+
     return `<tr>
       <td style="min-width:${labelW};max-width:${labelW};padding:1px 6px 1px 0;font-size:11px;font-weight:700;
         color:var(--on-surface,#1C1B1F);white-space:nowrap;position:sticky;left:0;
-        background:var(--surface,#FFFBFE);z-index:2;border:none">
+        background:var(--surface,#FFFBFE);z-index:2;border:none;vertical-align:middle">
         ${rowTicker}
       </td>
       ${cells}
-    </tr>`;
+    </tr>${separator}`;
   }).join('');
 
   return `<div class="card mb-12">
     <div class="p-12">
       <div class="text-sm text-bold mb-8">Correlation Matrix</div>
-      <div style="overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:thin">
+      <div style="overflow:auto;max-height:calc(100vh - 220px);scroll-snap-type:x mandatory;
+        -webkit-overflow-scrolling:touch;scrollbar-width:thin">
         <table style="border-collapse:collapse;min-width:max-content">
-          <thead><tr>
-            <th style="min-width:${labelW};max-width:${labelW};border:none;background:transparent"></th>
-            ${headerCells}
-          </tr></thead>
+          <thead>
+            <tr>
+              <th style="min-width:${labelW};max-width:${labelW};border:none;
+                position:sticky;top:0;left:0;z-index:4;background:var(--surface,#FFFBFE)"></th>
+              ${headerCells}
+            </tr>
+          </thead>
           <tbody>${dataRows}</tbody>
         </table>
       </div>

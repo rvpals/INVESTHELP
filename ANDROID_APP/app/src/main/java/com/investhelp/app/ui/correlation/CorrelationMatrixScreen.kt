@@ -9,7 +9,6 @@ import android.provider.MediaStore
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -24,9 +23,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
@@ -45,6 +45,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -125,7 +126,7 @@ private fun cellExplainer(a: String, b: String, v: Double): String = when {
 
 // ─── Cell sizing constants ────────────────────────────────────────────────────
 
-private val CELL_SIZE       = 68.dp   // enlarged for legibility with 6+ tickers
+private val CELL_SIZE       = 68.dp
 private val ROW_LABEL_WIDTH = 72.dp
 private val CELL_FONT       = 11.sp
 
@@ -141,9 +142,8 @@ fun CorrelationMatrixScreen(
     val context  = LocalContext.current
     val scope    = rememberCoroutineScope()
 
-    var selectedCell     by remember { mutableStateOf<Triple<String, String, Double>?>(null) }
-    // Filter toggle survives rotation via rememberSaveable
-    var filterHighCorr   by rememberSaveable { mutableStateOf(false) }
+    var selectedCell   by remember { mutableStateOf<Triple<String, String, Double>?>(null) }
+    var filterHighCorr by rememberSaveable { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -167,9 +167,7 @@ fun CorrelationMatrixScreen(
                     if (uiState is CorrelationMatrixUiState.Success) {
                         val successState = uiState as CorrelationMatrixUiState.Success
                         IconButton(onClick = {
-                            scope.launch {
-                                saveAndShareMatrix(context, successState.result)
-                            }
+                            scope.launch { saveAndShareMatrix(context, successState.result) }
                         }) {
                             Icon(Icons.Default.Share, contentDescription = "Export as image")
                         }
@@ -186,17 +184,16 @@ fun CorrelationMatrixScreen(
                 is CorrelationMatrixUiState.Loading -> LoadingState()
                 is CorrelationMatrixUiState.Error   -> ErrorState(state.message)
                 is CorrelationMatrixUiState.Success -> SuccessContent(
-                    state          = state,
-                    filterHighCorr = filterHighCorr,
-                    onToggleFilter = { filterHighCorr = !filterHighCorr },
+                    state             = state,
+                    filterHighCorr    = filterHighCorr,
+                    onToggleFilter    = { filterHighCorr = !filterHighCorr },
                     onToggleExplainer = viewModel::toggleExplainer,
-                    onCellTap = { a, b, v -> selectedCell = Triple(a, b, v) }
+                    onCellTap         = { a, b, v -> selectedCell = Triple(a, b, v) }
                 )
             }
         }
     }
 
-    // Cell detail dialog
     selectedCell?.let { (a, b, v) ->
         AlertDialog(
             onDismissRequest = { selectedCell = null },
@@ -262,73 +259,219 @@ private fun SuccessContent(
     onToggleExplainer: () -> Unit,
     onCellTap: (String, String, Double) -> Unit
 ) {
-    val result = state.result
+    val result  = state.result
+    val tickers = result.tickers
+    val n       = tickers.size
+
     val lastCalcStr = remember(result.calculatedAt) {
         SimpleDateFormat("MMM d 'at' h:mm a", Locale.getDefault())
             .format(Date(result.calculatedAt * 1000L))
     }
-    // Shared horizontal scroll — header row and every data row use the same state
-    val hScroll = rememberScrollState()
 
-    Column(
+    val hScroll = rememberScrollState()
+    val density = LocalDensity.current
+    val cellPx  = with(density) { CELL_SIZE.toPx() }
+
+    // Snap to nearest column boundary when horizontal scroll settles
+    LaunchedEffect(hScroll.isScrollInProgress) {
+        if (!hScroll.isScrollInProgress) {
+            val target = (hScroll.value / cellPx).roundToInt() * cellPx.toInt()
+            if (target != hScroll.value) hScroll.animateScrollTo(target)
+        }
+    }
+
+    LazyColumn(
         modifier = Modifier
             .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 12.dp, vertical = 8.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+            .padding(horizontal = 12.dp, vertical = 8.dp)
     ) {
-        Text(
-            "Calculated on $lastCalcStr",
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.fillMaxWidth(),
-            textAlign = TextAlign.End
-        )
-
-        if (result.failedTickers.isNotEmpty()) {
-            FailedBanner(result.failedTickers)
-        }
-
-        ExplainerCard(expanded = state.explainerExpanded, onToggle = onToggleExplainer)
-
-        // ── Filter toggle ──────────────────────────────────────────────────
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Text("Filter:", style = MaterialTheme.typography.labelMedium)
-            FilterChip(
-                selected = filterHighCorr,
-                onClick  = onToggleFilter,
-                label    = { Text("Highlight ≥ 0.75 only") },
-                leadingIcon = if (filterHighCorr) {
-                    { Icon(Icons.Default.Check, null, Modifier.size(FilterChipDefaults.IconSize)) }
-                } else null
-            )
-        }
-        if (filterHighCorr) {
+        // ── Timestamp ──────────────────────────────────────────────────────
+        item {
             Text(
-                "Dimmed cells have correlation < 0.75. Only highly correlated pairs are shown at full opacity.",
+                "Calculated on $lastCalcStr",
                 style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.fillMaxWidth(),
+                textAlign = TextAlign.End
             )
+            Spacer(Modifier.height(12.dp))
         }
 
-        MatrixGrid(
-            result = result,
-            hScroll = hScroll,
-            filterHighCorr = filterHighCorr,
-            onCellTap = onCellTap
-        )
+        // ── Failed ticker banner ───────────────────────────────────────────
+        if (result.failedTickers.isNotEmpty()) {
+            item {
+                FailedBanner(result.failedTickers)
+                Spacer(Modifier.height(12.dp))
+            }
+        }
 
+        // ── Explainer card ────────────────────────────────────────────────
+        item {
+            ExplainerCard(expanded = state.explainerExpanded, onToggle = onToggleExplainer)
+            Spacer(Modifier.height(12.dp))
+        }
+
+        // ── Filter toggle ─────────────────────────────────────────────────
+        item {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text("Filter:", style = MaterialTheme.typography.labelMedium)
+                FilterChip(
+                    selected = filterHighCorr,
+                    onClick  = onToggleFilter,
+                    label    = { Text("Highlight ≥ 0.75 only") },
+                    leadingIcon = if (filterHighCorr) {
+                        { Icon(Icons.Default.Check, null, Modifier.size(FilterChipDefaults.IconSize)) }
+                    } else null
+                )
+            }
+            if (filterHighCorr) {
+                Text(
+                    "Dimmed cells have correlation < 0.75. Only highly correlated pairs are shown at full opacity.",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Spacer(Modifier.height(12.dp))
+        }
+
+        // ── Matrix title ──────────────────────────────────────────────────
+        item {
+            Text(
+                "Correlation Matrix",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold
+            )
+            Spacer(Modifier.height(4.dp))
+        }
+
+        // ── Sticky column header row (rotated ticker labels) ──────────────
+        stickyHeader {
+            Surface(
+                modifier      = Modifier.fillMaxWidth(),
+                shadowElevation = 4.dp,
+                color         = MaterialTheme.colorScheme.surface
+            ) {
+                Row {
+                    Box(modifier = Modifier.width(ROW_LABEL_WIDTH))   // corner spacer
+                    Row(modifier = Modifier.horizontalScroll(hScroll)) {
+                        tickers.forEach { ticker ->
+                            Box(
+                                modifier = Modifier.width(CELL_SIZE).height(CELL_SIZE),
+                                contentAlignment = Alignment.BottomStart
+                            ) {
+                                Text(
+                                    ticker,
+                                    style    = MaterialTheme.typography.labelSmall.copy(fontSize = CELL_FONT),
+                                    modifier = Modifier.rotate(-45f).padding(bottom = 4.dp, start = 4.dp),
+                                    maxLines = 1
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // ── Matrix data rows (one LazyColumn item per ticker row) ─────────
+        itemsIndexed(tickers) { i, rowTicker ->
+            Surface(
+                color    = MaterialTheme.colorScheme.surface,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        // Row label (sticky-left equivalent — always leftmost)
+                        Text(
+                            rowTicker,
+                            style        = MaterialTheme.typography.labelSmall.copy(fontSize = CELL_FONT),
+                            fontWeight   = FontWeight.SemiBold,
+                            modifier     = Modifier.width(ROW_LABEL_WIDTH).padding(end = 4.dp),
+                            maxLines     = 1
+                        )
+                        // Cells — share hScroll with the sticky header above
+                        Row(modifier = Modifier.horizontalScroll(hScroll)) {
+                            tickers.forEachIndexed { j, colTicker ->
+                                val v         = result.matrix[i][j]
+                                val isDiag    = i == j
+                                val bg        = if (isDiag) diagonalColor else correlationColor(v)
+                                val textColor = if (isDiag) Color.White else cellTextColor(v)
+                                val cellAlpha = if (filterHighCorr && !isDiag && v < 0.75) 0.20f else 1f
+
+                                Box(
+                                    modifier = Modifier
+                                        .size(CELL_SIZE)
+                                        .padding(1.dp)
+                                        .alpha(cellAlpha)
+                                        .clip(RoundedCornerShape(4.dp))
+                                        .background(bg)
+                                        .then(
+                                            if (!isDiag) Modifier.clickable {
+                                                onCellTap(rowTicker, colTicker, v)
+                                            } else Modifier
+                                        ),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Column(
+                                        horizontalAlignment = Alignment.CenterHorizontally,
+                                        verticalArrangement = Arrangement.Center
+                                    ) {
+                                        // Column ticker hint — helps identify the cell without needing to look at the header
+                                        if (!isDiag) {
+                                            Text(
+                                                colTicker,
+                                                color    = textColor,
+                                                style    = MaterialTheme.typography.labelSmall.copy(
+                                                    fontSize   = 9.sp,
+                                                    fontWeight = FontWeight.SemiBold
+                                                ),
+                                                maxLines = 1
+                                            )
+                                            Spacer(Modifier.height(2.dp))
+                                        }
+                                        Text(
+                                            if (v.isNaN()) "—" else "%.2f".format(v),
+                                            color = textColor,
+                                            style = MaterialTheme.typography.labelSmall.copy(
+                                                fontSize   = CELL_FONT,
+                                                fontWeight = if (isDiag) FontWeight.Bold else FontWeight.SemiBold
+                                            )
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    // Narrow separator band between rows
+                    if (i < n - 1) {
+                        Spacer(
+                            Modifier
+                                .fillMaxWidth()
+                                .height(4.dp)
+                                .background(MaterialTheme.colorScheme.surfaceVariant)
+                        )
+                    }
+                }
+            }
+        }
+
+        item { Spacer(Modifier.height(12.dp)) }
+
+        // ── Market sensitivity ─────────────────────────────────────────────
         if (result.marketCorrelation.isNotEmpty()) {
-            MarketSensitivityRow(result = result)
+            item {
+                MarketSensitivityRow(result = result)
+                Spacer(Modifier.height(12.dp))
+            }
         }
 
-        SummaryInsightsCard(result = result)
+        // ── Portfolio insights ─────────────────────────────────────────────
+        item { SummaryInsightsCard(result = result) }
 
-        Spacer(Modifier.height(24.dp))
+        item { Spacer(Modifier.height(24.dp)) }
     }
 }
 
@@ -337,14 +480,14 @@ private fun SuccessContent(
 @Composable
 private fun FailedBanner(failed: List<String>) {
     Card(
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
+        colors   = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
         modifier = Modifier.fillMaxWidth()
     ) {
         Text(
             "Could not load data for ${failed.joinToString(", ")} — excluded from analysis.",
             modifier = Modifier.padding(12.dp),
-            color = MaterialTheme.colorScheme.onErrorContainer,
-            style = MaterialTheme.typography.bodySmall
+            color    = MaterialTheme.colorScheme.onErrorContainer,
+            style    = MaterialTheme.typography.bodySmall
         )
     }
 }
@@ -366,9 +509,9 @@ private fun ExplainerCard(expanded: Boolean, onToggle: () -> Unit) {
             ) {
                 Text(
                     "What is a Correlation Matrix?",
-                    style = MaterialTheme.typography.titleSmall,
+                    style      = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.weight(1f)
+                    modifier   = Modifier.weight(1f)
                 )
                 Icon(
                     Icons.Default.ExpandMore,
@@ -394,10 +537,10 @@ private fun ExplainerCard(expanded: Boolean, onToggle: () -> Unit) {
                         }
                         ExplainerSection("The scale") {
                             val items = listOf(
-                                Triple("0.75 – 1.00", "Highly correlated — moves nearly in lockstep",  Color(0xFFE53935)),
-                                Triple("0.50 – 0.74", "Moderately correlated — significant overlap",   Color(0xFFFB8C00)),
-                                Triple("0.25 – 0.49", "Low correlation — decent diversification",      Color(0xFFFDD835)),
-                                Triple("0.00 – 0.24", "Uncorrelated — strong diversification",         Color(0xFF43A047)),
+                                Triple("0.75 – 1.00", "Highly correlated — moves nearly in lockstep",    Color(0xFFE53935)),
+                                Triple("0.50 – 0.74", "Moderately correlated — significant overlap",     Color(0xFFFB8C00)),
+                                Triple("0.25 – 0.49", "Low correlation — decent diversification",        Color(0xFFFDD835)),
+                                Triple("0.00 – 0.24", "Uncorrelated — strong diversification",           Color(0xFF43A047)),
                                 Triple("Negative",    "Inverse relationship — one rises as other falls", Color(0xFF1E88E5))
                             )
                             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -441,108 +584,6 @@ private fun ExplainerSection(title: String, content: @Composable () -> Unit) {
     }
 }
 
-// ─── Matrix grid ──────────────────────────────────────────────────────────────
-
-@Composable
-private fun MatrixGrid(
-    result: MatrixResult,
-    hScroll: ScrollState,
-    filterHighCorr: Boolean,
-    onCellTap: (String, String, Double) -> Unit
-) {
-    val tickers = result.tickers
-    val density = LocalDensity.current
-    val cellPx  = with(density) { CELL_SIZE.toPx() }
-
-    // Snap to nearest column boundary when scroll settles
-    LaunchedEffect(hScroll.isScrollInProgress) {
-        if (!hScroll.isScrollInProgress) {
-            val target = (hScroll.value / cellPx).roundToInt() * cellPx.toInt()
-            if (target != hScroll.value) hScroll.animateScrollTo(target)
-        }
-    }
-
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(8.dp)) {
-            Text(
-                "Correlation Matrix",
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.padding(bottom = 8.dp)
-            )
-
-            // Column headers (rotated 45°) — share hScroll with data rows
-            Row {
-                Spacer(Modifier.width(ROW_LABEL_WIDTH))
-                Row(modifier = Modifier.horizontalScroll(hScroll)) {
-                    tickers.forEach { ticker ->
-                        Box(
-                            modifier = Modifier.width(CELL_SIZE).height(CELL_SIZE),
-                            contentAlignment = Alignment.BottomStart
-                        ) {
-                            Text(
-                                ticker,
-                                style = MaterialTheme.typography.labelSmall.copy(fontSize = CELL_FONT),
-                                modifier = Modifier.rotate(-45f).padding(bottom = 4.dp, start = 4.dp),
-                                maxLines = 1
-                            )
-                        }
-                    }
-                }
-            }
-
-            HorizontalDivider()
-
-            // Data rows — sticky label + scrollable cells on same hScroll
-            tickers.forEachIndexed { i, rowTicker ->
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        rowTicker,
-                        style = MaterialTheme.typography.labelSmall.copy(fontSize = CELL_FONT),
-                        fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.width(ROW_LABEL_WIDTH).padding(end = 4.dp),
-                        maxLines = 1
-                    )
-                    Row(modifier = Modifier.horizontalScroll(hScroll)) {
-                        tickers.forEachIndexed { j, colTicker ->
-                            val v      = result.matrix[i][j]
-                            val isDiag = i == j
-                            val bg     = if (isDiag) diagonalColor else correlationColor(v)
-                            val text   = if (isDiag) Color.White else cellTextColor(v)
-                            // Dim cells that don't meet the filter threshold
-                            val cellAlpha = if (filterHighCorr && !isDiag && v < 0.75) 0.20f else 1f
-
-                            Box(
-                                modifier = Modifier
-                                    .size(CELL_SIZE)
-                                    .padding(1.dp)
-                                    .alpha(cellAlpha)
-                                    .clip(RoundedCornerShape(4.dp))
-                                    .background(bg)
-                                    .then(
-                                        if (!isDiag) Modifier.clickable {
-                                            onCellTap(rowTicker, colTicker, v)
-                                        } else Modifier
-                                    ),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    if (v.isNaN()) "—" else "%.2f".format(v),
-                                    color = text,
-                                    style = MaterialTheme.typography.labelSmall.copy(
-                                        fontSize = CELL_FONT,
-                                        fontWeight = if (isDiag) FontWeight.Bold else FontWeight.Normal
-                                    )
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
 // ─── Market sensitivity ───────────────────────────────────────────────────────
 
 @Composable
@@ -551,7 +592,7 @@ private fun MarketSensitivityRow(result: MatrixResult) {
         Column(modifier = Modifier.padding(12.dp)) {
             Text(
                 "Market Sensitivity  (vs S&P 500)",
-                style = MaterialTheme.typography.titleSmall,
+                style      = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.SemiBold
             )
             Spacer(Modifier.height(8.dp))
@@ -571,8 +612,8 @@ private fun MarketSensitivityRow(result: MatrixResult) {
                     ) {
                         Text(
                             "$ticker  ${if (v != null && !v.isNaN()) "%.2f".format(v) else "—"}",
-                            color = txt,
-                            style = MaterialTheme.typography.labelSmall,
+                            color      = txt,
+                            style      = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.SemiBold
                         )
                     }
@@ -604,7 +645,7 @@ private fun SummaryInsightsCard(result: MatrixResult) {
         ) {
             Text(
                 "Portfolio Insights",
-                style = MaterialTheme.typography.titleSmall,
+                style      = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.SemiBold
             )
 
@@ -637,17 +678,15 @@ private fun SummaryInsightsCard(result: MatrixResult) {
 
             if (!avgCorr.isNaN() && avgCorr > 0.70) {
                 Card(
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.errorContainer
-                    ),
+                    colors   = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(
                         "⚠️  High average correlation detected. Your portfolio may be less diversified " +
                         "than it appears. Consider holdings in different sectors or asset classes.",
                         modifier = Modifier.padding(10.dp),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onErrorContainer
+                        style    = MaterialTheme.typography.bodySmall,
+                        color    = MaterialTheme.colorScheme.onErrorContainer
                     )
                 }
             }
@@ -659,7 +698,7 @@ private fun SummaryInsightsCard(result: MatrixResult) {
 private fun InsightBullet(text: String) {
     Row(
         horizontalArrangement = Arrangement.spacedBy(6.dp),
-        verticalAlignment = Alignment.Top
+        verticalAlignment     = Alignment.Top
     ) {
         Text("•", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
         Text(text, style = MaterialTheme.typography.bodySmall)
@@ -670,10 +709,9 @@ private fun InsightBullet(text: String) {
 
 private suspend fun saveAndShareMatrix(context: Context, result: MatrixResult) =
     withContext(Dispatchers.IO) {
-        val bitmap = renderMatrixBitmap(result)
-
+        val bitmap   = renderMatrixBitmap(result)
         val filename = "correlation_matrix_${System.currentTimeMillis()}.png"
-        val values = ContentValues().apply {
+        val values   = ContentValues().apply {
             put(MediaStore.Images.Media.DISPLAY_NAME, filename)
             put(MediaStore.Images.Media.MIME_TYPE, "image/png")
             put(MediaStore.Images.Media.RELATIVE_PATH,
@@ -706,14 +744,14 @@ private suspend fun saveAndShareMatrix(context: Context, result: MatrixResult) =
     }
 
 private fun renderMatrixBitmap(result: MatrixResult): Bitmap {
-    val tickers   = result.tickers
-    val n         = tickers.size
-    val cellPx    = 80f
-    val labelPx   = 100f
-    val headerPx  = 80f
-    val titlePx   = 50f
-    val legendPx  = 70f
-    val padH      = 20f
+    val tickers  = result.tickers
+    val n        = tickers.size
+    val cellPx   = 80f
+    val labelPx  = 100f
+    val headerPx = 80f
+    val titlePx  = 50f
+    val legendPx = 70f
+    val padH     = 20f
 
     val width  = (labelPx + n * cellPx + padH).toInt()
     val height = (titlePx + headerPx + n * cellPx + legendPx + padH).toInt()
@@ -722,7 +760,6 @@ private fun renderMatrixBitmap(result: MatrixResult): Bitmap {
     val canvas = android.graphics.Canvas(bitmap)
     canvas.drawColor(android.graphics.Color.WHITE)
 
-    // ── Paints ──
     val titlePaint = android.graphics.Paint().apply {
         color = android.graphics.Color.BLACK; textSize = 28f; isAntiAlias = true
         isFakeBoldText = true; textAlign = android.graphics.Paint.Align.CENTER
@@ -731,7 +768,11 @@ private fun renderMatrixBitmap(result: MatrixResult): Bitmap {
         color = android.graphics.Color.DKGRAY; textSize = 20f; isAntiAlias = true
     }
     val cellTextPaint = android.graphics.Paint().apply {
-        textSize = 22f; isAntiAlias = true; isFakeBoldText = false
+        textSize = 22f; isAntiAlias = true
+        textAlign = android.graphics.Paint.Align.CENTER
+    }
+    val hintPaint = android.graphics.Paint().apply {
+        textSize = 16f; isAntiAlias = true; isFakeBoldText = true
         textAlign = android.graphics.Paint.Align.CENTER
     }
     val legendLabelPaint = android.graphics.Paint().apply {
@@ -739,13 +780,8 @@ private fun renderMatrixBitmap(result: MatrixResult): Bitmap {
     }
     val fillPaint = android.graphics.Paint().apply { isAntiAlias = true }
 
-    // ── Title ──
-    canvas.drawText(
-        "Correlation Matrix",
-        width / 2f, titlePx - 10f, titlePaint
-    )
+    canvas.drawText("Correlation Matrix", width / 2f, titlePx - 10f, titlePaint)
 
-    // ── Column headers (rotated -45°) ──
     tickers.forEachIndexed { j, ticker ->
         val cx = labelPx + j * cellPx + cellPx / 2f
         val cy = titlePx + headerPx - 4f
@@ -756,47 +792,46 @@ private fun renderMatrixBitmap(result: MatrixResult): Bitmap {
         canvas.restore()
     }
 
-    // ── Cells ──
     tickers.forEachIndexed { i, rowTicker ->
         val rowY = titlePx + headerPx + i * cellPx
-
-        // Row label
         labelPaint.textAlign = android.graphics.Paint.Align.RIGHT
         canvas.drawText(rowTicker, labelPx - 6f, rowY + cellPx / 2f + 7f, labelPaint)
 
-        tickers.forEachIndexed { j, _ ->
+        tickers.forEachIndexed { j, colTicker ->
             val v      = result.matrix[i][j]
             val isDiag = i == j
             val left   = labelPx + j * cellPx
             val top    = rowY
             val rect   = android.graphics.RectF(left + 1, top + 1, left + cellPx - 1, top + cellPx - 1)
 
-            val argb = if (isDiag) {
-                android.graphics.Color.rgb(66, 66, 66)
-            } else {
-                when {
-                    v >= 0.75 -> android.graphics.Color.rgb(229,  57,  53)
-                    v >= 0.50 -> android.graphics.Color.rgb(251, 140,   0)
-                    v >= 0.25 -> android.graphics.Color.rgb(253, 216,  53)
-                    v >= 0.00 -> android.graphics.Color.rgb( 67, 160,  71)
-                    else      -> android.graphics.Color.rgb( 30, 136, 229)
-                }
+            val argb = if (isDiag) android.graphics.Color.rgb(66, 66, 66) else when {
+                v >= 0.75 -> android.graphics.Color.rgb(229,  57,  53)
+                v >= 0.50 -> android.graphics.Color.rgb(251, 140,   0)
+                v >= 0.25 -> android.graphics.Color.rgb(253, 216,  53)
+                v >= 0.00 -> android.graphics.Color.rgb( 67, 160,  71)
+                else      -> android.graphics.Color.rgb( 30, 136, 229)
             }
             fillPaint.color = argb
             canvas.drawRoundRect(rect, 6f, 6f, fillPaint)
 
-            cellTextPaint.color = if (isDiag || v < 0.25 || v >= 0.75) {
-                android.graphics.Color.WHITE
-            } else {
-                android.graphics.Color.BLACK
+            val white = android.graphics.Color.WHITE
+            val black = android.graphics.Color.BLACK
+            val textArgb = if (isDiag || v < 0.25 || v >= 0.75) white else black
+
+            if (!isDiag) {
+                hintPaint.color = textArgb
+                canvas.drawText(colTicker, left + cellPx / 2f, top + cellPx / 2f - 4f, hintPaint)
             }
-            val label = if (v.isNaN()) "—" else "%.2f".format(v)
-            canvas.drawText(label, left + cellPx / 2f, top + cellPx / 2f + 8f, cellTextPaint)
+            cellTextPaint.color = textArgb
+            val valueY = if (isDiag) top + cellPx / 2f + 8f else top + cellPx / 2f + 18f
+            canvas.drawText(
+                if (v.isNaN()) "—" else "%.2f".format(v),
+                left + cellPx / 2f, valueY, cellTextPaint
+            )
         }
     }
 
-    // ── Colour legend ──
-    val legendY = titlePx + headerPx + n * cellPx + 10f
+    val legendY     = titlePx + headerPx + n * cellPx + 10f
     val legendItems = listOf(
         Pair("≥0.75 High",   android.graphics.Color.rgb(229, 57,  53)),
         Pair("≥0.50 Mod",    android.graphics.Color.rgb(251, 140,  0)),
@@ -804,18 +839,16 @@ private fun renderMatrixBitmap(result: MatrixResult): Bitmap {
         Pair("≥0.00 None",   android.graphics.Color.rgb( 67, 160, 71)),
         Pair("< 0  Inverse", android.graphics.Color.rgb( 30, 136, 229))
     )
-    val boxW  = 22f
-    val boxH  = 22f
-    val gap   = (width - padH * 2) / legendItems.size
+    val gap = (width - padH * 2) / legendItems.size
     legendItems.forEachIndexed { k, (label, color) ->
         val lx = padH + k * gap
         fillPaint.color = color
         canvas.drawRoundRect(
-            android.graphics.RectF(lx, legendY, lx + boxW, legendY + boxH),
+            android.graphics.RectF(lx, legendY, lx + 22f, legendY + 22f),
             4f, 4f, fillPaint
         )
         legendLabelPaint.textAlign = android.graphics.Paint.Align.LEFT
-        canvas.drawText(label, lx + boxW + 4f, legendY + boxH - 4f, legendLabelPaint)
+        canvas.drawText(label, lx + 26f, legendY + 18f, legendLabelPaint)
     }
 
     return bitmap
