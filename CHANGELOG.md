@@ -1,5 +1,18 @@
 # Changelog
 
+## v1.64 (Build 65) - 2026-06-22
+
+### Improved
+- **Correlation Matrix layout** (Android + PWA):
+  - **Sticky column header**: column ticker labels now pin to the top of the screen as matrix rows scroll past (Android: `LazyColumn` + `stickyHeader`; PWA: CSS `position:sticky; top:0`)
+  - **Row separators**: 4dp / 5px surfaceVariant band between every ticker row for clear visual separation
+  - **Cell ticker hint**: each non-diagonal cell now shows the column ticker name (9sp/9px, above the value) so the column is identifiable without scrolling back to the header
+  - Android: `SuccessContent` refactored from `Column + verticalScroll` to `LazyColumn`; `MatrixGrid` composable removed (rendering moved inline)
+  - PNG export updated to render column ticker hint above value in each cell
+  - PWA: matrix container changed to `overflow:auto; max-height:calc(100vh - 220px)` to enable both H and V scroll within the div; corner cell sticky on both axes (z-index:4)
+- **Backup import error surfacing** (PWA): `api.js` `backup.import` now checks `r.ok` and throws a meaningful error (e.g. HTTP 413 from nginx reverse proxy) instead of silently showing "0 accounts imported"
+- **Server restart scripts**: `restart_server.sh` (NAS/Linux) and `RESTART_APP.bat` (Windows) use `sudo pkill` to kill root-owned Node processes; default port restored to 3000
+
 ## v1.62 (Build 63) - 2026-06-21
 
 ### Added

@@ -153,11 +153,12 @@ function showAbout() {
   overlay.innerHTML = `
     <div class="dialog">
       <div class="dialog-title">About InvestHelp</div>
-      <p>InvestHelp PWA <strong>v1.62</strong></p>
+      <p>InvestHelp PWA <strong>v1.64</strong></p>
       <p class="text-sm text-muted mt-8">Investment tracking progressive web app.</p>
       <hr style="border-color:var(--border-color);margin:12px 0 8px">
       <p class="text-sm" style="font-weight:600">What's New</p>
       <ul class="text-sm text-muted" style="padding-left:20px;margin-top:4px">
+        <li><strong>v1.64</strong> — Correlation Matrix: sticky column header, row separator bands, column ticker hint on each cell; backup import now surfaces real errors instead of silent 0-count</li>
         <li><strong>v1.62</strong> — Correlation Matrix: pairwise Pearson correlation of 1-year daily returns, filter toggle (≥0.75 highlight), market sensitivity vs SPY, portfolio insights, PNG download</li>
         <li><strong>v1.61</strong> — Volatility Analysis caching: results persist to DB, "Last calculated on" banner, Refresh clears cache</li>
         <li><strong>v1.60</strong> — Volatility Analysis screen: all Stock/ETF positions grouped by Low/Moderate/High/Very High volatility with live progress bar</li>

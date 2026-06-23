@@ -2,7 +2,7 @@
 
 Android investment tracking app built with Kotlin, Jetpack Compose, and Material 3.
 
-**Version:** 1.62 (Build 63)
+**Version:** 1.64 (Build 65)
 
 ## Overview
 
