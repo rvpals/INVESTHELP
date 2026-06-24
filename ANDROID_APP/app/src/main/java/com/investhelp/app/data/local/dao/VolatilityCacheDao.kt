@@ -11,6 +11,9 @@ interface VolatilityCacheDao {
     @Query("SELECT * FROM volatility_cache ORDER BY type, annualizedVolPct ASC")
     suspend fun getAll(): List<VolatilityCacheEntity>
 
+    @Query("SELECT * FROM volatility_cache WHERE ticker = :ticker LIMIT 1")
+    suspend fun getByTicker(ticker: String): VolatilityCacheEntity?
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertAll(entities: List<VolatilityCacheEntity>)
 

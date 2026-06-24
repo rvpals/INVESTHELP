@@ -131,9 +131,6 @@ fun InvestHelpNavHost(
                 onAi = { ticker ->
                     navController.navigate(AiTickerRoute(ticker = ticker))
                 },
-                onVolatility = { ticker, shares ->
-                    navController.navigate(VolatilityRoute(ticker = ticker, shares = shares))
-                },
                 onBack = { navController.popBackStack() }
             )
         }

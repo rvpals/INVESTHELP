@@ -3,11 +3,14 @@ package com.investhelp.app.ui.item
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.investhelp.app.AppLog
+import com.investhelp.app.data.local.dao.CorrelationCacheDao
 import com.investhelp.app.data.local.dao.InvestmentAccountDao
+import com.investhelp.app.data.local.dao.VolatilityCacheDao
 import com.investhelp.app.data.local.entity.InvestmentAccountEntity
 import com.investhelp.app.data.local.entity.InvestmentItemEntity
 import com.investhelp.app.data.local.entity.InvestmentTransactionEntity
 import com.investhelp.app.data.local.entity.DefinitionEntity
+import com.investhelp.app.data.local.entity.VolatilityCacheEntity
 import com.investhelp.app.data.remote.AnalysisInfo
 import com.investhelp.app.data.remote.HistoricalPrice
 import com.investhelp.app.data.remote.StockPriceService
@@ -16,6 +19,7 @@ import com.investhelp.app.data.repository.InvestmentItemRepository
 import com.investhelp.app.data.repository.TransactionRepository
 import com.investhelp.app.model.InvestmentType
 import com.investhelp.app.model.ItemStatistics
+import com.investhelp.app.util.VolatilityCalculator
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -24,8 +28,20 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.double
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import java.time.LocalDate
 import javax.inject.Inject
+
+data class TickerCorrelationInfo(
+    val pairs: List<Pair<String, Double>>,
+    val marketCorr: Double?,
+    val calculatedAt: Long
+)
 
 @HiltViewModel
 class ItemViewModel @Inject constructor(
@@ -33,8 +49,12 @@ class ItemViewModel @Inject constructor(
     private val transactionRepository: TransactionRepository,
     private val stockPriceService: StockPriceService,
     private val accountDao: InvestmentAccountDao,
-    private val definitionRepository: DefinitionRepository
+    private val definitionRepository: DefinitionRepository,
+    private val volatilityCacheDao: VolatilityCacheDao,
+    private val correlationCacheDao: CorrelationCacheDao
 ) : ViewModel() {
+
+    private val jsonParser = Json { ignoreUnknownKeys = true }
 
     // --- Refresh/update state ---
     private val _refreshingTickers = MutableStateFlow<Set<String>>(emptySet())
@@ -574,6 +594,94 @@ class ItemViewModel @Inject constructor(
             _priceMessage.value = msg
             AppLog.log(msg)
             _isRefreshingAll.value = false
+        }
+    }
+
+    // --- Volatility card state ---
+    private val _volatilityCache = MutableStateFlow<VolatilityCacheEntity?>(null)
+    val volatilityCache: StateFlow<VolatilityCacheEntity?> = _volatilityCache.asStateFlow()
+
+    private val _volatilityLoading = MutableStateFlow(false)
+    val volatilityLoading: StateFlow<Boolean> = _volatilityLoading.asStateFlow()
+
+    fun loadVolatilityForTicker(ticker: String, forceRefresh: Boolean = false) {
+        viewModelScope.launch {
+            if (!forceRefresh) {
+                val cached = volatilityCacheDao.getByTicker(ticker)
+                if (cached != null) {
+                    _volatilityCache.value = cached
+                    return@launch
+                }
+            }
+            _volatilityLoading.value = true
+            try {
+                val history = stockPriceService.fetchHistoricalPrices(ticker, 365)
+                val analysis = stockPriceService.fetchAnalysisInfo(ticker)
+                val quote = stockPriceService.fetchQuote(ticker)
+                val closes = history.map { it.close }
+                val volResult = VolatilityCalculator.compute(closes)
+                val low52w = analysis.fiftyTwoWeekLow ?: closes.minOrNull() ?: 0.0
+                val high52w = analysis.fiftyTwoWeekHigh ?: closes.maxOrNull() ?: 0.0
+                val entity = VolatilityCacheEntity(
+                    ticker = ticker,
+                    companyName = analysis.shortName,
+                    type = "Stock",
+                    shares = 0.0,
+                    currentPrice = quote.price,
+                    annualizedVolPct = volResult.annualizedVolPct,
+                    dailyStdDevPct = volResult.dailyStdDevPct,
+                    volatilityLabel = VolatilityCalculator.volatilityLabel(volResult.annualizedVolPct),
+                    low52w = low52w,
+                    high52w = high52w,
+                    rangePositionPct = VolatilityCalculator.rangePositionPct(quote.price, low52w, high52w),
+                    sampleCount = history.size,
+                    calculatedAt = System.currentTimeMillis() / 1000L
+                )
+                volatilityCacheDao.upsertAll(listOf(entity))
+                _volatilityCache.value = entity
+            } catch (_: Exception) {
+            } finally {
+                _volatilityLoading.value = false
+            }
+        }
+    }
+
+    fun refreshVolatilityForTicker(ticker: String) {
+        _volatilityCache.value = null
+        loadVolatilityForTicker(ticker, forceRefresh = true)
+    }
+
+    // --- Correlation card state ---
+    private val _tickerCorrelation = MutableStateFlow<TickerCorrelationInfo?>(null)
+    val tickerCorrelation: StateFlow<TickerCorrelationInfo?> = _tickerCorrelation.asStateFlow()
+
+    fun loadCorrelationForTicker(ticker: String) {
+        viewModelScope.launch {
+            val entity = correlationCacheDao.get() ?: return@launch
+            try {
+                val tickers = jsonParser.parseToJsonElement(entity.tickersJson)
+                    .jsonArray.map { it.jsonPrimitive.content }
+                val idx = tickers.indexOf(ticker)
+                if (idx < 0) return@launch
+                val matrix = jsonParser.parseToJsonElement(entity.matrixJson)
+                    .jsonArray.map { row -> row.jsonArray.map { it.jsonPrimitive.double } }
+                val row = matrix[idx]
+                val pairs = tickers.indices
+                    .filter { it != idx }
+                    .map { j -> tickers[j] to row[j] }
+                    .sortedByDescending { it.second }
+                val marketObj = jsonParser.parseToJsonElement(entity.marketCorrelationJson) as JsonObject
+                val marketCorr = if (marketObj.containsKey(ticker)) {
+                    val el = marketObj[ticker]
+                    if (el != null && el.toString() != "null") el.jsonPrimitive.double else null
+                } else null
+                _tickerCorrelation.value = TickerCorrelationInfo(
+                    pairs = pairs,
+                    marketCorr = marketCorr,
+                    calculatedAt = entity.calculatedAt
+                )
+            } catch (_: Exception) {
+            }
         }
     }
 }

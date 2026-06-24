@@ -1,4 +1,4 @@
-import { positions, transactions, yahoo, watchlists } from '../api.js';
+import { positions, transactions, yahoo, watchlists, volatility, correlation } from '../api.js';
 import { navigate } from '../router.js';
 import { tickerIcon } from '../components/ticker-icon.js';
 import { collapsibleCard, initCollapsibleCards } from '../components/collapsible-card.js';
@@ -35,7 +35,6 @@ export async function render(container, { ticker }) {
       <button class="btn btn-sm btn-outline" id="btn-delete" title="Delete" style="color:var(--error);border-color:var(--error)">&#128465; Delete</button>
       <button class="btn btn-sm btn-outline" id="btn-yahoo" title="Yahoo Finance">&#128279; Yahoo</button>
       <button class="btn btn-sm btn-outline" id="btn-simulate" title="Simulate">&#128200; Simulate</button>
-      <button class="btn btn-sm btn-outline" id="btn-volatility" title="Volatility Analysis">&#128202; Volatility</button>
       <button class="btn btn-sm btn-outline" id="btn-watchlist" title="Add to Watch List">&#9734; Watch List</button>
       <button class="btn btn-sm btn-outline" id="btn-report" title="Full Yahoo Report">&#9432; Report</button>
     </div>
@@ -63,9 +62,6 @@ export async function render(container, { ticker }) {
   document.getElementById('btn-simulate')?.addEventListener('click', () => {
     navigate(`#/simulation/${ticker}/${p.quantity || 0}`);
   });
-  document.getElementById('btn-volatility')?.addEventListener('click', () => {
-    navigate(`#/volatility/${ticker}/${p.quantity || 0}`);
-  });
   document.getElementById('btn-watchlist')?.addEventListener('click', () => showAddToWatchListDialog(ticker, p.currentPrice));
   document.getElementById('btn-report')?.addEventListener('click', () => showFullReportDialog(ticker));
 
@@ -92,9 +88,13 @@ export async function render(container, { ticker }) {
         <div class="card p-12" style="flex:1;text-align:center"><div class="text-xs text-muted">Div/Share</div><div class="text-bold">${formatCurrency(p.dividendRate)}</div></div>
         <div class="card p-12" style="flex:1;text-align:center"><div class="text-xs text-muted">Annual Dividend</div><div class="text-bold">${formatCurrency(p.dividendRate * p.quantity)}</div></div>
       </div>` : '<div class="mb-16"></div>'}
+      ${collapsibleCard('correlation_' + ticker, 'Correlation', '<div id="correlation-content"><div class="spinner"></div> Loading...</div>', { defaultExpanded: false })}
+      ${collapsibleCard('volatility_' + ticker, 'Volatility', '<div id="volatility-content"><div class="spinner"></div> Loading...</div>', { defaultExpanded: false })}
       ${collapsibleCard('news_' + ticker, 'News on ' + ticker, '<div id="news-content"><div class="spinner"></div> Loading...</div>')}
     `;
     initCollapsibleCards(content);
+    loadCorrelationCard(ticker);
+    loadVolatilityCard(ticker, p.currentPrice);
     loadNews(ticker);
   } else if (currentTab === 'history') {
     const TIMEFRAMES = [
@@ -258,6 +258,147 @@ async function loadAnalysis(ticker) {
   } catch (err) {
     el.innerHTML = `<div class="text-sm text-muted">Unable to load analysis: ${err.message}</div>`;
   }
+}
+
+async function loadCorrelationCard(ticker) {
+  const el = document.getElementById('correlation-content');
+  if (!el) return;
+  try {
+    const cache = await correlation.getCache().catch(() => null);
+    if (!cache || !cache.tickers || !cache.matrix) {
+      el.innerHTML = '<p class="text-sm text-muted">Not yet computed. Open the Correlation Matrix to calculate.</p>';
+      return;
+    }
+    const idx = cache.tickers.indexOf(ticker);
+    if (idx < 0) {
+      el.innerHTML = '<p class="text-sm text-muted">This ticker is not in the correlation matrix. Recalculate from the Correlation Matrix screen.</p>';
+      return;
+    }
+    const marketCorr = cache.marketCorrelation?.[ticker] ?? null;
+    const pairs = cache.tickers
+      .map((t, j) => ({ ticker: t, corr: cache.matrix[idx][j] }))
+      .filter((_, j) => j !== idx)
+      .sort((a, b) => b.corr - a.corr);
+
+    const corrColor = (c) => {
+      if (c >= 0.7)  return '#E64A19';
+      if (c >= 0.3)  return '#F57C00';
+      if (c < 0)     return '#1565C0';
+      return '#388E3C';
+    };
+    const chipStyle = (c) => {
+      const col = corrColor(c);
+      return `background:${col}1e;border:1px solid ${col}66;color:${col};padding:2px 10px;border-radius:12px;font-weight:700;font-size:12px;display:inline-block`;
+    };
+
+    let html = '';
+    if (marketCorr !== null) {
+      html += `<div class="flex items-center gap-8 mb-8">
+        <span class="text-sm text-muted">Market (SPY):</span>
+        <span style="${chipStyle(marketCorr)}">${marketCorr.toFixed(2)}</span>
+      </div>`;
+    } else {
+      html += '<div class="text-sm text-muted mb-8">Market (SPY): N/A</div>';
+    }
+
+    if (pairs.length === 0) {
+      html += '<p class="text-sm text-muted">Only one ticker in portfolio — no peer correlations.</p>';
+    } else {
+      html += `<table class="grid-table" style="width:100%">
+        <thead><tr><th style="text-align:left">Ticker</th><th style="text-align:right">Correlation</th></tr></thead>
+        <tbody>
+        ${pairs.map((p, i) => `
+          <tr style="${i % 2 === 1 ? 'background:var(--surface-variant,#E7E0EC)30' : ''}">
+            <td style="font-weight:600">${p.ticker}</td>
+            <td style="text-align:right"><span style="${chipStyle(p.corr)}">${p.corr.toFixed(2)}</span></td>
+          </tr>`).join('')}
+        </tbody>
+      </table>`;
+    }
+    el.innerHTML = html;
+  } catch (err) {
+    el.innerHTML = `<p class="text-sm" style="color:var(--error)">Error: ${err.message}</p>`;
+  }
+}
+
+async function loadVolatilityCard(ticker, currentPrice) {
+  const el = document.getElementById('volatility-content');
+  if (!el) return;
+  try {
+    const cache = await volatility.getCache().catch(() => null);
+    const item = cache?.find?.(v => v.ticker === ticker) || null;
+
+    if (!item) {
+      el.innerHTML = `<div class="flex flex-col items-center gap-8 py-8">
+        <p class="text-sm text-muted">Not yet computed.</p>
+        <button class="btn btn-sm btn-outline" id="btn-calc-volatility">Calculate</button>
+      </div>`;
+      document.getElementById('btn-calc-volatility')?.addEventListener('click', () => {
+        el.innerHTML = '<div class="spinner"></div> Fetching data…';
+        volatility.get(ticker, true).then(d => renderVolatilityInCard(el, d)).catch(err => {
+          el.innerHTML = `<p class="text-sm" style="color:var(--error)">Error: ${err.message}</p>`;
+        });
+      });
+      return;
+    }
+    renderVolatilityInCard(el, item);
+  } catch (err) {
+    el.innerHTML = `<p class="text-sm" style="color:var(--error)">Error: ${err.message}</p>`;
+  }
+}
+
+function renderVolatilityInCard(el, d) {
+  const labelColor = { Low: '#388E3C', Moderate: '#F57C00', High: '#E64A19', 'Very High': '#B71C1C' }[d.volatilityLabel] || '#666';
+  const pct = Math.max(0, Math.min(100, d.rangePositionPct || 0));
+  const levels = [
+    { label: 'Low',       range: '< 15%' },
+    { label: 'Moderate',  range: '15–30%' },
+    { label: 'High',      range: '30–60%' },
+    { label: 'Very High', range: '> 60%' },
+  ];
+  el.innerHTML = `
+    <div style="font-size:12px;font-weight:600;color:var(--text-muted);margin-bottom:6px">52-Week Range</div>
+    <div style="position:relative;height:12px;background:var(--surface-variant,#E7E0EC);border-radius:6px;margin-bottom:6px">
+      <div style="position:absolute;left:0;top:0;height:100%;width:${pct}%;background:var(--primary,#6750A4);border-radius:6px"></div>
+      <div style="position:absolute;top:-4px;left:calc(${pct}% - 10px);width:20px;height:20px;background:#fff;border:2px solid var(--primary,#6750A4);border-radius:50%"></div>
+    </div>
+    <div class="flex justify-between mb-8" style="font-size:12px">
+      <div><div class="text-muted">52W Low</div><div style="font-weight:600">${formatCurrency(d.low52w)}</div></div>
+      <div style="text-align:right"><div class="text-muted">52W High</div><div style="font-weight:600">${formatCurrency(d.high52w)}</div></div>
+    </div>
+    <div class="flex justify-between items-center mb-12">
+      <div><div style="font-size:11px;color:var(--text-muted)">Current Price</div><div style="font-weight:700">${formatCurrency(d.currentPrice)}</div></div>
+      <span class="badge" style="background:var(--surface-variant,#E7E0EC);color:var(--text-secondary)">${pct.toFixed(1)}% of range</span>
+    </div>
+    <hr style="border-color:var(--border-color);margin:0 0 10px">
+    <div class="flex justify-between items-center mb-8">
+      <div>
+        <div style="font-size:11px;color:var(--text-muted)">Annualized Volatility</div>
+        <div style="font-size:22px;font-weight:700">${d.annualizedVolPct.toFixed(1)}%</div>
+      </div>
+      <span style="background:${labelColor}1e;border:1px solid ${labelColor}66;color:${labelColor};padding:3px 12px;border-radius:14px;font-weight:700;font-size:12px">${(d.volatilityLabel || '').toUpperCase()}</span>
+    </div>
+    <div class="flex justify-between" style="font-size:12px;margin-bottom:4px">
+      <span class="text-muted">Daily Std Dev</span><span style="font-weight:600">${d.dailyStdDevPct.toFixed(2)}%</span>
+    </div>
+    <div class="flex justify-between" style="font-size:12px;margin-bottom:10px">
+      <span class="text-muted">Trading sessions</span><span style="font-weight:600">${d.sampleCount}</span>
+    </div>
+    <hr style="border-color:var(--border-color);margin:0 0 8px">
+    <div style="font-size:11px;color:var(--text-muted);margin-bottom:6px">Volatility Scale</div>
+    <div class="flex gap-4">
+      ${levels.map(lv => {
+        const active = lv.label === d.volatilityLabel;
+        const c = { Low: '#388E3C', Moderate: '#F57C00', High: '#E64A19', 'Very High': '#B71C1C' }[lv.label];
+        return `<div style="flex:1;padding:4px;border-radius:8px;text-align:center;font-size:11px;
+          background:${active ? c + '26' : 'var(--surface-variant,#E7E0EC)50'};
+          border:${active ? `1.5px solid ${c}` : '1px solid transparent'}">
+          <div style="font-weight:${active ? 700 : 400};color:${active ? c : 'var(--text-muted)'}">${lv.label}</div>
+          <div style="color:${active ? c + 'cc' : 'var(--text-muted)'};opacity:0.8">${lv.range}</div>
+        </div>`;
+      }).join('')}
+    </div>
+  `;
 }
 
 async function loadNews(ticker) {

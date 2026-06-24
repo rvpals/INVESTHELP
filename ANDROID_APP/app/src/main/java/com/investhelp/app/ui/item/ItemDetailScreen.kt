@@ -2,6 +2,7 @@ package com.investhelp.app.ui.item
 
 import android.content.Intent
 import android.net.Uri
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -46,6 +47,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.ScrollableTabRow
 import androidx.compose.material3.TabRow
@@ -64,7 +66,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
@@ -84,8 +88,8 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Fullscreen
 import androidx.compose.material.icons.filled.AutoAwesome
-import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.PlaylistAdd
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Star
@@ -125,7 +129,6 @@ fun ItemDetailScreen(
     onEditItem: () -> Unit,
     onSimulate: (ticker: String, shares: Double) -> Unit,
     onAi: (ticker: String) -> Unit,
-    onVolatility: (ticker: String, shares: Double) -> Unit,
     onBack: () -> Unit
 ) {
     LaunchedEffect(ticker) {
@@ -163,6 +166,9 @@ fun ItemDetailScreen(
     var showFullReport by remember { mutableStateOf(false) }
     val fullReport by viewModel.fullReport.collectAsStateWithLifecycle()
     val isLoadingReport by viewModel.isLoadingReport.collectAsStateWithLifecycle()
+    val volatilityCache by viewModel.volatilityCache.collectAsStateWithLifecycle()
+    val volatilityLoading by viewModel.volatilityLoading.collectAsStateWithLifecycle()
+    val tickerCorrelation by viewModel.tickerCorrelation.collectAsStateWithLifecycle()
 
     var selectedTab by rememberSaveable { mutableIntStateOf(0) }
     var statsStartDate by remember { mutableStateOf(LocalDate.now().minusYears(1)) }
@@ -170,6 +176,8 @@ fun ItemDetailScreen(
 
     LaunchedEffect(ticker) {
         viewModel.fetchAnalysisInfo(ticker)
+        viewModel.loadVolatilityForTicker(ticker)
+        viewModel.loadCorrelationForTicker(ticker)
     }
 
     LaunchedEffect(ticker, statsStartDate, statsEndDate) {
@@ -374,9 +382,6 @@ fun ItemDetailScreen(
                     IconButton(onClick = { onSimulate(ticker, item?.quantity ?: 0.0) }) {
                         Icon(Icons.AutoMirrored.Filled.TrendingUp, contentDescription = "Simulate")
                     }
-                    IconButton(onClick = { onVolatility(ticker, item?.quantity ?: 0.0) }) {
-                        Icon(Icons.Default.BarChart, contentDescription = "Volatility")
-                    }
                     IconButton(onClick = { showAddToWatchList = true }) {
                         Icon(Icons.Default.PlaylistAdd, contentDescription = "Add to Watch List")
                     }
@@ -412,7 +417,10 @@ fun ItemDetailScreen(
                     analysisInfo = analysisInfo,
                     isLoadingAnalysis = isLoadingAnalysis,
                     analysisError = analysisError,
-                    definitions = definitions
+                    definitions = definitions,
+                    volatilityCache = volatilityCache,
+                    volatilityLoading = volatilityLoading,
+                    tickerCorrelation = tickerCorrelation
                 )
                 1 -> PriceHistoryTab(
                     ticker = ticker,
@@ -454,7 +462,10 @@ private fun ItemDetailContent(
     analysisInfo: AnalysisInfo?,
     isLoadingAnalysis: Boolean,
     analysisError: String?,
-    definitions: List<DefinitionEntity>
+    definitions: List<DefinitionEntity>,
+    volatilityCache: com.investhelp.app.data.local.entity.VolatilityCacheEntity?,
+    volatilityLoading: Boolean,
+    tickerCorrelation: TickerCorrelationInfo?
 ) {
     val context = LocalContext.current
     val newsArticleCount = remember {
@@ -645,6 +656,22 @@ private fun ItemDetailContent(
 
         item {
             Spacer(modifier = Modifier.height(8.dp))
+            CorrelationCollapsibleCard(ticker = ticker, info = tickerCorrelation)
+        }
+
+        item {
+            Spacer(modifier = Modifier.height(8.dp))
+            VolatilityCollapsibleCard(
+                ticker = ticker,
+                entity = volatilityCache,
+                isLoading = volatilityLoading,
+                currencyFormat = currencyFormat,
+                onRefresh = { viewModel.refreshVolatilityForTicker(ticker) }
+            )
+        }
+
+        item {
+            Spacer(modifier = Modifier.height(8.dp))
             AnalysisInfoCollapsibleCard(
                 ticker = ticker,
                 analysisInfo = analysisInfo,
@@ -827,6 +854,320 @@ private fun NewsCollapsibleCard(
                         HorizontalDivider(color = MaterialTheme.colorScheme.outline)
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun CorrelationCollapsibleCard(ticker: String, info: TickerCorrelationInfo?) {
+    val context = LocalContext.current
+    val pinKey = "pin_card_correlation_$ticker"
+    val prefs = remember {
+        context.getSharedPreferences(SettingsViewModel.PREFS_NAME, android.content.Context.MODE_PRIVATE)
+    }
+    var pinned by rememberSaveable { mutableStateOf(prefs.getBoolean(pinKey, false)) }
+    com.investhelp.app.ui.components.CollapsibleCard(
+        title = "Correlation",
+        pinned = pinned,
+        onPinToggle = { newPinned ->
+            pinned = newPinned
+            prefs.edit().putBoolean(pinKey, newPinned).apply()
+        }
+    ) {
+        if (info == null) {
+            Text(
+                "Not yet computed. Open the Correlation Matrix to calculate.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(vertical = 8.dp)
+            )
+            return@CollapsibleCard
+        }
+
+        // Market correlation chip
+        val marketCorrColor = if (info.marketCorr != null) {
+            when {
+                info.marketCorr >= 0.7 -> Color(0xFFE64A19)
+                info.marketCorr >= 0.3 -> Color(0xFFF57C00)
+                info.marketCorr < 0    -> Color(0xFF1565C0)
+                else                   -> Color(0xFF388E3C)
+            }
+        } else MaterialTheme.colorScheme.onSurfaceVariant
+
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text("Market (SPY):", style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
+            if (info.marketCorr != null) {
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = marketCorrColor.copy(alpha = 0.12f),
+                    border = BorderStroke(1.dp, marketCorrColor.copy(alpha = 0.4f))
+                ) {
+                    Text(
+                        "${"%.2f".format(info.marketCorr)}",
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = marketCorrColor
+                    )
+                }
+            } else {
+                Text("N/A", style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+
+        if (info.pairs.isEmpty()) {
+            Text("Only one ticker in portfolio — no peer correlations.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(vertical = 4.dp))
+        } else {
+            // Header row
+            Row(modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp)) {
+                Text("Ticker", style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.weight(1f))
+                Text("Correlation", style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.End,
+                    modifier = Modifier.weight(1f))
+            }
+            HorizontalDivider(color = MaterialTheme.colorScheme.outline)
+            info.pairs.forEachIndexed { index, (otherTicker, corr) ->
+                val corrColor = when {
+                    corr >= 0.7  -> Color(0xFFE64A19)
+                    corr >= 0.3  -> Color(0xFFF57C00)
+                    corr < 0     -> Color(0xFF1565C0)
+                    else         -> Color(0xFF388E3C)
+                }
+                val rowBg = if (index % 2 == 1)
+                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+                else Color.Transparent
+                Row(
+                    modifier = Modifier.fillMaxWidth().background(rowBg)
+                        .padding(vertical = 5.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(otherTicker,
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.weight(1f))
+                    Text("${"%.2f".format(corr)}",
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.Bold,
+                        color = corrColor,
+                        textAlign = TextAlign.End,
+                        modifier = Modifier.weight(1f))
+                }
+                HorizontalDivider(color = MaterialTheme.colorScheme.outline)
+            }
+        }
+    }
+}
+
+@Composable
+private fun VolatilityCollapsibleCard(
+    ticker: String,
+    entity: com.investhelp.app.data.local.entity.VolatilityCacheEntity?,
+    isLoading: Boolean,
+    currencyFormat: NumberFormat,
+    onRefresh: () -> Unit
+) {
+    val context = LocalContext.current
+    val pinKey = "pin_card_volatility_$ticker"
+    val prefs = remember {
+        context.getSharedPreferences(SettingsViewModel.PREFS_NAME, android.content.Context.MODE_PRIVATE)
+    }
+    var pinned by rememberSaveable { mutableStateOf(prefs.getBoolean(pinKey, false)) }
+    com.investhelp.app.ui.components.CollapsibleCard(
+        title = "Volatility",
+        pinned = pinned,
+        onPinToggle = { newPinned ->
+            pinned = newPinned
+            prefs.edit().putBoolean(pinKey, newPinned).apply()
+        }
+    ) {
+        when {
+            isLoading -> {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text("Fetching volatility data…",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+            entity == null -> {
+                Column(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("Not yet computed.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedButton(onClick = onRefresh) { Text("Calculate") }
+                }
+            }
+            else -> {
+                VolatilityCardContent(entity = entity, currencyFormat = currencyFormat, onRefresh = onRefresh)
+            }
+        }
+    }
+}
+
+@Composable
+private fun VolatilityCardContent(
+    entity: com.investhelp.app.data.local.entity.VolatilityCacheEntity,
+    currencyFormat: NumberFormat,
+    onRefresh: () -> Unit
+) {
+    val trackColor = MaterialTheme.colorScheme.surfaceVariant
+    val fillColor = MaterialTheme.colorScheme.primary
+    val labelColor = when (entity.volatilityLabel) {
+        "Low"       -> Color(0xFF388E3C)
+        "Moderate"  -> Color(0xFFF57C00)
+        "High"      -> Color(0xFFE64A19)
+        else        -> Color(0xFFB71C1C)
+    }
+
+    // Range bar
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Text("52-Week Range", style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(bottom = 8.dp))
+        Canvas(modifier = Modifier.fillMaxWidth().height(28.dp)) {
+            val trackH = 8.dp.toPx()
+            val trackY = size.height / 2f
+            val dotR = 10.dp.toPx()
+            val dotX = (size.width * entity.rangePositionPct.toFloat() / 100f)
+                .coerceIn(dotR, size.width - dotR)
+            drawRoundRect(color = trackColor, topLeft = Offset(0f, trackY - trackH / 2f),
+                size = Size(size.width, trackH), cornerRadius = CornerRadius(trackH / 2f))
+            drawRoundRect(color = fillColor, topLeft = Offset(0f, trackY - trackH / 2f),
+                size = Size(dotX, trackH), cornerRadius = CornerRadius(trackH / 2f))
+            drawCircle(color = Color.White, radius = dotR, center = Offset(dotX, trackY))
+            drawCircle(color = fillColor, radius = dotR, center = Offset(dotX, trackY),
+                style = Stroke(width = 2.5.dp.toPx()))
+        }
+        Spacer(modifier = Modifier.height(6.dp))
+        Row(modifier = Modifier.fillMaxWidth()) {
+            Column(horizontalAlignment = Alignment.Start, modifier = Modifier.weight(1f)) {
+                Text("52W Low", style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(currencyFormat.format(entity.low52w),
+                    style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold)
+            }
+            Column(horizontalAlignment = Alignment.End, modifier = Modifier.weight(1f)) {
+                Text("52W High", style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(currencyFormat.format(entity.high52w),
+                    style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold)
+            }
+        }
+        Row(modifier = Modifier.fillMaxWidth().padding(top = 6.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically) {
+            Column {
+                Text("Current Price", style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(currencyFormat.format(entity.currentPrice),
+                    style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+            }
+            Text("${"%.1f".format(entity.rangePositionPct)}% of range",
+                modifier = Modifier
+                    .background(MaterialTheme.colorScheme.secondaryContainer, RoundedCornerShape(12.dp))
+                    .padding(horizontal = 10.dp, vertical = 4.dp),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSecondaryContainer)
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+        HorizontalDivider(color = MaterialTheme.colorScheme.outline)
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // Volatility metric
+        Row(modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically) {
+            Column {
+                Text("Annualized Volatility",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("${"%.1f".format(entity.annualizedVolPct)}%",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold)
+            }
+            Surface(shape = RoundedCornerShape(14.dp),
+                color = labelColor.copy(alpha = 0.12f),
+                border = BorderStroke(1.dp, labelColor.copy(alpha = 0.4f))) {
+                Text(entity.volatilityLabel.uppercase(),
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 5.dp),
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Bold, color = labelColor)
+            }
+        }
+        Spacer(modifier = Modifier.height(8.dp))
+        // Stats rows
+        listOf(
+            "Daily Std Dev" to "${"%.2f".format(entity.dailyStdDevPct)}%",
+            "Trading sessions" to "${entity.sampleCount}"
+        ).forEach { (label, value) ->
+            Row(modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
+                horizontalArrangement = Arrangement.SpaceBetween) {
+                Text(label, style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(value, style = MaterialTheme.typography.bodySmall,
+                    fontWeight = FontWeight.SemiBold)
+            }
+        }
+        Spacer(modifier = Modifier.height(10.dp))
+        HorizontalDivider(color = MaterialTheme.colorScheme.outline)
+        Spacer(modifier = Modifier.height(8.dp))
+        // Scale legend
+        Text("Volatility Scale", style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Spacer(modifier = Modifier.height(6.dp))
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            listOf(
+                Triple("Low",       "< 15%",  Color(0xFF388E3C)),
+                Triple("Moderate",  "15–30%", Color(0xFFF57C00)),
+                Triple("High",      "30–60%", Color(0xFFE64A19)),
+                Triple("Very High", "> 60%",  Color(0xFFB71C1C))
+            ).forEach { (label, range, color) ->
+                val isActive = label == entity.volatilityLabel
+                Surface(modifier = Modifier.weight(1f), shape = RoundedCornerShape(8.dp),
+                    color = if (isActive) color.copy(alpha = 0.15f)
+                            else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                    border = if (isActive) BorderStroke(1.5.dp, color) else null) {
+                    Column(modifier = Modifier.padding(4.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(label, style = MaterialTheme.typography.labelSmall,
+                            fontWeight = if (isActive) FontWeight.Bold else FontWeight.Normal,
+                            color = if (isActive) color else MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = TextAlign.Center)
+                        Text(range, style = MaterialTheme.typography.labelSmall,
+                            color = if (isActive) color.copy(alpha = 0.8f)
+                                    else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                            textAlign = TextAlign.Center)
+                    }
+                }
+            }
+        }
+        Spacer(modifier = Modifier.height(8.dp))
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+            IconButton(onClick = onRefresh, modifier = Modifier.size(32.dp)) {
+                Icon(Icons.Default.Refresh, contentDescription = "Refresh volatility",
+                    modifier = Modifier.size(18.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
     }
