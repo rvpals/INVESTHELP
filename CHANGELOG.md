@@ -1,5 +1,27 @@
 # Changelog
 
+## v1.66 (Build 67) - 2026-06-23
+
+### Added
+- **Correlation card in Item Detail** (Android + PWA): new collapsible "Correlation" card on the Details tab
+  - Shows market sensitivity chip (vs SPY) with color-coded correlation value
+  - Lists pairwise correlations with all other portfolio tickers, sorted highest→lowest, color-coded (red ≥0.7, orange ≥0.3, green <0.3, blue <0)
+  - Reads from the existing `correlation_cache` computed by the Correlation Matrix screen; shows "not yet computed" message if cache is absent
+  - Pin state persisted per ticker (`pin_card_correlation_<ticker>` key)
+- **Volatility card in Item Detail** (Android + PWA): new collapsible "Volatility" card on the Details tab
+  - 52-week range bar (Canvas) with current price position indicator
+  - Annualized volatility % (large) + color-coded label chip (Low / Moderate / High / Very High)
+  - Daily std dev, trading sessions count, and volatility scale legend
+  - Reads from `volatility_cache` table; auto-fetches from Yahoo Finance if not yet cached for this ticker; Refresh button to recalculate
+  - Pin state persisted per ticker (`pin_card_volatility_<ticker>` key)
+- **`VolatilityCacheDao.getByTicker()`** (Android): new Room query to look up a single ticker's cached volatility row
+
+### Removed
+- **Volatility toolbar button** from Item Detail screen (Android + PWA): replaced by the inline Volatility collapsible card; the standalone per-ticker Volatility screen (`VolatilityScreen`) is still accessible from other navigation paths
+
+### Changed
+- **`ItemViewModel`** (Android): now injects `VolatilityCacheDao` and `CorrelationCacheDao`; exposes `loadVolatilityForTicker()`, `refreshVolatilityForTicker()`, `loadCorrelationForTicker()`, and new `TickerCorrelationInfo` data class
+
 ## v1.64 (Build 65) - 2026-06-22
 
 ### Improved

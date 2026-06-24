@@ -2,7 +2,7 @@
 
 Android investment tracking app built with Kotlin, Jetpack Compose, and Material 3.
 
-**Version:** 1.64 (Build 65)
+**Version:** 1.66 (Build 67)
 
 ## Overview
 
@@ -19,6 +19,7 @@ Invest Help is a personal investment portfolio tracker for Android. It supports 
 - **CSV Import** for positions, transactions, and performance records from brokerage exports with named mapping profiles and detailed import logs
 - **Volatility Analysis** screen grouping all Stock/ETF positions by annualized volatility (Low/Moderate/High/Very High) with color-coded badges and position values
 - **Correlation Matrix** showing pairwise Pearson correlation of 1-year daily returns, filter toggle, market sensitivity row, portfolio insights, and PNG export
+- **Correlation & Volatility inline cards** on each ticker's Detail screen: pairwise correlations with all portfolio peers + market sensitivity (SPY), and 52-week range bar / annualized volatility / label chip — reads from cached data, auto-fetches if absent
 - **SQL Explorer** for raw database queries with CSV export
 - **Backup & Restore** with v6 JSON export/import (compatible with v1–v5 legacy restores); export message shows CSV mapping row counts for quick verification
 - **Help screen** with comprehensive HTML-based feature guide
