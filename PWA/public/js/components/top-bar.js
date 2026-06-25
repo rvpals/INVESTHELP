@@ -1,4 +1,4 @@
-import { positions, refresh } from '../api.js';
+import { positions, refresh, auth } from '../api.js';
 import { navigate } from '../router.js';
 import { formatCurrency, formatPercent, formatSignedCurrency, gainLossClass } from '../utils/format.js';
 import { getPref, setPref } from '../preferences.js';
@@ -107,7 +107,7 @@ function showTickerSearch() {
   setTimeout(() => input.focus(), 100);
 }
 
-function toggleMenu() {
+async function toggleMenu() {
   if (menuOpen) { closeMenu(); return; }
   menuOpen = true;
   const backdrop = document.createElement('div');
@@ -118,8 +118,15 @@ function toggleMenu() {
   const menu = document.createElement('div');
   menu.className = 'hamburger-menu open';
   menu.id = 'hamburger-menu';
+  // Fetch current user to display in menu header
+  const currentUser = await auth.me().catch(() => null);
+  const userLine = currentUser
+    ? `<div style="font-size:11px;color:var(--text-muted);padding:0 16px 8px;margin-top:-4px">&#128100; ${currentUser.username}</div>`
+    : '';
+
   menu.innerHTML = `
     <div class="menu-header">InvestHelp</div>
+    ${userLine}
     <button class="menu-item" data-route="#/accounts">&#128179; Accounts</button>
     <button class="menu-item" data-route="#/performance">&#128200; Performance</button>
     <button class="menu-item" data-route="#/simulation/SPY/1">&#128202; Simulation</button>
@@ -132,6 +139,8 @@ function toggleMenu() {
     <button class="menu-item" data-route="#/help">&#10067; Help</button>
     <div class="menu-divider"></div>
     <button class="menu-item" id="about-btn">&#9432; About</button>
+    <div class="menu-divider"></div>
+    <button class="menu-item" id="logout-btn" style="color:var(--error,#b3261e)">&#128275; Sign Out</button>
   `;
   document.body.appendChild(menu);
 
@@ -139,6 +148,12 @@ function toggleMenu() {
     btn.addEventListener('click', () => { closeMenu(); navigate(btn.dataset.route); });
   });
   menu.querySelector('#about-btn').addEventListener('click', () => { closeMenu(); showAbout(); });
+  menu.querySelector('#logout-btn').addEventListener('click', async () => {
+    closeMenu();
+    try { await auth.logout(); } catch (_) {}
+    // Reload page — app.js boot() will detect 401 and show the login screen
+    window.location.reload();
+  });
 }
 
 function closeMenu() {

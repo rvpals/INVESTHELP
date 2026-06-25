@@ -155,3 +155,32 @@ export const correlation = {
   compute:    () => post('/api/correlation/compute', {}),
   clearCache: () => del('/api/correlation/cache'),
 };
+
+// Auth helpers — these calls must NOT throw on 401 so callers can handle it
+export const auth = {
+  me: async () => {
+    const r = await fetch('/api/auth/me');
+    if (r.status === 401) return null;
+    if (!r.ok) throw new Error(`GET /api/auth/me: ${r.status}`);
+    return r.json();
+  },
+  login: (username, password) => post('/api/auth/login', { username, password }),
+  logout: async () => {
+    const r = await fetch('/api/auth/logout', { method: 'POST' });
+    if (!r.ok) throw new Error(`POST /api/auth/logout: ${r.status}`);
+    return r.json();
+  },
+  setupNeeded: async () => {
+    const r = await fetch('/api/auth/setup-needed');
+    if (!r.ok) return false;
+    const j = await r.json();
+    return j.setupNeeded === true;
+  },
+};
+
+export const users = {
+  list:           ()           => get('/api/auth/users'),
+  create:         (username, password) => post('/api/auth/users', { username, password }),
+  remove:         (id)         => del(`/api/auth/users/${id}`),
+  changePassword: (id, password) => put(`/api/auth/users/${id}/password`, { password }),
+};

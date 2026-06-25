@@ -2,6 +2,8 @@ import { route, handleRoute } from './router.js';
 import { applyTheme } from './preferences.js';
 import { renderTopBar } from './components/top-bar.js';
 import { renderBottomNav, updateBottomNav } from './components/bottom-nav.js';
+import { auth } from './api.js';
+import { renderLogin } from './screens/login.js';
 
 // Register service worker
 if ('serviceWorker' in navigator) {
@@ -40,11 +42,31 @@ route('/correlation', async (app) => { const m = await import('./screens/correla
 // Update bottom nav on route change
 window.addEventListener('hashchange', updateBottomNav);
 
-// Init
-async function init() {
+// App container used when showing the login screen
+const appContainer = document.getElementById('app');
+
+async function initApp() {
   await renderTopBar();
   renderBottomNav();
   await handleRoute();
 }
 
-init();
+async function boot() {
+  const user = await auth.me();
+  if (!user) {
+    // Not authenticated — show login screen only, no top/bottom bar
+    document.getElementById('top-bar').style.display = 'none';
+    document.getElementById('bottom-nav').style.display = 'none';
+    await renderLogin(appContainer, async () => {
+      // Login succeeded — restore chrome and launch app
+      document.getElementById('top-bar').style.display = '';
+      document.getElementById('bottom-nav').style.display = '';
+      appContainer.innerHTML = '';
+      await initApp();
+    });
+    return;
+  }
+  await initApp();
+}
+
+boot();

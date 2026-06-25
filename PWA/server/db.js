@@ -130,6 +130,13 @@ db.exec(`
     value TEXT NOT NULL DEFAULT ''
   );
 
+  CREATE TABLE IF NOT EXISTS users (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    username      TEXT    NOT NULL UNIQUE,
+    password_hash TEXT    NOT NULL,
+    created_at    INTEGER NOT NULL
+  );
+
   CREATE TABLE IF NOT EXISTS volatility_cache (
     ticker           TEXT PRIMARY KEY,
     companyName      TEXT,

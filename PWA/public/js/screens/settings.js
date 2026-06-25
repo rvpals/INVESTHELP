@@ -1,4 +1,4 @@
-import { settings, backup, sql } from '../api.js';
+import { settings, backup, sql, users as usersApi, auth } from '../api.js';
 import { getPref, setPref, applyTheme } from '../preferences.js';
 import { showToast, confirmAction } from '../components/confirm-dialog.js';
 import { collapsibleCard, initCollapsibleCards } from '../components/collapsible-card.js';
@@ -33,6 +33,7 @@ export async function render(container) {
     <div class="tab-bar mb-16">
       <button class="tab active" data-tab="prefs">Preferences</button>
       <button class="tab" data-tab="data">Data Management</button>
+      <button class="tab" data-tab="users">Users</button>
     </div>
     <div id="settings-content"></div>
   </div>`;
@@ -51,6 +52,7 @@ export async function render(container) {
     const el = document.getElementById('settings-content');
     if (activeTab === 'prefs') renderPrefs(el, serverSettings);
     else if (activeTab === 'data') renderData(el);
+    else if (activeTab === 'users') renderUsers(el);
   }
   renderTab();
 }
@@ -632,5 +634,166 @@ function showAccountMappingDialog(csvNames, appAccounts) {
       resolve(mapping);
     });
   });
+}
+
+// ---------------------------------------------------------------------------
+// Users tab
+// ---------------------------------------------------------------------------
+
+async function renderUsers(el) {
+  el.innerHTML = '<div class="spinner"></div>';
+
+  let userList = [];
+  let currentUser = null;
+
+  try {
+    [userList, currentUser] = await Promise.all([usersApi.list(), auth.me()]);
+  } catch (err) {
+    el.innerHTML = `<p class="text-sm" style="color:var(--error)">Error loading users: ${err.message}</p>`;
+    return;
+  }
+
+  function buildHtml() {
+    const rows = userList.map(u => {
+      const isSelf = u.id === currentUser?.id;
+      const created = u.created_at
+        ? new Date(u.created_at * 1000).toLocaleDateString()
+        : '—';
+      return `<tr>
+        <td style="font-weight:600">${escapeHtml(u.username)}${isSelf ? ' <span class="badge" style="font-size:10px">you</span>' : ''}</td>
+        <td class="text-muted">${created}</td>
+        <td style="text-align:right;white-space:nowrap">
+          <button class="btn btn-sm btn-outline btn-change-pw" data-id="${u.id}" data-name="${escapeHtml(u.username)}" style="margin-right:4px">Change PW</button>
+          ${isSelf ? '' : `<button class="btn btn-sm btn-outline btn-delete-user" data-id="${u.id}" data-name="${escapeHtml(u.username)}" style="color:var(--error);border-color:var(--error)">Delete</button>`}
+        </td>
+      </tr>`;
+    }).join('');
+
+    return `
+      <div class="card p-16 mb-16">
+        <div class="text-bold mb-12" style="font-size:15px">&#128100; User Accounts</div>
+        ${userList.length === 0
+          ? '<p class="text-sm text-muted">No users yet. Add the first account below.</p>'
+          : `<div class="data-table-wrapper" style="overflow-x:auto">
+              <table class="data-table" style="width:100%">
+                <thead><tr>
+                  <th style="text-align:left">Username</th>
+                  <th style="text-align:left">Created</th>
+                  <th style="text-align:right">Actions</th>
+                </tr></thead>
+                <tbody>${rows}</tbody>
+              </table>
+            </div>`
+        }
+      </div>
+
+      <div class="card p-16">
+        <div class="text-bold mb-12" style="font-size:15px">&#10133; Add User</div>
+        <div id="add-user-error" class="hidden mb-8" style="color:var(--error);font-size:13px"></div>
+        <div class="form-group mb-8">
+          <label class="label">Username</label>
+          <input class="input" type="text" id="new-username" placeholder="e.g. alice" autocomplete="off">
+        </div>
+        <div class="form-group mb-16">
+          <label class="label">Password</label>
+          <input class="input" type="password" id="new-password" placeholder="At least 4 characters" autocomplete="new-password">
+        </div>
+        <button class="btn btn-primary" id="btn-add-user">Add User</button>
+      </div>
+    `;
+  }
+
+  function escapeHtml(str) {
+    return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  function paint() {
+    el.innerHTML = buildHtml();
+    bindEvents();
+  }
+
+  function bindEvents() {
+    // Add user
+    document.getElementById('btn-add-user')?.addEventListener('click', async () => {
+      const username = document.getElementById('new-username').value.trim();
+      const password = document.getElementById('new-password').value;
+      const errEl = document.getElementById('add-user-error');
+      errEl.classList.add('hidden');
+      try {
+        const created = await usersApi.create(username, password);
+        userList.push(created);
+        showToast(`User "${username}" created`);
+        paint();
+      } catch (err) {
+        errEl.textContent = err.message;
+        errEl.classList.remove('hidden');
+      }
+    });
+
+    // Change password buttons
+    el.querySelectorAll('.btn-change-pw').forEach(btn => {
+      btn.addEventListener('click', () => showChangePwDialog(parseInt(btn.dataset.id), btn.dataset.name));
+    });
+
+    // Delete user buttons
+    el.querySelectorAll('.btn-delete-user').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const id = parseInt(btn.dataset.id);
+        const name = btn.dataset.name;
+        const ok = await confirmAction('Delete User', `Delete account "${name}"? This cannot be undone.`);
+        if (!ok) return;
+        try {
+          await usersApi.remove(id);
+          userList = userList.filter(u => u.id !== id);
+          showToast(`User "${name}" deleted`);
+          paint();
+        } catch (err) {
+          showToast(`Error: ${err.message}`);
+        }
+      });
+    });
+  }
+
+  function showChangePwDialog(userId, username) {
+    const overlay = document.getElementById('dialog-overlay');
+    overlay.className = 'dialog-overlay';
+    overlay.innerHTML = `
+      <div class="dialog">
+        <div class="dialog-title">Change Password — ${escapeHtml(username)}</div>
+        <div id="cpw-error" class="hidden mb-8" style="color:var(--error);font-size:13px"></div>
+        <div class="form-group mb-8">
+          <label class="label">New Password</label>
+          <input class="input" type="password" id="cpw-new" placeholder="At least 4 characters" autocomplete="new-password" autofocus>
+        </div>
+        <div class="form-group mb-16">
+          <label class="label">Confirm Password</label>
+          <input class="input" type="password" id="cpw-confirm" placeholder="Repeat password" autocomplete="new-password">
+        </div>
+        <div class="dialog-actions">
+          <button class="btn btn-outline" id="cpw-cancel">Cancel</button>
+          <button class="btn btn-primary" id="cpw-save">Update Password</button>
+        </div>
+      </div>
+    `;
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.className = 'dialog-overlay hidden'; });
+    document.getElementById('cpw-cancel').addEventListener('click', () => { overlay.className = 'dialog-overlay hidden'; });
+    document.getElementById('cpw-save').addEventListener('click', async () => {
+      const pw = document.getElementById('cpw-new').value;
+      const confirm = document.getElementById('cpw-confirm').value;
+      const errEl = document.getElementById('cpw-error');
+      errEl.classList.add('hidden');
+      if (pw !== confirm) { errEl.textContent = 'Passwords do not match'; errEl.classList.remove('hidden'); return; }
+      try {
+        await usersApi.changePassword(userId, pw);
+        overlay.className = 'dialog-overlay hidden';
+        showToast('Password updated');
+      } catch (err) {
+        errEl.textContent = err.message;
+        errEl.classList.remove('hidden');
+      }
+    });
+  }
+
+  paint();
 }
 
