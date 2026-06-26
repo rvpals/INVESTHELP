@@ -1,6 +1,15 @@
 # Invest Help - Testing Checklist
 
 ## PWA - Recent Changes
+- [ ] Sharpe Ratio: menu item visible in hamburger menu
+- [ ] Sharpe Ratio: computes on page load with loading state
+- [ ] Sharpe Ratio: risk-free rate field accepts decimal input (e.g. 4.5)
+- [ ] Sharpe Ratio: lookback period chips (6 months, 1 year, 2 years) trigger recompute
+- [ ] Sharpe Ratio: result shows Sharpe value with color-coded interpretation label
+- [ ] Sharpe Ratio: metrics card shows annualized return, volatility, period, date
+- [ ] Sharpe Ratio: daily returns chart renders green fills above zero / red below
+- [ ] Sharpe Ratio: chart hover tooltip shows date and return %
+- [ ] Sharpe Ratio: skipped tickers section shown when any ticker fails to fetch
 - [ ] Dividend tab: shows on Positions screen as 4th tab
 - [ ] Dividend tab: total annual income card shows correct sum
 - [ ] Dividend tab: Stock and ETF pie charts render with exploding largest slice
@@ -25,6 +34,16 @@
 - [ ] Tab styling: visible borders, hover highlight, active tab highlight
 
 ## Android - Recent Changes
+- [ ] Sharpe Ratio: menu item visible in hamburger menu (bar chart icon)
+- [ ] Sharpe Ratio: auto-computes on screen open with per-ticker progress updates
+- [ ] Sharpe Ratio: risk-free rate text field accepts decimal input; defaults to 5.0
+- [ ] Sharpe Ratio: lookback period chips (6 months, 1 year, 2 years) selectable
+- [ ] Sharpe Ratio: Calculate button triggers recompute with current settings
+- [ ] Sharpe Ratio: result shows large Sharpe value with colored interpretation chip
+- [ ] Sharpe Ratio: metrics card shows annualized return, volatility, risk-free rate, period, date
+- [ ] Sharpe Ratio: daily returns chart renders green fill above zero / red below zero line
+- [ ] Sharpe Ratio: chart tap shows tooltip with date and return %
+- [ ] Sharpe Ratio: skipped tickers card shows when any ticker fails to fetch
 - [ ] Positions screen: 4 tabs visible (STOCK, ETF, Analysis, Dividend) in flat Row layout with icons
 - [ ] Positions tabs: equal width, selected tab highlighted with primaryContainer background
 - [ ] Dividend tab: total annual dividend income card shows correct sum (blue, bold)

@@ -24,3 +24,4 @@ import kotlinx.serialization.Serializable
 @Serializable data class VolatilityRoute(val ticker: String, val shares: Double)
 @Serializable object VolatilityAnalysisRoute
 @Serializable object CorrelationMatrixRoute
+@Serializable object SharpeRatioRoute

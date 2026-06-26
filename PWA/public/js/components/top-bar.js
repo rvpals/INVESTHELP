@@ -133,6 +133,7 @@ async function toggleMenu() {
     <button class="menu-item" data-route="#/next-day-actions">&#128197; Next Day Actions</button>
     <button class="menu-item" data-route="#/volatility-analysis">&#128200; Volatility Analysis</button>
     <button class="menu-item" data-route="#/correlation">&#9781; Correlation Matrix</button>
+    <button class="menu-item" data-route="#/sharpe-ratio">&#128202; Sharpe Ratio</button>
     <div class="menu-divider"></div>
     <button class="menu-item" data-route="#/settings">&#9881; Settings</button>
     <button class="menu-item" data-route="#/sql-explorer">&#128451; SQL Explorer</button>
@@ -168,11 +169,12 @@ function showAbout() {
   overlay.innerHTML = `
     <div class="dialog">
       <div class="dialog-title">About InvestHelp</div>
-      <p>InvestHelp PWA <strong>v1.66</strong></p>
+      <p>InvestHelp PWA <strong>v1.67</strong></p>
       <p class="text-sm text-muted mt-8">Investment tracking progressive web app.</p>
       <hr style="border-color:var(--border-color);margin:12px 0 8px">
       <p class="text-sm" style="font-weight:600">What's New</p>
       <ul class="text-sm text-muted" style="padding-left:20px;margin-top:4px">
+        <li><strong>v1.67</strong> — Sharpe Ratio analytics screen (Android + PWA): portfolio risk-adjusted return metric with configurable risk-free rate (default 5%), lookback period (6m/1y/2y), Canvas daily returns chart with green/red fills</li>
         <li><strong>v1.66</strong> — Item Detail: new inline Correlation card (peer correlations + SPY sensitivity) and Volatility card (52w range bar, annualized vol %, scale legend); removed standalone Volatility toolbar button</li>
         <li><strong>v1.64</strong> — Correlation Matrix: sticky column header, row separator bands, column ticker hint on each cell; backup import now surfaces real errors instead of silent 0-count</li>
         <li><strong>v1.62</strong> — Correlation Matrix: pairwise Pearson correlation of 1-year daily returns, filter toggle (≥0.75 highlight), market sensitivity vs SPY, portfolio insights, PNG download</li>

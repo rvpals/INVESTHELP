@@ -55,6 +55,7 @@ app.use('/api/sql', require('./routes/sql-explorer'));
 app.use('/api/settings', require('./routes/settings'));
 app.use('/api/volatility', require('./routes/volatility'));
 app.use('/api/correlation', require('./routes/correlation'));
+app.use('/api/sharpe', require('./routes/sharpe'));
 
 // Server log (protected)
 app.get('/api/server-log', (req, res) => { res.json(appLog.getEntries()); });

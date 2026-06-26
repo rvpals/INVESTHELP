@@ -45,6 +45,8 @@ import com.investhelp.app.ui.volatility.VolatilityAnalysisScreen
 import com.investhelp.app.ui.volatility.VolatilityAnalysisViewModel
 import com.investhelp.app.ui.correlation.CorrelationMatrixScreen
 import com.investhelp.app.ui.correlation.CorrelationMatrixViewModel
+import com.investhelp.app.ui.sharpe.SharpeRatioScreen
+import com.investhelp.app.ui.sharpe.SharpeRatioViewModel
 
 @Composable
 fun InvestHelpNavHost(
@@ -311,6 +313,14 @@ fun InvestHelpNavHost(
             CorrelationMatrixScreen(
                 viewModel = viewModel,
                 onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        composable<SharpeRatioRoute> {
+            val viewModel: SharpeRatioViewModel = hiltViewModel()
+            SharpeRatioScreen(
+                viewModel = viewModel,
+                onBack = { navController.popBackStack() }
             )
         }
     }

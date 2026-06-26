@@ -156,6 +156,11 @@ export const correlation = {
   clearCache: () => del('/api/correlation/cache'),
 };
 
+export const sharpe = {
+  compute: (riskFreeRate, lookbackDays) =>
+    post('/api/sharpe/compute', { riskFreeRate, lookbackDays }),
+};
+
 // Auth helpers — these calls must NOT throw on 401 so callers can handle it
 export const auth = {
   me: async () => {

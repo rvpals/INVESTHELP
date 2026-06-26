@@ -276,6 +276,12 @@
 - [x] Android: removed unused routes ItemListRoute and ItemStatisticsRoute from NavRoutes.kt
 - [x] Android: ARCHITECTURE.md updated with positions/ folder, removed ItemListScreen reference
 
+- [x] Android + PWA: Sharpe Ratio analytics screen — portfolio risk-adjusted return metric with configurable risk-free rate (default 5%), lookback period (6m/1y/2y), daily returns Canvas chart with green/red fills
+- [x] Android: SharpeCalculator utility with 9 calculation functions — daily returns, timestamp alignment, annualized return/std dev/Sharpe, interpretation (Subpar/Good/Very Good/Exceptional)
+- [x] Android: SharpeRatioViewModel (Hilt) fetching Yahoo Finance historical prices with per-ticker progress updates and one retry on failure
+- [x] Android: SharpeRatioScreen — config card (risk-free rate field + lookback chips + Calculate button), loading card, result card with colored interpretation chip, metrics card, daily returns chart, skipped tickers card
+- [x] PWA: POST /api/sharpe/compute route with same math logic; sharpe-ratio.js screen with identical UX
+
 ## Pending
 - [ ] Fix deprecation warning: Icons.Filled.OpenInNew -> Icons.AutoMirrored.Filled.OpenInNew (ItemDetailScreen.kt)
 - [ ] Fix deprecation warning: Icons.Filled.ShowChart/TrendingUp -> AutoMirrored versions (DashboardScreen.kt, MainActivity.kt)

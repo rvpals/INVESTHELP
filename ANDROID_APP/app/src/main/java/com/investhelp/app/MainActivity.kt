@@ -95,6 +95,8 @@ import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.GridOn
 import com.investhelp.app.ui.navigation.VolatilityAnalysisRoute
 import com.investhelp.app.ui.navigation.CorrelationMatrixRoute
+import com.investhelp.app.ui.navigation.SharpeRatioRoute
+import androidx.compose.material.icons.filled.QueryStats
 import android.util.Base64
 import com.investhelp.app.data.local.DatabaseProvider
 import com.investhelp.app.ui.settings.SettingsViewModel
@@ -320,10 +322,10 @@ fun GlobalTopBar(navController: NavHostController) {
                     Text("What's New", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
+                        "• Sharpe Ratio analytics (Android + PWA) — risk-adjusted return metric with configurable risk-free rate, lookback period, and daily returns chart\n" +
                         "• Positions tabs: flat Row layout with STOCK/ETF/Analysis/Dividend (icon + equal width)\n" +
                         "• Dividend tab: total annual income, Stock/ETF exploding pie charts, sortable tables\n" +
-                        "• Generic backup/restore (v6) — auto-discovers all tables via sqlite_master\n" +
-                        "• Removed dead code: ItemListScreen, ItemStatisticsScreen, unused routes",
+                        "• Generic backup/restore (v6) — auto-discovers all tables via sqlite_master",
                         style = MaterialTheme.typography.bodySmall
                     )
                 }
@@ -636,6 +638,18 @@ fun GlobalTopBar(navController: NavHostController) {
                         }
                     },
                     leadingIcon = { Icon3D(Icons.Default.GridOn, null, Color(0xFF00838F), iconSize = 16.dp, boxSize = 28.dp) }
+                )
+                DropdownMenuItem(
+                    text = { Text("Sharpe Ratio") },
+                    onClick = {
+                        menuExpanded = false
+                        navController.navigate(SharpeRatioRoute) {
+                            popUpTo(DashboardRoute) { saveState = true }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    },
+                    leadingIcon = { Icon3D(Icons.Default.QueryStats, null, Color(0xFF00695C), iconSize = 16.dp, boxSize = 28.dp) }
                 )
                 HorizontalDivider()
                 DropdownMenuItem(
