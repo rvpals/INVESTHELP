@@ -6,6 +6,7 @@ import com.investhelp.app.data.local.dao.AccountPerformanceDao
 import com.investhelp.app.data.local.dao.ChangeHistoryDao
 import com.investhelp.app.data.local.dao.CorrelationCacheDao
 import com.investhelp.app.data.local.dao.CsvImportMappingDao
+import com.investhelp.app.data.local.dao.SharpeCacheDao
 import com.investhelp.app.data.local.dao.DefinitionDao
 import com.investhelp.app.data.local.dao.InvestmentAccountDao
 import com.investhelp.app.data.local.dao.InvestmentItemDao
@@ -90,5 +91,10 @@ object DatabaseModule {
     @Provides
     fun provideCorrelationCacheDao(dbProvider: DatabaseProvider): CorrelationCacheDao {
         return dbProvider.database.correlationCacheDao()
+    }
+
+    @Provides
+    fun provideSharpeCacheDao(dbProvider: DatabaseProvider): SharpeCacheDao {
+        return dbProvider.database.sharpeCacheDao()
     }
 }

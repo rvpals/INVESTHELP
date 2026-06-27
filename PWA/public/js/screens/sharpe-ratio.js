@@ -4,9 +4,9 @@ import { formatPercent } from '../utils/format.js';
 // ── Interpretation ────────────────────────────────────────────────────────────
 
 const INTERPRETATIONS = [
-  { threshold: 1.0, label: 'Subpar',     color: '#C62828' },
-  { threshold: 2.0, label: 'Good',       color: '#2E7D32' },
-  { threshold: 3.0, label: 'Very Good',  color: '#0D47A1' },
+  { threshold: 1.0, label: 'Subpar',      color: '#C62828' },
+  { threshold: 2.0, label: 'Good',        color: '#2E7D32' },
+  { threshold: 3.0, label: 'Very Good',   color: '#0D47A1' },
   { threshold: Infinity, label: 'Exceptional', color: '#6A1B9A' },
 ];
 
@@ -15,21 +15,64 @@ function interpretSharpe(value) {
 }
 
 const LOOKBACK_OPTIONS = [
-  { label: '6 months', days: 180 },
-  { label: '1 year',   days: 365 },
-  { label: '2 years',  days: 730 },
+  { label: '6M',  days: 180  },
+  { label: '1Y',  days: 365  },
+  { label: '2Y',  days: 730  },
+  { label: '5Y',  days: 1825 },
+  { label: '10Y', days: 3650 },
 ];
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function fmtPct(decimal) {
+function fmtPct(decimal, dp = 1) {
   if (decimal == null || !isFinite(decimal)) return '—';
-  return (decimal * 100).toFixed(1) + '%';
+  return (decimal * 100).toFixed(dp) + '%';
+}
+
+function fmtPct4(decimal) {
+  if (decimal == null || !isFinite(decimal)) return '—';
+  return (decimal * 100).toFixed(4) + '%';
 }
 
 function fmtDate(epochSeconds) {
   const d = new Date(epochSeconds * 1000);
   return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+
+function fmtDateTime(epochSeconds) {
+  const d = new Date(epochSeconds * 1000);
+  return d.toLocaleString(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' });
+}
+
+// ── Collapsible card builder ──────────────────────────────────────────────────
+
+function buildCollapsibleCard(title, contentHtml, defaultExpanded = false) {
+  const card = document.createElement('div');
+  card.className = 'card mb-12';
+  const id = 'coll-' + Math.random().toString(36).slice(2);
+  card.innerHTML = `
+    <div class="collapsible-header" data-target="${id}"
+         style="display:flex;align-items:center;justify-content:space-between;
+                padding:12px 16px;cursor:pointer;user-select:none">
+      <span style="font-size:14px;font-weight:600">${title}</span>
+      <span class="coll-arrow" style="font-size:18px;transition:transform 0.2s">
+        ${defaultExpanded ? '&#8963;' : '&#8964;'}
+      </span>
+    </div>
+    <div id="${id}" style="display:${defaultExpanded ? 'block' : 'none'}">
+      <hr style="border:none;border-top:1px solid var(--border-color);margin:0">
+      <div style="padding:16px">${contentHtml}</div>
+    </div>`;
+
+  card.querySelector('.collapsible-header').addEventListener('click', () => {
+    const body = document.getElementById(id);
+    const arrow = card.querySelector('.coll-arrow');
+    const isVisible = body.style.display !== 'none';
+    body.style.display = isVisible ? 'none' : 'block';
+    arrow.innerHTML = isVisible ? '&#8964;' : '&#8963;';
+  });
+
+  return card;
 }
 
 // ── Canvas chart ──────────────────────────────────────────────────────────────
@@ -68,7 +111,6 @@ function drawReturnChart(canvas, returnSeries) {
   const labelColor    = isDark ? '#9e9e9e' : '#757575';
   const lineColor     = isDark ? '#90CAF9' : '#1565C0';
 
-  // Grid lines
   const gridLevels = [-yRange, -yRange / 2, 0, yRange / 2, yRange];
   gridLevels.forEach(level => {
     const y = yOf(level);
@@ -80,15 +122,6 @@ function drawReturnChart(canvas, returnSeries) {
     ctx.stroke();
   });
 
-  // Build full fill path (from zeroY → data → back to zeroY)
-  ctx.beginPath();
-  ctx.moveTo(xOf(0), zeroY);
-  returnSeries.forEach((p, i) => ctx.lineTo(xOf(i), yOf(p.return * 100)));
-  ctx.lineTo(xOf(returnSeries.length - 1), zeroY);
-  ctx.closePath();
-  const fillPath = new Path2D(ctx.getPath ? undefined : undefined);
-
-  // We re-draw the path twice with different clips
   function drawFill(clipTop, clipBottom, fillStyle) {
     ctx.save();
     ctx.beginPath();
@@ -104,10 +137,9 @@ function drawReturnChart(canvas, returnSeries) {
     ctx.restore();
   }
 
-  drawFill(PAD_TOP,  zeroY,              'rgba(46,125,50,0.25)');   // green above zero
-  drawFill(zeroY,    PAD_TOP + chartH,   'rgba(198,40,40,0.25)');   // red below zero
+  drawFill(PAD_TOP,  zeroY,            'rgba(46,125,50,0.25)');
+  drawFill(zeroY,    PAD_TOP + chartH, 'rgba(198,40,40,0.25)');
 
-  // Return line
   ctx.beginPath();
   returnSeries.forEach((p, i) => {
     const x = xOf(i), y = yOf(p.return * 100);
@@ -118,7 +150,6 @@ function drawReturnChart(canvas, returnSeries) {
   ctx.lineJoin = 'round';
   ctx.stroke();
 
-  // Y-axis labels
   ctx.font = '11px system-ui, sans-serif';
   ctx.fillStyle = labelColor;
   ctx.textAlign = 'right';
@@ -126,7 +157,6 @@ function drawReturnChart(canvas, returnSeries) {
     ctx.fillText(`${level.toFixed(1)}%`, PAD_LEFT - 4, yOf(level) + 4);
   });
 
-  // X-axis labels (5 evenly spaced)
   ctx.textAlign = 'center';
   const labelIndices = [
     0,
@@ -154,14 +184,12 @@ function drawTooltip(canvas, returnSeries, hoveredIndex, coords) {
   const cssW = canvas.offsetWidth;
   const { xOf, yOf, PAD_LEFT, PAD_TOP, chartH } = coords;
   const ctx = canvas.getContext('2d');
-  ctx.scale ? undefined : ctx.scale(dpr, dpr);   // scale already applied
 
   const p = returnSeries[hoveredIndex];
   const sx = xOf(hoveredIndex);
   const sy = yOf(p.return * 100);
   const retPct = p.return * 100;
 
-  // Vertical crosshair
   ctx.save();
   ctx.beginPath();
   ctx.moveTo(sx, PAD_TOP);
@@ -170,13 +198,11 @@ function drawTooltip(canvas, returnSeries, hoveredIndex, coords) {
   ctx.lineWidth = 1;
   ctx.stroke();
 
-  // Dot
   ctx.beginPath();
   ctx.arc(sx, sy, 5, 0, 2 * Math.PI);
   ctx.fillStyle = retPct >= 0 ? '#2E7D32' : '#C62828';
   ctx.fill();
 
-  // Tooltip text
   const label = `${fmtDate(p.timestamp)}: ${retPct >= 0 ? '+' : ''}${retPct.toFixed(3)}%`;
   ctx.font = 'bold 11px system-ui, sans-serif';
   ctx.fillStyle = document.documentElement.classList.contains('dark') ? '#e0e0e0' : '#212121';
@@ -213,7 +239,7 @@ export async function render(container) {
       </div>
       <div class="mb-12">
         <div style="font-size:12px;color:var(--text-muted);margin-bottom:6px">Lookback Period</div>
-        <div class="flex gap-8" id="lookback-chips">
+        <div class="flex flex-wrap gap-8" id="lookback-chips">
           ${LOOKBACK_OPTIONS.map(o => `
             <button class="chip ${o.days === lookbackDays ? 'chip-selected' : ''}"
               data-days="${o.days}">${o.label}</button>
@@ -228,7 +254,6 @@ export async function render(container) {
     <div id="sharpe-body"></div>
   </div>`;
 
-  // Wire up parameters
   const rfInput = document.getElementById('rf-rate-input');
   rfInput.addEventListener('change', () => { riskFreeRatePercent = rfInput.value; });
 
@@ -248,14 +273,39 @@ export async function render(container) {
       showError('Risk-Free Rate must be a number between 0 and 100.');
       return;
     }
+    // Update button to "Recalculate" after first compute
+    document.getElementById('btn-calculate').textContent = 'Recalculate';
     runCompute(rf / 100, lookbackDays);
   };
 
   document.getElementById('btn-calculate').addEventListener('click', compute);
   document.getElementById('btn-recalc').addEventListener('click', compute);
 
-  // Auto-run on load
-  runCompute(parseFloat(riskFreeRatePercent) / 100, lookbackDays);
+  // Try to load cached result on init — only compute if nothing is cached
+  tryLoadCached();
+
+  // ── Cache load ──
+
+  async function tryLoadCached() {
+    try {
+      const cached = await sharpeApi.getCached();
+      if (cached) {
+        // Restore UI controls to match the cached computation
+        rfInput.value = (cached.riskFreeRate * 100).toFixed(1);
+        riskFreeRatePercent = rfInput.value;
+        lookbackDays = cached.lookbackDays;
+        document.querySelectorAll('#lookback-chips .chip').forEach(c => {
+          c.classList.toggle('chip-selected', parseInt(c.dataset.days, 10) === lookbackDays);
+        });
+        document.getElementById('btn-calculate').textContent = 'Recalculate';
+        currentResult = cached;
+        showResult(cached);
+      }
+      // No cache → stay on Idle; user presses Calculate when ready
+    } catch (e) {
+      // Server error — stay on Idle
+    }
+  }
 
   // ── Compute ──
 
@@ -300,24 +350,43 @@ export async function render(container) {
     const body = document.getElementById('sharpe-body');
     body.innerHTML = '';
 
-    // Result card
-    body.appendChild(buildResultCard(result));
+    // Cache banner
+    if (result.fromCache && result.cachedAt) {
+      body.appendChild(buildCacheBanner(result.cachedAt));
+    }
 
-    // Metrics card
+    body.appendChild(buildResultCard(result));
     body.appendChild(buildMetricsCard(result));
 
-    // Chart card
     if (result.portfolioReturnSeries && result.portfolioReturnSeries.length >= 2) {
       body.appendChild(buildChartCard(result.portfolioReturnSeries));
     }
 
-    // Skipped tickers
+    // Educational & detail collapsible cards
+    body.appendChild(buildAboutCard());
+    if (result.tickerDetails && result.tickerDetails.length > 0) {
+      body.appendChild(buildDetailCard(result));
+    }
+
     if (result.skippedTickers && result.skippedTickers.length > 0) {
       body.appendChild(buildSkippedCard(result.skippedTickers, result.skipReasons));
     }
   }
 
   // ── Card builders ──
+
+  function buildCacheBanner(cachedAt) {
+    const div = document.createElement('div');
+    div.style.cssText = `
+      display:flex;justify-content:space-between;align-items:center;
+      padding:10px 16px;margin-bottom:12px;border-radius:8px;
+      background:var(--secondary-container,#e8eaf6);
+      color:var(--on-secondary-container,#1a237e);font-size:13px`;
+    div.innerHTML = `
+      <span>Cached result from ${fmtDateTime(cachedAt)}</span>
+      <span style="font-size:12px;opacity:0.7">Press ↻ to refresh</span>`;
+    return div;
+  }
 
   function buildResultCard(result) {
     const div = document.createElement('div');
@@ -330,13 +399,8 @@ export async function render(container) {
           <div class="flex items-center justify-center gap-14 mb-6">
             <span style="font-size:48px;font-weight:700;line-height:1">${result.sharpeRatio}</span>
             <span style="
-              padding:4px 14px;
-              border-radius:16px;
-              font-size:13px;
-              font-weight:600;
-              background:${interp.color}26;
-              color:${interp.color}
-            ">${interp.label}</span>
+              padding:4px 14px;border-radius:16px;font-size:13px;font-weight:600;
+              background:${interp.color}26;color:${interp.color}">${interp.label}</span>
           </div>
           <div style="font-size:12px;color:var(--text-muted)">Sharpe Ratio</div>
         </div>`;
@@ -385,12 +449,10 @@ export async function render(container) {
         <canvas id="sharpe-chart" style="width:100%;height:200px;display:block"></canvas>
       </div>`;
 
-    // Draw after insertion into DOM so offsetWidth is accurate
     setTimeout(() => {
       const canvas = document.getElementById('sharpe-chart');
       if (!canvas) return;
       let coords = drawReturnChart(canvas, returnSeries);
-
       let hoveredIndex = -1;
 
       function redraw() {
@@ -401,9 +463,8 @@ export async function render(container) {
       canvas.addEventListener('click', e => {
         if (!coords) return;
         const rect = canvas.getBoundingClientRect();
-        const mouseX = e.clientX - rect.left;
         const xStep = coords.chartW / (returnSeries.length - 1);
-        const idx = Math.round((mouseX - coords.PAD_LEFT) / xStep);
+        const idx = Math.round((e.clientX - rect.left - coords.PAD_LEFT) / xStep);
         hoveredIndex = Math.max(0, Math.min(idx, returnSeries.length - 1));
         redraw();
       });
@@ -411,25 +472,153 @@ export async function render(container) {
       canvas.addEventListener('mousemove', e => {
         if (!coords) return;
         const rect = canvas.getBoundingClientRect();
-        const mouseX = e.clientX - rect.left;
         const xStep = coords.chartW / (returnSeries.length - 1);
-        const idx = Math.round((mouseX - coords.PAD_LEFT) / xStep);
+        const idx = Math.round((e.clientX - rect.left - coords.PAD_LEFT) / xStep);
         const newIdx = Math.max(0, Math.min(idx, returnSeries.length - 1));
-        if (newIdx !== hoveredIndex) {
-          hoveredIndex = newIdx;
-          redraw();
-        }
+        if (newIdx !== hoveredIndex) { hoveredIndex = newIdx; redraw(); }
       });
 
-      canvas.addEventListener('mouseleave', () => {
-        hoveredIndex = -1;
-        redraw();
-      });
-
+      canvas.addEventListener('mouseleave', () => { hoveredIndex = -1; redraw(); });
       window.addEventListener('resize', redraw);
     }, 0);
 
     return div;
+  }
+
+  function buildAboutCard() {
+    const interpRows = [
+      ['< 1.0',     'Subpar',      '#C62828', 'Risk may outweigh the return'],
+      ['1.0 – 2.0', 'Good',        '#2E7D32', 'Acceptable risk-adjusted performance'],
+      ['2.0 – 3.0', 'Very Good',   '#0D47A1', 'Strong risk-adjusted performance'],
+      ['≥ 3.0',     'Exceptional', '#6A1B9A', 'Outstanding risk-adjusted return'],
+    ];
+
+    const html = `
+      <div style="margin-bottom:12px">
+        <div style="font-size:12px;font-weight:600;color:var(--primary,#1565C0);margin-bottom:6px">Formula</div>
+        <div style="background:var(--surface-variant,#f5f5f5);border-radius:6px;padding:10px 16px;
+                    font-size:16px;font-weight:700;text-align:center;letter-spacing:0.5px">
+          SR = (Rp − Rf) / σp
+        </div>
+      </div>
+
+      <div style="margin-bottom:12px">
+        <div style="font-size:12px;font-weight:600;color:var(--primary,#1565C0);margin-bottom:6px">Components</div>
+        ${[
+          ['Rp', 'Portfolio annualized return  (mean daily return × 252)'],
+          ['Rf', 'Annual risk-free rate  (e.g., US 10-yr Treasury yield)'],
+          ['σp', 'Annualized std dev of excess returns  (sample, × √252)'],
+        ].map(([ sym, desc ], i) => `
+          ${i > 0 ? '<hr style="border:none;border-top:1px solid var(--border-color);margin:2px 0">' : ''}
+          <div class="flex gap-12" style="padding:4px 0">
+            <span style="font-size:13px;font-weight:700;min-width:24px">${sym}</span>
+            <span style="font-size:12px;color:var(--text-muted)">${desc}</span>
+          </div>`).join('')}
+      </div>
+
+      <hr style="border:none;border-top:1px solid var(--border-color);margin:8px 0">
+
+      <div>
+        <div style="font-size:12px;font-weight:600;color:var(--primary,#1565C0);margin-bottom:6px">Interpretation</div>
+        <table style="width:100%;border-collapse:collapse;font-size:12px">
+          <thead>
+            <tr style="background:var(--surface-variant,#f5f5f5)">
+              <th style="padding:4px 8px;text-align:left;font-weight:600">Range</th>
+              <th style="padding:4px 8px;text-align:left;font-weight:600">Rating</th>
+              <th style="padding:4px 8px;text-align:left;font-weight:600">Meaning</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${interpRows.map(([range, rating, color, meaning], i) => `
+              <tr style="${i % 2 === 1 ? 'background:var(--surface-variant,#f5f5f5);opacity:0.6' : ''}">
+                <td style="padding:5px 8px;border-top:1px solid var(--border-color)">${range}</td>
+                <td style="padding:5px 8px;border-top:1px solid var(--border-color);
+                           font-weight:600;color:${color}">${rating}</td>
+                <td style="padding:5px 8px;border-top:1px solid var(--border-color);
+                           color:var(--text-muted)">${meaning}</td>
+              </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>`;
+
+    return buildCollapsibleCard('About Sharpe Ratio', html, false);
+  }
+
+  function buildDetailCard(result) {
+    const rfPct = (result.riskFreeRate * 100).toFixed(1);
+    const annRetPct = (result.annualizedReturn * 100).toFixed(2);
+    const annVolPct = (result.annualizedVolatility * 100).toFixed(2);
+    const rfRate = result.riskFreeRate;
+
+    // Section 1: Inputs
+    const inputsHtml = `
+      <div style="font-size:12px;font-weight:600;color:var(--primary,#1565C0);margin-bottom:6px">Inputs Used</div>
+      ${[
+        ['Risk-free rate',       `${rfPct}%  (${fmtPct4(result.dailyRfRate)} / day)`],
+        ['Lookback period',      `${result.lookbackDays} calendar days`],
+        ['Aligned trading days', `${result.alignedTradingDays}`],
+        ['Mean daily return',    fmtPct4(result.meanDailyReturn)],
+      ].map(([label, val], i) => `
+        ${i > 0 ? '<hr style="border:none;border-top:1px solid var(--border-color);margin:2px 0">' : ''}
+        <div class="flex justify-between" style="padding:4px 0;font-size:12px">
+          <span style="color:var(--text-muted)">${label}</span>
+          <span style="font-weight:500">${val}</span>
+        </div>`).join('')}`;
+
+    // Section 2: Per-ticker table
+    const tickerRows = result.tickerDetails.map((d, i) => {
+      const retColor = d.annualizedReturn >= 0 ? '#2E7D32' : '#C62828';
+      const rowBg = i % 2 === 1 ? 'background:var(--surface-variant,#f5f5f5);opacity:0.8' : '';
+      return `<tr style="${rowBg}">
+        <td style="padding:5px 8px;border-top:1px solid var(--border-color);font-weight:600">${d.ticker}</td>
+        <td style="padding:5px 8px;border-top:1px solid var(--border-color);text-align:right">
+          ${(d.weight * 100).toFixed(1)}%</td>
+        <td style="padding:5px 8px;border-top:1px solid var(--border-color);text-align:right;color:${retColor}">
+          ${fmtPct(d.annualizedReturn)}</td>
+        <td style="padding:5px 8px;border-top:1px solid var(--border-color);text-align:right">
+          ${fmtPct(d.annualizedVolatility)}</td>
+      </tr>`;
+    }).join('');
+
+    const tickerHtml = `
+      <div style="font-size:12px;font-weight:600;color:var(--primary,#1565C0);margin:12px 0 6px">Per-Ticker Breakdown</div>
+      <table style="width:100%;border-collapse:collapse;font-size:12px">
+        <thead>
+          <tr style="background:var(--surface-variant,#f5f5f5)">
+            <th style="padding:4px 8px;text-align:left;font-weight:600">Ticker</th>
+            <th style="padding:4px 8px;text-align:right;font-weight:600">Weight</th>
+            <th style="padding:4px 8px;text-align:right;font-weight:600">Ann.Return</th>
+            <th style="padding:4px 8px;text-align:right;font-weight:600">Ann.Vol</th>
+          </tr>
+        </thead>
+        <tbody>${tickerRows}</tbody>
+      </table>`;
+
+    // Section 3: Step-by-step
+    const steps = [
+      ['1. Mean daily portfolio return',  fmtPct4(result.meanDailyReturn)],
+      ['2. Annualized return  (× 252)',   `${annRetPct}%`],
+      [`3. Daily risk-free rate  (${rfPct}% ÷ 252)`, fmtPct4(result.dailyRfRate)],
+      ['4. Excess returns computed', `${result.alignedTradingDays} daily obs − Rf`],
+      ['5. Annualized volatility  (σ × √252)', `${annVolPct}%`],
+      [`6. Sharpe = (${annRetPct}% − ${rfPct}%) / ${annVolPct}%`,
+        result.sharpeRatio != null ? String(result.sharpeRatio) : 'N/A'],
+    ];
+
+    const stepsHtml = `
+      <div style="font-size:12px;font-weight:600;color:var(--primary,#1565C0);margin:12px 0 6px">Step-by-Step</div>
+      ${steps.map(([label, val], i) => {
+        const isLast = i === steps.length - 1;
+        return `
+          ${i > 0 ? '<hr style="border:none;border-top:1px solid var(--border-color);margin:2px 0">' : ''}
+          <div class="flex justify-between items-center" style="padding:4px 0;font-size:12px">
+            <span style="color:var(--text-muted);flex:1">${label}</span>
+            <span style="font-weight:${isLast ? '700' : '500'};font-size:${isLast ? '14px' : '12px'};
+                         margin-left:8px">${val}</span>
+          </div>`;
+      }).join('')}`;
+
+    return buildCollapsibleCard('Calculation Detail', inputsHtml + tickerHtml + stepsHtml, false);
   }
 
   function buildSkippedCard(tickers, reasons) {

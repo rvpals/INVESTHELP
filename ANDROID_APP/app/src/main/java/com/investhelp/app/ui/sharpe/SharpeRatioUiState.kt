@@ -17,7 +17,9 @@ sealed interface SharpeRatioUiState {
      */
     data class Success(
         val result: SharpeCalculator.SharpeResult,
-        val portfolioReturnSeries: List<Pair<Long, Double>>
+        val portfolioReturnSeries: List<Pair<Long, Double>>,
+        val isFromCache: Boolean = false,
+        val cachedAt: Long = 0L            // epoch seconds; 0 when not from cache
     ) : SharpeRatioUiState
 
     /** Computation failed and cannot be displayed. */

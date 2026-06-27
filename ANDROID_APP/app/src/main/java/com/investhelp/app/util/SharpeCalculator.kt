@@ -36,10 +36,26 @@ object SharpeCalculator {
     // -------------------------------------------------------------------------
 
     /**
+     * Per-ticker breakdown data used in the Calculation Detail card.
+     * All values derived from the aligned price series — not stored in DB.
+     */
+    data class TickerDetail(
+        val ticker: String,
+        val shares: Double,
+        val currentPrice: Double,
+        val positionValue: Double,
+        val weight: Double,            // 0.0–1.0
+        val annualizedReturn: Double,
+        val annualizedVolatility: Double,
+        val tradingDays: Int
+    )
+
+    /**
      * Final structured output of a portfolio Sharpe computation.
      *
      * [sharpeRatio] is null when there is insufficient data or zero volatility.
      * [insufficientDataReason] explains the null when present.
+     * [tickerDetails] is populated only on a full computation (not on insufficient-data early exit).
      */
     data class SharpeResult(
         val sharpeRatio: Double?,
@@ -50,7 +66,11 @@ object SharpeCalculator {
         val calculationDate: LocalDate,
         val skippedTickers: List<String> = emptyList(),
         val skipReasons: Map<String, String> = emptyMap(),
-        val insufficientDataReason: String? = null
+        val insufficientDataReason: String? = null,
+        val tickerDetails: List<TickerDetail> = emptyList(),
+        val alignedTradingDays: Int = 0,
+        val meanDailyReturn: Double = 0.0,
+        val dailyRiskFreeRateUsed: Double = 0.0
     )
 
     /**

@@ -7,8 +7,10 @@ import com.investhelp.app.data.local.converter.Converters
 import com.investhelp.app.data.local.dao.ChangeHistoryDao
 import com.investhelp.app.data.local.dao.CorrelationCacheDao
 import com.investhelp.app.data.local.dao.CsvImportMappingDao
+import com.investhelp.app.data.local.dao.SharpeCacheDao
 import com.investhelp.app.data.local.dao.VolatilityCacheDao
 import com.investhelp.app.data.local.entity.CorrelationCacheEntity
+import com.investhelp.app.data.local.entity.SharpeCacheEntity
 import com.investhelp.app.data.local.entity.VolatilityCacheEntity
 import com.investhelp.app.data.local.dao.DefinitionDao
 import com.investhelp.app.data.local.dao.InvestmentAccountDao
@@ -46,9 +48,10 @@ import com.investhelp.app.data.local.entity.WatchListItemEntity
         SqlLibraryEntity::class,
         AiLibraryEntity::class,
         VolatilityCacheEntity::class,
-        CorrelationCacheEntity::class
+        CorrelationCacheEntity::class,
+        SharpeCacheEntity::class
     ],
-    version = 32,
+    version = 33,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -65,4 +68,5 @@ abstract class InvestHelpDatabase : RoomDatabase() {
     abstract fun aiLibraryDao(): AiLibraryDao
     abstract fun volatilityCacheDao(): VolatilityCacheDao
     abstract fun correlationCacheDao(): CorrelationCacheDao
+    abstract fun sharpeCacheDao(): SharpeCacheDao
 }

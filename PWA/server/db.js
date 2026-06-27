@@ -161,6 +161,25 @@ db.exec(`
     failedTickersJson     TEXT NOT NULL DEFAULT '[]',
     calculatedAt          INTEGER NOT NULL DEFAULT 0
   );
+
+  CREATE TABLE IF NOT EXISTS sharpe_ratio_cache (
+    id                       INTEGER PRIMARY KEY DEFAULT 1,
+    riskFreeRate             REAL    NOT NULL DEFAULT 0,
+    lookbackDays             INTEGER NOT NULL DEFAULT 0,
+    sharpeRatio              REAL,
+    annualizedReturn         REAL    NOT NULL DEFAULT 0,
+    annualizedVolatility     REAL    NOT NULL DEFAULT 0,
+    alignedTradingDays       INTEGER NOT NULL DEFAULT 0,
+    meanDailyReturn          REAL    NOT NULL DEFAULT 0,
+    dailyRiskFreeRateUsed    REAL    NOT NULL DEFAULT 0,
+    calculationDate          TEXT    NOT NULL DEFAULT '',
+    tickerDetailsJson        TEXT    NOT NULL DEFAULT '[]',
+    portfolioReturnSeriesJson TEXT   NOT NULL DEFAULT '[]',
+    skippedTickersJson       TEXT    NOT NULL DEFAULT '[]',
+    skipReasonsJson          TEXT    NOT NULL DEFAULT '{}',
+    insufficientDataReason   TEXT,
+    calculatedAt             INTEGER NOT NULL DEFAULT 0
+  );
 `);
 
 // Schema migrations for existing databases
@@ -194,6 +213,27 @@ try {
       calculatedAt     INTEGER NOT NULL DEFAULT 0
     )`);
     console.log('Migration: created volatility_cache table');
+  }
+  if (!tables.includes('sharpe_ratio_cache')) {
+    db.exec(`CREATE TABLE IF NOT EXISTS sharpe_ratio_cache (
+      id                       INTEGER PRIMARY KEY DEFAULT 1,
+      riskFreeRate             REAL    NOT NULL DEFAULT 0,
+      lookbackDays             INTEGER NOT NULL DEFAULT 0,
+      sharpeRatio              REAL,
+      annualizedReturn         REAL    NOT NULL DEFAULT 0,
+      annualizedVolatility     REAL    NOT NULL DEFAULT 0,
+      alignedTradingDays       INTEGER NOT NULL DEFAULT 0,
+      meanDailyReturn          REAL    NOT NULL DEFAULT 0,
+      dailyRiskFreeRateUsed    REAL    NOT NULL DEFAULT 0,
+      calculationDate          TEXT    NOT NULL DEFAULT '',
+      tickerDetailsJson        TEXT    NOT NULL DEFAULT '[]',
+      portfolioReturnSeriesJson TEXT   NOT NULL DEFAULT '[]',
+      skippedTickersJson       TEXT    NOT NULL DEFAULT '[]',
+      skipReasonsJson          TEXT    NOT NULL DEFAULT '{}',
+      insufficientDataReason   TEXT,
+      calculatedAt             INTEGER NOT NULL DEFAULT 0
+    )`);
+    console.log('Migration: created sharpe_ratio_cache table');
   }
 } catch (e) {
   console.error('Migration check for volatility_cache failed:', e.message);

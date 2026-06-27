@@ -1,10 +1,15 @@
 package com.investhelp.app.ui.sharpe
 
 import android.graphics.Paint
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -20,6 +25,8 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -50,6 +57,7 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -63,7 +71,6 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.ui.graphics.toArgb
 
 private val COLOR_GAIN = Color(0xFF2E7D32)
 private val COLOR_LOSS = Color(0xFFC62828)
@@ -72,9 +79,11 @@ private val COLOR_VERY_GOOD = Color(0xFF0D47A1)
 private val COLOR_EXCEPTIONAL = Color(0xFF6A1B9A)
 
 private val LOOKBACK_OPTIONS = listOf(
-    "6 months" to 180,
-    "1 year" to 365,
-    "2 years" to 730
+    "6M" to 180,
+    "1Y" to 365,
+    "2Y" to 730,
+    "5Y" to 1825,
+    "10Y" to 3650
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -117,12 +126,13 @@ fun SharpeRatioScreen(
                     onRiskFreeRateChange = { viewModel.riskFreeRatePercent.value = it },
                     lookbackCalendarDays = lookbackCalendarDays,
                     onLookbackChange = { viewModel.lookbackCalendarDays.value = it },
-                    onCalculate = { viewModel.compute() }
+                    onCalculate = { viewModel.compute() },
+                    hasResult = uiState is SharpeRatioUiState.Success
                 )
             }
 
             when (val state = uiState) {
-                is SharpeRatioUiState.Idle -> { /* auto-computes on init; nothing to show yet */ }
+                is SharpeRatioUiState.Idle -> { /* waiting for user to press Calculate */ }
                 is SharpeRatioUiState.Loading -> {
                     item { LoadingCard(progressMessage = state.progressMessage) }
                 }
@@ -132,12 +142,19 @@ fun SharpeRatioScreen(
                     }
                 }
                 is SharpeRatioUiState.Success -> {
+                    if (state.isFromCache) {
+                        item { CacheBanner(cachedAt = state.cachedAt) }
+                    }
                     item { ResultCard(result = state.result) }
                     item { MetricsCard(result = state.result) }
                     if (state.portfolioReturnSeries.size >= 2) {
                         item {
                             DailyReturnsChartCard(returnSeries = state.portfolioReturnSeries)
                         }
+                    }
+                    item { AboutSharpeCard() }
+                    if (state.result.tickerDetails.isNotEmpty()) {
+                        item { CalculationDetailCard(result = state.result) }
                     }
                     if (state.result.skippedTickers.isNotEmpty()) {
                         item {
@@ -157,13 +174,15 @@ fun SharpeRatioScreen(
 // Config card
 // ─────────────────────────────────────────────────────────────────────────────
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun ConfigCard(
     riskFreeRatePercent: String,
     onRiskFreeRateChange: (String) -> Unit,
     lookbackCalendarDays: Int,
     onLookbackChange: (Int) -> Unit,
-    onCalculate: () -> Unit
+    onCalculate: () -> Unit,
+    hasResult: Boolean
 ) {
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(
@@ -193,7 +212,7 @@ private fun ConfigCard(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Spacer(Modifier.height(6.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     LOOKBACK_OPTIONS.forEach { (label, days) ->
                         FilterChip(
                             selected = lookbackCalendarDays == days,
@@ -208,8 +227,44 @@ private fun ConfigCard(
                 onClick = onCalculate,
                 modifier = Modifier.align(Alignment.End)
             ) {
-                Text("Calculate")
+                Text(if (hasResult) "Recalculate" else "Calculate")
             }
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Cache banner
+// ─────────────────────────────────────────────────────────────────────────────
+
+@Composable
+private fun CacheBanner(cachedAt: Long) {
+    val formatter = remember {
+        DateTimeFormatter.ofPattern("MMM d, yyyy  h:mm a").withZone(ZoneId.systemDefault())
+    }
+    val dateString = remember(cachedAt) {
+        formatter.format(Instant.ofEpochSecond(cachedAt))
+    }
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = MaterialTheme.colorScheme.secondaryContainer,
+        shape = RoundedCornerShape(8.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                "Cached result from $dateString",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSecondaryContainer
+            )
+            Text(
+                "Press ↻ to refresh",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f)
+            )
         }
     }
 }
@@ -470,7 +525,6 @@ private fun DailyReturnsChart(
             val zeroY = yOf(0.0)
             val xStep = w / (returnSeries.size - 1)
 
-            // Horizontal grid lines at –range, –range/2, 0, +range/2, +range
             val gridLevels = listOf(-yRange, -yRange / 2, 0.0, yRange / 2, yRange)
             gridLevels.forEach { level ->
                 val y = yOf(level)
@@ -482,7 +536,6 @@ private fun DailyReturnsChart(
                 )
             }
 
-            // Build a single fill path that covers the area between the returns line and zero
             val fillPath = Path()
             fillPath.moveTo(0f, zeroY)
             returnSeries.forEachIndexed { i, (_, ret) ->
@@ -491,16 +544,13 @@ private fun DailyReturnsChart(
             fillPath.lineTo((returnSeries.size - 1) * xStep, zeroY)
             fillPath.close()
 
-            // Clip to the upper half for the green (positive) fill
             clipRect(left = 0f, top = 0f, right = w, bottom = zeroY) {
                 drawPath(fillPath, color = COLOR_GAIN.copy(alpha = 0.3f))
             }
-            // Clip to the lower half for the red (negative) fill
             clipRect(left = 0f, top = zeroY, right = w, bottom = h) {
                 drawPath(fillPath, color = COLOR_LOSS.copy(alpha = 0.3f))
             }
 
-            // Returns line
             val linePath = Path()
             returnSeries.forEachIndexed { i, (_, ret) ->
                 val x = i * xStep
@@ -509,7 +559,6 @@ private fun DailyReturnsChart(
             }
             drawPath(linePath, color = primaryColor, style = Stroke(width = 1.5f))
 
-            // Y-axis labels — drawn in the left padding via nativeCanvas
             val yLabelPaint = Paint().apply {
                 color = labelTextColor
                 textSize = 26f
@@ -525,7 +574,6 @@ private fun DailyReturnsChart(
                 )
             }
 
-            // X-axis date labels — 5 evenly spaced, drawn below chart via nativeCanvas
             val xLabelPaint = Paint().apply {
                 color = labelTextColor
                 textSize = 24f
@@ -549,7 +597,6 @@ private fun DailyReturnsChart(
                 )
             }
 
-            // Tap-to-select: vertical crosshair + dot + tooltip
             if (selectedIndex >= 0 && selectedIndex < returnSeries.size) {
                 val sx = selectedIndex * xStep
                 val sr = returnSeries[selectedIndex].second * 100.0
@@ -580,6 +627,206 @@ private fun DailyReturnsChart(
                     18f,
                     tooltipPaint
                 )
+            }
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// About Sharpe Ratio collapsible card
+// ─────────────────────────────────────────────────────────────────────────────
+
+@Composable
+private fun AboutSharpeCard() {
+    SimpleCollapsibleCard(title = "About Sharpe Ratio") {
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            // Formula
+            Text("Formula", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary)
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                color = MaterialTheme.colorScheme.surfaceVariant,
+                shape = RoundedCornerShape(6.dp)
+            ) {
+                Text(
+                    "SR = (Rp − Rf) / σp",
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center
+                )
+            }
+
+            // Components
+            Text("Components", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary)
+            listOf(
+                "Rp" to "Portfolio annualized return  (mean daily return × 252)",
+                "Rf" to "Annual risk-free rate  (e.g., US 10-yr Treasury yield)",
+                "σp" to "Annualized std dev of excess returns  (sample, × √252)"
+            ).forEachIndexed { i, (symbol, desc) ->
+                if (i > 0) HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f))
+                Row(modifier = Modifier.padding(vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text(symbol, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, modifier = Modifier.width(28.dp))
+                    Text(desc, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f))
+                }
+            }
+
+            HorizontalDivider(color = MaterialTheme.colorScheme.outline)
+
+            // Interpretation table
+            Text("Interpretation", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary)
+            // Header
+            Row(modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surfaceVariant).padding(horizontal = 8.dp, vertical = 4.dp)) {
+                Text("Range", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(0.8f))
+                Text("Rating", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                Text("Meaning", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1.8f))
+            }
+            listOf(
+                Triple("< 1.0", "Subpar", "Risk may outweigh the return"),
+                Triple("1.0 – 2.0", "Good", "Acceptable risk-adjusted performance"),
+                Triple("2.0 – 3.0", "Very Good", "Strong risk-adjusted performance"),
+                Triple("≥ 3.0", "Exceptional", "Outstanding risk-adjusted return")
+            ).forEachIndexed { i, (range, rating, meaning) ->
+                HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f))
+                val rowColor = when (rating) {
+                    "Subpar"      -> COLOR_LOSS
+                    "Good"        -> COLOR_GOOD
+                    "Very Good"   -> COLOR_VERY_GOOD
+                    else          -> COLOR_EXCEPTIONAL
+                }
+                Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 5.dp)) {
+                    Text(range, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(0.8f))
+                    Text(rating, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold, color = rowColor, modifier = Modifier.weight(1f))
+                    Text(meaning, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1.8f))
+                }
+            }
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Calculation Detail collapsible card
+// ─────────────────────────────────────────────────────────────────────────────
+
+@Composable
+private fun CalculationDetailCard(result: SharpeCalculator.SharpeResult) {
+    val pct = NumberFormat.getPercentInstance(Locale.US).apply {
+        minimumFractionDigits = 2; maximumFractionDigits = 4
+    }
+    val pct2 = NumberFormat.getPercentInstance(Locale.US).apply {
+        minimumFractionDigits = 2; maximumFractionDigits = 2
+    }
+
+    SimpleCollapsibleCard(title = "Calculation Detail") {
+        Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+
+            // ── Section 1: Inputs ────────────────────────────────────────────
+            Text("Inputs Used", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary)
+            listOf(
+                "Risk-free rate" to "${pct2.format(result.riskFreeRate)}  (${pct.format(result.dailyRiskFreeRateUsed)} / day)",
+                "Lookback period" to "${result.lookbackDays} calendar days",
+                "Aligned trading days" to "${result.alignedTradingDays}",
+                "Mean daily return" to pct.format(result.meanDailyReturn)
+            ).forEachIndexed { i, (label, value) ->
+                if (i > 0) HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f))
+                Row(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text(label, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(value, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Medium, textAlign = TextAlign.End)
+                }
+            }
+
+            HorizontalDivider(color = MaterialTheme.colorScheme.outline)
+
+            // ── Section 2: Per-Ticker Breakdown ──────────────────────────────
+            Text("Per-Ticker Breakdown", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary)
+            // Header row
+            Row(modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surfaceVariant).padding(horizontal = 8.dp, vertical = 4.dp)) {
+                Text("Ticker", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                Text("Weight", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f), textAlign = TextAlign.End)
+                Text("Ann.Return", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1.2f), textAlign = TextAlign.End)
+                Text("Ann.Vol", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f), textAlign = TextAlign.End)
+            }
+            result.tickerDetails.forEachIndexed { i, d ->
+                HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f))
+                val rowBg = if (i % 2 == 1) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f) else Color.Transparent
+                Row(modifier = Modifier.fillMaxWidth().background(rowBg).padding(horizontal = 8.dp, vertical = 5.dp)) {
+                    Text(d.ticker, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                    Text(String.format("%.1f%%", d.weight * 100.0), style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f), textAlign = TextAlign.End)
+                    val retColor = if (d.annualizedReturn >= 0) COLOR_GAIN else COLOR_LOSS
+                    Text(pct2.format(d.annualizedReturn), style = MaterialTheme.typography.bodySmall, color = retColor, modifier = Modifier.weight(1.2f), textAlign = TextAlign.End)
+                    Text(pct2.format(d.annualizedVolatility), style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f), textAlign = TextAlign.End)
+                }
+            }
+
+            HorizontalDivider(color = MaterialTheme.colorScheme.outline)
+
+            // ── Section 3: Step-by-Step ──────────────────────────────────────
+            Text("Step-by-Step", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary)
+            val rfPct = result.riskFreeRate * 100.0
+            val annRetPct = result.annualizedReturn * 100.0
+            val annVolPct = result.annualizedVolatility * 100.0
+            val steps = listOf(
+                "1. Mean daily portfolio return" to "${pct.format(result.meanDailyReturn)}",
+                "2. Annualized return  (× 252)" to "${String.format("%.2f", annRetPct)}%",
+                "3. Daily risk-free rate  (${String.format("%.1f", rfPct)}% ÷ 252)" to pct.format(result.dailyRiskFreeRateUsed),
+                "4. Excess returns computed" to "${result.alignedTradingDays} daily obs − Rf",
+                "5. Annualized volatility  (σ × √252)" to "${String.format("%.2f", annVolPct)}%",
+                "6. Sharpe Ratio  = (${String.format("%.2f", annRetPct)}% − ${String.format("%.1f", rfPct)}%) / ${String.format("%.2f", annVolPct)}%" to
+                    (result.sharpeRatio?.toString() ?: "N/A")
+            )
+            steps.forEachIndexed { i, (label, value) ->
+                if (i > 0) HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f))
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(label, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f))
+                    val isLastStep = i == steps.size - 1
+                    Text(
+                        value,
+                        style = if (isLastStep) MaterialTheme.typography.bodyMedium else MaterialTheme.typography.bodySmall,
+                        fontWeight = if (isLastStep) FontWeight.Bold else FontWeight.Medium,
+                        textAlign = TextAlign.End,
+                        modifier = Modifier.padding(start = 8.dp)
+                    )
+                }
+            }
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SimpleCollapsibleCard — no pin persistence; local expand/collapse state only
+// ─────────────────────────────────────────────────────────────────────────────
+
+@Composable
+private fun SimpleCollapsibleCard(
+    title: String,
+    defaultExpanded: Boolean = false,
+    content: @Composable () -> Unit
+) {
+    var expanded by remember { mutableStateOf(defaultExpanded) }
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { expanded = !expanded }
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+                Icon(
+                    imageVector = if (expanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                    contentDescription = if (expanded) "Collapse" else "Expand"
+                )
+            }
+            AnimatedVisibility(visible = expanded) {
+                Column {
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outline)
+                    Box(modifier = Modifier.padding(16.dp)) { content() }
+                }
             }
         }
     }

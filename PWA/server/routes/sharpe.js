@@ -8,16 +8,17 @@ const yahoo = require('../services/yahoo-finance');
 const TRADING_DAYS_PER_YEAR = 252;
 const MINIMUM_RETURN_OBSERVATIONS = 30;
 
-// Range → Yahoo Finance API range string
+// Calendar days → Yahoo Finance range string
 function lookbackToYahooRange(calendarDays) {
   if (calendarDays <= 180) return '6mo';
   if (calendarDays <= 365) return '1y';
-  return '2y';
+  if (calendarDays <= 730) return '2y';
+  if (calendarDays <= 1825) return '5y';
+  return '10y';
 }
 
 // ── Pure math ─────────────────────────────────────────────────────────────────
 
-// Step 2: (close[i] - close[i-1]) / close[i-1]
 function calculateDailyReturns(closes) {
   const returns = [];
   for (let i = 1; i < closes.length; i++) {
@@ -26,12 +27,10 @@ function calculateDailyReturns(closes) {
   return returns;
 }
 
-// Step 3: inner-join all tickers on shared timestamps, return aligned closes + sorted timestamps
 function alignPriceSeriesForAllTickers(priceMap) {
   const tickers = Object.keys(priceMap);
   if (tickers.length === 0) return { timestamps: [], pricesByTicker: {} };
 
-  // Start with all timestamps of the first ticker, then intersect with each subsequent one
   const tsSetsByTicker = tickers.map(t => new Set(priceMap[t].map(p => p.timestamp)));
   let commonTs = [...tsSetsByTicker[0]];
   for (let i = 1; i < tsSetsByTicker.length; i++) {
@@ -48,7 +47,6 @@ function alignPriceSeriesForAllTickers(priceMap) {
   return { timestamps: commonTs, pricesByTicker };
 }
 
-// Step 4: weight = positionValue / totalPortfolioValue
 function calculatePortfolioWeights(holdings, currentPrices) {
   const positionValues = {};
   let total = 0;
@@ -67,7 +65,6 @@ function calculatePortfolioWeights(holdings, currentPrices) {
   return weights;
 }
 
-// Step 5: Σ(weight_i × dailyReturn_i) for each day
 function calculatePortfolioDailyReturns(tickerDailyReturns, weights) {
   const activeTickers = Object.keys(tickerDailyReturns).filter(t => weights[t] != null);
   if (activeTickers.length === 0) return [];
@@ -78,24 +75,20 @@ function calculatePortfolioDailyReturns(tickerDailyReturns, weights) {
   );
 }
 
-// Step 6: mean(dailyReturns) × 252
 function annualizeReturn(dailyReturns) {
   if (dailyReturns.length === 0) return 0;
   const mean = dailyReturns.reduce((s, v) => s + v, 0) / dailyReturns.length;
   return mean * TRADING_DAYS_PER_YEAR;
 }
 
-// Step 7: annualRate / 252
 function calculateDailyRiskFreeRate(annualRate) {
   return annualRate / TRADING_DAYS_PER_YEAR;
 }
 
-// Step 8: portfolio_return_d - dailyRiskFreeRate
 function calculateExcessReturns(portfolioDailyReturns, dailyRiskFreeRate) {
   return portfolioDailyReturns.map(r => r - dailyRiskFreeRate);
 }
 
-// Step 9a: sqrt(sampleVariance(excessReturns)) × sqrt(252), returns 0 if < 2 observations
 function annualizeStandardDeviation(excessReturns) {
   const n = excessReturns.length;
   if (n < 2) return 0;
@@ -104,14 +97,13 @@ function annualizeStandardDeviation(excessReturns) {
   return Math.sqrt(variance) * Math.sqrt(TRADING_DAYS_PER_YEAR);
 }
 
-// Step 9b: (annReturn - rf) / annVol, null if annVol === 0, rounded to 2dp
 function calculateSharpeRatio(annualizedReturn, riskFreeRate, annualizedStdDev) {
   if (annualizedStdDev === 0) return null;
   const raw = (annualizedReturn - riskFreeRate) / annualizedStdDev;
   return Math.round(raw * 100) / 100;
 }
 
-// ── Fetch with one retry ───────────────────────────────────────────────────────
+// ── Fetch with one retry — always forces daily interval ────────────────────────
 
 async function fetchWithRetry(ticker, range) {
   try {
@@ -128,6 +120,67 @@ async function fetchWithRetry(ticker, range) {
     }
   }
 }
+
+// ── Cache helpers ─────────────────────────────────────────────────────────────
+
+function readCache() {
+  try {
+    return db.prepare('SELECT * FROM sharpe_ratio_cache WHERE id = 1').get() || null;
+  } catch {
+    return null;
+  }
+}
+
+function writeCache(data) {
+  db.prepare(`
+    INSERT OR REPLACE INTO sharpe_ratio_cache
+      (id, riskFreeRate, lookbackDays, sharpeRatio, annualizedReturn, annualizedVolatility,
+       alignedTradingDays, meanDailyReturn, dailyRiskFreeRateUsed, calculationDate,
+       tickerDetailsJson, portfolioReturnSeriesJson, skippedTickersJson, skipReasonsJson,
+       insufficientDataReason, calculatedAt)
+    VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    data.riskFreeRate, data.lookbackDays, data.sharpeRatio ?? null,
+    data.annualizedReturn, data.annualizedVolatility,
+    data.alignedTradingDays, data.meanDailyReturn, data.dailyRiskFreeRateUsed,
+    data.calculationDate,
+    JSON.stringify(data.tickerDetails || []),
+    JSON.stringify(data.portfolioReturnSeries || []),
+    JSON.stringify(data.skippedTickers || []),
+    JSON.stringify(data.skipReasons || {}),
+    data.insufficientDataReason ?? null,
+    Math.floor(Date.now() / 1000)
+  );
+}
+
+function cacheRowToResult(row) {
+  return {
+    sharpeRatio:           row.sharpeRatio,
+    annualizedReturn:      row.annualizedReturn,
+    annualizedVolatility:  row.annualizedVolatility,
+    riskFreeRate:          row.riskFreeRate,
+    lookbackDays:          row.lookbackDays,
+    calculationDate:       row.calculationDate,
+    skippedTickers:        JSON.parse(row.skippedTickersJson || '[]'),
+    skipReasons:           JSON.parse(row.skipReasonsJson    || '{}'),
+    insufficientDataReason: row.insufficientDataReason,
+    tickerDetails:         JSON.parse(row.tickerDetailsJson  || '[]'),
+    portfolioReturnSeries: JSON.parse(row.portfolioReturnSeriesJson || '[]'),
+    alignedTradingDays:    row.alignedTradingDays,
+    meanDailyReturn:       row.meanDailyReturn,
+    dailyRfRate:           row.dailyRiskFreeRateUsed,
+    fromCache:             true,
+    cachedAt:              row.calculatedAt,
+  };
+}
+
+// ── GET /api/sharpe/cached ─────────────────────────────────────────────────────
+
+router.get('/cached', (req, res) => {
+  const row = readCache();
+  if (!row) return res.json(null);
+  res.json(cacheRowToResult(row));
+});
 
 // ── POST /api/sharpe/compute ──────────────────────────────────────────────────
 
@@ -152,7 +205,6 @@ router.post('/compute', async (req, res) => {
 
     for (let i = 0; i < allPositions.length; i++) {
       const { ticker } = allPositions[i];
-      // Emit a server-sent event or just log — clients poll for the final result
       console.log(`Sharpe: fetching ${i + 1}/${allPositions.length} ${ticker}`);
 
       const history = await fetchWithRetry(ticker, yahooRange);
@@ -176,7 +228,6 @@ router.post('/compute', async (req, res) => {
       });
     }
 
-    // Build weights using current prices already in DB (no extra API call)
     const validPositions = allPositions.filter(p => priceMap[p.ticker]);
     const holdings = {};
     const currentPrices = {};
@@ -192,7 +243,6 @@ router.post('/compute', async (req, res) => {
       });
     }
 
-    // Align price series to shared trading days
     const filteredPriceMap = {};
     for (const ticker of Object.keys(weights)) {
       if (priceMap[ticker]) filteredPriceMap[ticker] = priceMap[ticker];
@@ -209,15 +259,12 @@ router.post('/compute', async (req, res) => {
       });
     }
 
-    // Per-ticker daily returns from aligned prices
     const tickerDailyReturns = {};
     for (const ticker of Object.keys(pricesByTicker)) {
       tickerDailyReturns[ticker] = calculateDailyReturns(pricesByTicker[ticker]);
     }
 
-    // Return timestamps are offset by 1 (each return = day i vs day i-1)
     const returnTimestamps = alignedTimestamps.slice(1);
-
     const portfolioDailyReturns = calculatePortfolioDailyReturns(tickerDailyReturns, weights);
     const portfolioReturnSeries = returnTimestamps.map((ts, i) => ({
       timestamp: ts,
@@ -225,7 +272,10 @@ router.post('/compute', async (req, res) => {
     }));
 
     if (portfolioDailyReturns.length < MINIMUM_RETURN_OBSERVATIONS) {
-      return res.json({
+      const insufficientReason =
+        `Only ${portfolioDailyReturns.length} aligned trading days ` +
+        `(minimum ${MINIMUM_RETURN_OBSERVATIONS} required)`;
+      const responseData = {
         sharpeRatio: null,
         annualizedReturn: 0,
         annualizedVolatility: 0,
@@ -234,22 +284,53 @@ router.post('/compute', async (req, res) => {
         calculationDate: new Date().toISOString().slice(0, 10),
         skippedTickers,
         skipReasons,
-        insufficientDataReason:
-          `Only ${portfolioDailyReturns.length} aligned trading days ` +
-          `(minimum ${MINIMUM_RETURN_OBSERVATIONS} required)`,
+        insufficientDataReason: insufficientReason,
         portfolioReturnSeries,
-      });
+        tickerDetails: [],
+        alignedTradingDays: portfolioDailyReturns.length,
+        meanDailyReturn: 0,
+        dailyRfRate: calculateDailyRiskFreeRate(riskFreeRate),
+      };
+      writeCache(responseData);
+      return res.json(responseData);
     }
 
-    const annualizedReturn   = annualizeReturn(portfolioDailyReturns);
-    const dailyRf            = calculateDailyRiskFreeRate(riskFreeRate);
-    const excessReturns      = calculateExcessReturns(portfolioDailyReturns, dailyRf);
+    const annualizedReturn    = annualizeReturn(portfolioDailyReturns);
+    const dailyRf             = calculateDailyRiskFreeRate(riskFreeRate);
+    const excessReturns       = calculateExcessReturns(portfolioDailyReturns, dailyRf);
     const annualizedVolatility = annualizeStandardDeviation(excessReturns);
-    const sharpeRatio        = calculateSharpeRatio(annualizedReturn, riskFreeRate, annualizedVolatility);
+    const sharpeRatio         = calculateSharpeRatio(annualizedReturn, riskFreeRate, annualizedVolatility);
+    const meanDailyReturn     = portfolioDailyReturns.reduce((s, v) => s + v, 0) / portfolioDailyReturns.length;
 
     const insufficientDataReason = sharpeRatio === null
       ? 'Annualized volatility is zero — portfolio has no measurable price variation in this period'
       : null;
+
+    // Per-ticker breakdown
+    const tickerDetails = Object.entries(weights).map(([ticker, weight]) => {
+      const pos = validPositions.find(p => p.ticker === ticker);
+      const tickerReturns = tickerDailyReturns[ticker] || [];
+      const tickerExcess = tickerReturns.map(r => r - dailyRf);
+      const tickerAnnReturn = tickerReturns.length > 0
+        ? (tickerReturns.reduce((s, v) => s + v, 0) / tickerReturns.length) * TRADING_DAYS_PER_YEAR
+        : 0;
+      let tickerAnnVol = 0;
+      if (tickerExcess.length >= 2) {
+        const mean = tickerExcess.reduce((s, v) => s + v, 0) / tickerExcess.length;
+        const variance = tickerExcess.reduce((s, v) => s + (v - mean) ** 2, 0) / (tickerExcess.length - 1);
+        tickerAnnVol = Math.sqrt(variance) * Math.sqrt(TRADING_DAYS_PER_YEAR);
+      }
+      return {
+        ticker,
+        shares: pos ? pos.quantity : 0,
+        currentPrice: pos ? pos.currentPrice : 0,
+        positionValue: pos ? pos.quantity * pos.currentPrice : 0,
+        weight,
+        annualizedReturn: tickerAnnReturn,
+        annualizedVolatility: tickerAnnVol,
+        tradingDays: tickerReturns.length,
+      };
+    }).sort((a, b) => b.weight - a.weight);
 
     console.log(
       `Sharpe: ratio=${sharpeRatio}, ` +
@@ -259,7 +340,7 @@ router.post('/compute', async (req, res) => {
       `skipped=${skippedTickers.length}`
     );
 
-    res.json({
+    const responseData = {
       sharpeRatio,
       annualizedReturn,
       annualizedVolatility,
@@ -270,7 +351,14 @@ router.post('/compute', async (req, res) => {
       skipReasons,
       insufficientDataReason,
       portfolioReturnSeries,
-    });
+      tickerDetails,
+      alignedTradingDays: portfolioDailyReturns.length,
+      meanDailyReturn,
+      dailyRfRate: dailyRf,
+    };
+
+    writeCache(responseData);
+    res.json(responseData);
   } catch (err) {
     console.error('Sharpe compute error:', err);
     res.status(500).json({ error: err.message });

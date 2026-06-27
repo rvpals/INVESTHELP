@@ -322,10 +322,11 @@ fun GlobalTopBar(navController: NavHostController) {
                     Text("What's New", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        "• Sharpe Ratio analytics (Android + PWA) — risk-adjusted return metric with configurable risk-free rate, lookback period, and daily returns chart\n" +
-                        "• Positions tabs: flat Row layout with STOCK/ETF/Analysis/Dividend (icon + equal width)\n" +
-                        "• Dividend tab: total annual income, Stock/ETF exploding pie charts, sortable tables\n" +
-                        "• Generic backup/restore (v6) — auto-discovers all tables via sqlite_master",
+                        "• Sharpe Ratio: SQLite cache — result loads instantly on open; cached-at banner; press ↻ to recompute\n" +
+                        "• Sharpe Ratio: 5-year and 10-year lookback options added (6M/1Y/2Y/5Y/10Y chips)\n" +
+                        "• Sharpe Ratio: \"About Sharpe Ratio\" card — formula, components, interpretation table\n" +
+                        "• Sharpe Ratio: \"Calculation Detail\" card — inputs, per-ticker breakdown, step-by-step\n" +
+                        "• Sharpe Ratio analytics (Android + PWA) — risk-adjusted return metric with configurable risk-free rate, lookback period, and daily returns chart",
                         style = MaterialTheme.typography.bodySmall
                     )
                 }

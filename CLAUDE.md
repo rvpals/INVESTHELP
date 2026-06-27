@@ -155,7 +155,10 @@ Investment tracking app with Android native + PWA web app.
 - Database migration v27 -> v28: creates sql_library table (id, name, description, category, sql) for saved SQL queries
 - Database migration v28 -> v29: creates ai_library table (id, name, description, promptText) with 3 seed prompts for AI-powered ticker analysis
 - Database migration v29 -> v30: adds dividendRate REAL column to investment_positions (trailing annual dividend per share from Yahoo Finance)
-- Database version 30
+- Database migration v30 -> v31: creates volatility_cache table (ticker PK, annualizedVolPct, dailyStdDevPct, volatilityLabel, low52w, high52w, rangePositionPct, sampleCount, calculatedAt)
+- Database migration v31 -> v32: creates correlation_cache table (id=1 singleton, tickersJson, matrixJson, marketCorrelationJson, failedTickersJson, calculatedAt)
+- Database migration v32 -> v33: creates sharpe_ratio_cache table (id=1 singleton; riskFreeRate, lookbackDays, sharpeRatio, annualizedReturn, annualizedVolatility, alignedTradingDays, meanDailyReturn, dailyRiskFreeRateUsed, calculationDate, tickerDetailsJson, portfolioReturnSeriesJson, skippedTickersJson, skipReasonsJson, insufficientDataReason, calculatedAt)
+- Database version 33
 - WatchListDao: `getAllWatchListsSnapshot()`, `getAllItemsSnapshot()`, `deleteAllItems()`, `deleteAllLists()` for backup
 - DefinitionDao: `getAllDefinitionsSnapshot()` for backup
 - SqlLibraryDao: `getAllSnapshot()`, `deleteAll()` for backup

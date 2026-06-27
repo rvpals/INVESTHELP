@@ -281,6 +281,11 @@
 - [x] Android: SharpeRatioViewModel (Hilt) fetching Yahoo Finance historical prices with per-ticker progress updates and one retry on failure
 - [x] Android: SharpeRatioScreen — config card (risk-free rate field + lookback chips + Calculate button), loading card, result card with colored interpretation chip, metrics card, daily returns chart, skipped tickers card
 - [x] PWA: POST /api/sharpe/compute route with same math logic; sharpe-ratio.js screen with identical UX
+- [x] Android + PWA: Sharpe Ratio SQLite cache — result persisted to sharpe_ratio_cache (DB v33); loads instantly on screen open with cached-at banner; ↻ or Recalculate forces fresh fetch
+- [x] Android + PWA: Sharpe Ratio lookback expanded to 5Y (1825d) and 10Y (3650d); always forces 1d interval to keep ×252 annualisation correct
+- [x] Android + PWA: Sharpe Ratio "About Sharpe Ratio" collapsible card — formula SR=(Rp−Rf)/σp, component definitions, interpretation table (Subpar/Good/Very Good/Exceptional)
+- [x] Android + PWA: Sharpe Ratio "Calculation Detail" collapsible card — Inputs Used section, Per-Ticker Breakdown table (Ticker/Weight/Ann.Return/Ann.Vol), Step-by-Step with actual computed values
+- [x] Android: Database migration v32 → v33 (sharpe_ratio_cache table)
 
 ## Pending
 - [ ] Fix deprecation warning: Icons.Filled.OpenInNew -> Icons.AutoMirrored.Filled.OpenInNew (ItemDetailScreen.kt)
