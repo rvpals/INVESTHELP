@@ -29,6 +29,7 @@ import com.investhelp.app.ui.nextday.NextDayActionsViewModel
 import com.investhelp.app.ui.sqlexplorer.SqlExplorerScreen
 import com.investhelp.app.ui.sqlexplorer.SqlExplorerViewModel
 import com.investhelp.app.ui.sqlexplorer.SqlResultScreen
+import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.investhelp.app.ui.transaction.AnalyzePriceScreen
 import com.investhelp.app.ui.transaction.AnalyzePriceViewModel
@@ -254,7 +255,12 @@ fun InvestHelpNavHost(
 
         composable<NextDayActionsRoute> {
             val viewModel: NextDayActionsViewModel = hiltViewModel()
-            NextDayActionsScreen(viewModel = viewModel)
+            val settingsViewModel: SettingsViewModel = hiltViewModel()
+            val settingsState by settingsViewModel.uiState.collectAsStateWithLifecycle()
+            NextDayActionsScreen(
+                viewModel = viewModel,
+                showExplanation = settingsState.showExplanation
+            )
         }
 
         composable<AccountPerformanceRoute> {
@@ -299,8 +305,11 @@ fun InvestHelpNavHost(
 
         composable<VolatilityAnalysisRoute> {
             val viewModel: VolatilityAnalysisViewModel = hiltViewModel()
+            val settingsViewModel: SettingsViewModel = hiltViewModel()
+            val settingsState by settingsViewModel.uiState.collectAsStateWithLifecycle()
             VolatilityAnalysisScreen(
                 viewModel = viewModel,
+                showExplanation = settingsState.showExplanation,
                 onNavigateToItem = { ticker ->
                     navController.navigate(ItemDetailRoute(ticker))
                 },
@@ -310,16 +319,22 @@ fun InvestHelpNavHost(
 
         composable<CorrelationMatrixRoute> {
             val viewModel: CorrelationMatrixViewModel = hiltViewModel()
+            val settingsViewModel: SettingsViewModel = hiltViewModel()
+            val settingsState by settingsViewModel.uiState.collectAsStateWithLifecycle()
             CorrelationMatrixScreen(
                 viewModel = viewModel,
+                showExplanation = settingsState.showExplanation,
                 onNavigateBack = { navController.popBackStack() }
             )
         }
 
         composable<SharpeRatioRoute> {
             val viewModel: SharpeRatioViewModel = hiltViewModel()
+            val settingsViewModel: SettingsViewModel = hiltViewModel()
+            val settingsState by settingsViewModel.uiState.collectAsStateWithLifecycle()
             SharpeRatioScreen(
                 viewModel = viewModel,
+                showExplanation = settingsState.showExplanation,
                 onBack = { navController.popBackStack() }
             )
         }

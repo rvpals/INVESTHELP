@@ -90,6 +90,7 @@ private val LOOKBACK_OPTIONS = listOf(
 @Composable
 fun SharpeRatioScreen(
     viewModel: SharpeRatioViewModel,
+    showExplanation: Boolean = true,
     onBack: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -152,8 +153,10 @@ fun SharpeRatioScreen(
                             DailyReturnsChartCard(returnSeries = state.portfolioReturnSeries)
                         }
                     }
-                    item { AboutSharpeCard() }
-                    if (state.result.tickerDetails.isNotEmpty()) {
+                    if (showExplanation) {
+                        item { AboutSharpeCard() }
+                    }
+                    if (showExplanation && state.result.tickerDetails.isNotEmpty()) {
                         item { CalculationDetailCard(result = state.result) }
                     }
                     if (state.result.skippedTickers.isNotEmpty()) {

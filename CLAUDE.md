@@ -50,10 +50,11 @@ Investment tracking app with Android native + PWA web app.
 - Auto-create InvestmentItem when transaction references a new ticker (defaults to Stock type, changeable via type selector)
 - Dates stored as epoch days for simple SQL range queries
 - Yahoo Finance v8/v10 API for live prices, historical data, and analysis info
-- Global top bar: portfolio value 3D button (refreshes all prices + navigates to Dashboard) + Watch List icon button (star, purple) + hamburger menu (Accounts, Performance, Simulation, Settings, SQL Explorer, Help, About)
-- Top bar shows spinner while refreshing prices; refresh status bar below top bar shows "Updating [TICKER]" with price, change $, change % (color-coded, auto-hides on completion)
-- Bottom nav: Dashboard, Positions, Transaction (3D gradient icons with shadow)
-- Icon3D composable: renders icons inside gradient-filled rounded boxes with drop shadow; used for bottom nav and hamburger menu icons
+- Global top bar: left=Search icon; center=Dashboard/Positions/Transaction nav buttons (Icon3D, selected=full color, unselected=dimmed, with 9sp label); right=Refresh button (Icon3D, triggers refreshAllPrices) + Watch List star + hamburger menu (Accounts, Performance, Simulation, Settings, SQL Explorer, Help, About)
+- Search Ticker dialog: OutlinedTextField + live autocomplete Card (LazyColumn, up to 8 suggestions); `searchSuggestions: StateFlow<List<TickerSuggestion>>` in DashboardViewModel via `SharingStarted.Lazily`; `TickerSuggestion(ticker, name)` data class; filtered by `remember(searchTicker, searchSuggestions)` — matches ticker OR company name; tapping suggestion navigates directly without pressing Go
+- Top bar shows LinearProgressIndicator below TopAppBar while refreshing; refresh status bar below that shows "Updating [TICKER]" with price, change $, change % (color-coded, auto-hides on completion)
+- No bottom navigation bar (removed; all primary nav is in the top bar)
+- Icon3D composable: renders icons inside gradient-filled rounded boxes with drop shadow; used for top bar nav buttons and hamburger menu icons
 - Simulation time ranges: 1W, 2W, 1M, 3M, 6M, 1Y, 2Y, 5Y, 10Y, MAX (grouped in Week/Month/Year rows)
 - Simulation chart supports tap-to-select with tooltip (price + date)
 - Dashboard market index cards: horizontal row of small cards (NASDAQ, S&P 500, Dow, Gold + more) showing price and daily change; clickable to open Yahoo Finance page for the index; customizable in Settings > Preferences
@@ -90,10 +91,9 @@ Investment tracking app with Android native + PWA web app.
 - Dashboard "Daily Glance" card: "Overall Daily" section at top showing Stock and ETF total daily change in $ and %, separated by HorizontalDivider; "By Per Share" checkbox toggles sorting and display between total value and per-share change; then top 5 gainers and top 5 losers today; each row shows ticker, name, gain/loss $ and %; clickable to item detail
 - Dashboard: no accounts section (removed account cards and FAB; accounts accessible via hamburger menu)
 - Dashboard positions pie chart: collapsible card, legend limited to top 20 with "More" button to show all
-- Top bar portfolio button: total value row shows daily change amount in parentheses (e.g. "(+$123.45)") color-coded green/red; hidden when zero
-- Top bar portfolio button: second row shows (Day: ±X.XX%) color-coded green/red
 - Dashboard: "Portfolio Summary" collapsible card with pin persistence; total value change in headlineLarge (3x bigger) bold centered; Day/All percentages in bodyMedium centered below; mini line chart of total_value from change_history (shown when 2+ records); click mini chart opens full-screen Change History dialog with zoomable multi-series chart (Total/ETF/Stock lines) + grid data table (Date, ETF, Stock, Total columns)
 - Settings: "Warn before delete" toggle (default: on) — when off, skips confirmation dialogs for delete actions
+- Settings: "Show Explanation" toggle (default: on) — controls visibility of explanation/educational collapsible cards on Sharpe Ratio, Correlation Matrix, Volatility Analysis, and Next Day Actions screens; stored in SharedPreferences as `show_explanation`
 - Settings: "Max # of News articles on ticker" dropdown (5, 10, 20; default: 5) — controls how many news articles to fetch and display in Item Detail News card
 - Settings: "Dashboard Market Indices" section with toggles for 8 indices (NASDAQ, S&P 500, Dow, Gold, Russell 2K, Silver, Oil, Bitcoin); default: first 4 enabled; up/down arrow buttons to reorder indices; order persisted via `market_indices_order` SharedPreferences key
 - Dashboard Market Indices: long-press drag-and-drop reorder on index cards; swaps on half-slot-width threshold; persists order to SharedPreferences; syncs with Settings arrow reorder

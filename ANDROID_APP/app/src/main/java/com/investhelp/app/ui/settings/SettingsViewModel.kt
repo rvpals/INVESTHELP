@@ -166,6 +166,7 @@ data class SettingsUiState(
     val newsArticleCount: Int = SettingsViewModel.DEFAULT_NEWS_ARTICLE_COUNT,
     val aiEnabled: Boolean = false,
     val aiApiKey: String = SettingsViewModel.DEFAULT_AI_API_KEY,
+    val showExplanation: Boolean = true,
     val trailingStopPct: Int = SettingsViewModel.DEFAULT_TRAILING_STOP_PCT,
     val profitTargetPct: Int = SettingsViewModel.DEFAULT_PROFIT_TARGET_PCT,
     val stockConcentrationCap: Int = SettingsViewModel.DEFAULT_STOCK_CONCENTRATION_CAP,
@@ -239,6 +240,7 @@ class SettingsViewModel @Inject constructor(
 
         const val KEY_CARD_VISIBLE_WATCH_LIST = "card_visible_watch_list"
         const val KEY_DASHBOARD_CARD_ORDER = "dashboard_card_order"
+        const val KEY_SHOW_EXPLANATION = "show_explanation"
         val DEFAULT_CARD_ORDER = listOf(
             "portfolio_summary", "market_indices", "daily_glance", "watch_list"
         )
@@ -284,6 +286,7 @@ class SettingsViewModel @Inject constructor(
             newsArticleCount = prefs.getInt(KEY_NEWS_ARTICLE_COUNT, DEFAULT_NEWS_ARTICLE_COUNT),
             aiEnabled = prefs.getBoolean(KEY_AI_ENABLED, false),
             aiApiKey = prefs.getString(KEY_AI_API_KEY, DEFAULT_AI_API_KEY) ?: DEFAULT_AI_API_KEY,
+            showExplanation = prefs.getBoolean(KEY_SHOW_EXPLANATION, true),
             trailingStopPct = prefs.getInt(KEY_TRAILING_STOP_PCT, DEFAULT_TRAILING_STOP_PCT),
             profitTargetPct = prefs.getInt(KEY_PROFIT_TARGET_PCT, DEFAULT_PROFIT_TARGET_PCT),
             stockConcentrationCap = prefs.getInt(KEY_STOCK_CONCENTRATION_CAP, DEFAULT_STOCK_CONCENTRATION_CAP),
@@ -375,6 +378,11 @@ class SettingsViewModel @Inject constructor(
     fun setWarnBeforeDelete(enabled: Boolean) {
         prefs.edit().putBoolean(KEY_WARN_BEFORE_DELETE, enabled).apply()
         _uiState.value = _uiState.value.copy(warnBeforeDelete = enabled)
+    }
+
+    fun setShowExplanation(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_SHOW_EXPLANATION, enabled).apply()
+        _uiState.value = _uiState.value.copy(showExplanation = enabled)
     }
 
     fun setNewsArticleCount(count: Int) {

@@ -31,6 +31,8 @@ import java.time.LocalDate
 import java.time.LocalDateTime
 import javax.inject.Inject
 
+data class TickerSuggestion(val ticker: String, val name: String)
+
 data class DailyGlanceItem(
     val ticker: String,
     val name: String,
@@ -101,6 +103,11 @@ class DashboardViewModel @Inject constructor(
     }
 
     val changeHistoryRecords: Flow<List<ChangeHistoryEntity>> = changeHistoryRepository.getAllRecords()
+
+    val searchSuggestions: StateFlow<List<TickerSuggestion>> =
+        itemRepository.getAllItems()
+            .map { list -> list.map { TickerSuggestion(it.ticker, it.name) } }
+            .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
     private val _isRefreshing = MutableStateFlow(false)
     val isRefreshing: StateFlow<Boolean> = _isRefreshing.asStateFlow()

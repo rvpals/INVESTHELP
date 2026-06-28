@@ -2,6 +2,7 @@ import { positions as positionsApi, volatility as volatilityApi } from '../api.j
 import { navigate } from '../router.js';
 import { tickerIcon } from '../components/ticker-icon.js';
 import { formatCurrency } from '../utils/format.js';
+import { getPref } from '../preferences.js';
 
 const LABEL_ORDER = ['Low', 'Moderate', 'High', 'Very High'];
 
@@ -26,6 +27,64 @@ function formatTimestamp(epochSeconds) {
   });
 }
 
+function buildVolatilityExplainerCard() {
+  const bands = [
+    { color: '#388E3C', label: 'Low',       range: '< 15%',  desc: 'Stable; typical for large-cap blue-chips, REITs, or defensive sectors.' },
+    { color: '#F57C00', label: 'Moderate',  range: '15–30%', desc: 'Normal equity range; most diversified stock portfolios fall here.' },
+    { color: '#E64A19', label: 'High',      range: '30–60%', desc: 'Elevated risk; growth stocks, small-caps, sector funds.' },
+    { color: '#B71C1C', label: 'Very High', range: '> 60%',  desc: 'Speculative; high-beta stocks, leveraged ETFs, crypto-linked assets.' },
+  ];
+
+  const bandsHtml = bands.map(b => {
+    const bg = hexToRgba(b.color, 0.07);
+    return `<div class="flex items-center gap-8 py-6 px-8 mb-4" style="background:${bg};border-radius:6px">
+      <div style="width:10px;height:10px;border-radius:50%;background:${b.color};flex-shrink:0;margin-top:2px;align-self:flex-start"></div>
+      <div>
+        <span style="font-size:12px;font-weight:700;color:${b.color}">${b.label}</span>
+        <span style="font-size:11px;color:${b.color};opacity:.7;margin-left:6px">${b.range}</span>
+        <div style="font-size:11px;color:var(--on-surface-variant,#49454F);margin-top:1px">${b.desc}</div>
+      </div>
+    </div>`;
+  }).join('');
+
+  const id = 'vol-exp-' + Math.random().toString(36).slice(2);
+  const card = document.createElement('div');
+  card.className = 'card mb-12';
+  card.style.margin = '8px 0 12px';
+  card.innerHTML = `
+    <div id="hdr-${id}" class="flex items-center gap-8 py-12 px-16" style="cursor:pointer">
+      <span style="flex:1;font-weight:600;font-size:14px">About Volatility</span>
+      <span id="chv-${id}" style="font-size:18px;transition:transform .2s">&#9660;</span>
+    </div>
+    <div id="body-${id}" style="display:none">
+      <hr style="margin:0;border-color:var(--outline-variant,#ccc)">
+      <div class="p-16">
+        <div class="mb-12">
+          <div style="font-size:12px;font-weight:700;margin-bottom:4px">What does the % mean?</div>
+          <div style="font-size:12px;color:var(--on-surface-variant,#49454F)">The percentage is Annualized Volatility — the standard deviation of daily returns scaled to a full year (daily std dev &times; &radic;252 trading days). It shows how widely a stock's price typically swings over 12 months.</div>
+        </div>
+        <div class="mb-12">
+          <div style="font-size:12px;font-weight:700;margin-bottom:6px">Volatility bands</div>
+          ${bandsHtml}
+        </div>
+        <div>
+          <div style="font-size:12px;font-weight:700;margin-bottom:4px">Why it matters</div>
+          <div style="font-size:12px;color:var(--on-surface-variant,#49454F)">Higher volatility means larger potential gains — but also larger potential losses. Use this screen to identify your highest-risk holdings and decide whether they match your risk appetite. A concentrated position in a Very High volatility stock can disproportionately affect your portfolio.</div>
+        </div>
+      </div>
+    </div>
+  `;
+  const hdr = card.querySelector(`#hdr-${id}`);
+  const body = card.querySelector(`#body-${id}`);
+  const chv = card.querySelector(`#chv-${id}`);
+  hdr.addEventListener('click', () => {
+    const open = body.style.display === 'none';
+    body.style.display = open ? 'block' : 'none';
+    chv.style.transform = open ? 'rotate(180deg)' : '';
+  });
+  return card;
+}
+
 export async function render(container) {
   container.innerHTML = `<div class="screen">
     <div class="flex items-center gap-8 mb-16">
@@ -34,6 +93,7 @@ export async function render(container) {
       <button class="btn btn-sm btn-outline" id="btn-refresh" title="Refresh all volatility data">&#8635; Refresh</button>
     </div>
     <div id="va-last-calc" style="display:none;padding:4px 16px 8px;font-size:12px;color:var(--on-surface-variant,#49454F);background:color-mix(in srgb,var(--surface-variant,#E7E0EC) 40%,transparent)"></div>
+    <div id="va-explainer"></div>
     <div id="va-body">
       <div class="text-center p-32">
         <div class="spinner"></div>
@@ -41,6 +101,10 @@ export async function render(container) {
       </div>
     </div>
   </div>`;
+
+  if (getPref('show_explanation')) {
+    document.getElementById('va-explainer').appendChild(buildVolatilityExplainerCard());
+  }
 
   let activeTab = 0; // 0 = Stocks, 1 = ETFs
   let results = [];  // { ticker, name, type, shares, vol, error, loading }

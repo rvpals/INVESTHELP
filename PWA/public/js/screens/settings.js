@@ -62,6 +62,13 @@ function renderPrefs(el, serverSettings) {
 
   const generalContent = `
     <div class="toggle-row"><span class="toggle-label">Warn before delete</span><button class="toggle${getPref('warn_before_delete')?' on':''}" id="toggle-warn"></button></div>
+    <div class="toggle-row">
+      <div>
+        <div class="toggle-label">Show Explanation</div>
+        <div class="text-xs text-muted">Show detail explanation on some screens, especially for financial concepts.</div>
+      </div>
+      <button class="toggle${getPref('show_explanation')?' on':''}" id="toggle-explanation"></button>
+    </div>
     <div class="toggle-row"><span class="toggle-label">Auto-update change history on refresh</span><button class="toggle${serverSettings.auto_update_change_history==='true'?' on':''}" id="toggle-history"></button></div>
     <div class="toggle-row"><span class="toggle-label">Auto-refresh prices</span><button class="toggle${serverSettings.auto_refresh_enabled==='true'?' on':''}" id="toggle-refresh"></button></div>
     ${serverSettings.auto_refresh_enabled === 'true' ? `
@@ -118,6 +125,12 @@ function renderPrefs(el, serverSettings) {
     const on = !this.classList.contains('on');
     this.classList.toggle('on', on);
     setPref('warn_before_delete', on);
+  });
+
+  document.getElementById('toggle-explanation')?.addEventListener('click', function() {
+    const on = !this.classList.contains('on');
+    this.classList.toggle('on', on);
+    setPref('show_explanation', on);
   });
 
   document.getElementById('toggle-history')?.addEventListener('click', async function() {

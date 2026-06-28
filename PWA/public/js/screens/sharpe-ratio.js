@@ -1,5 +1,6 @@
 import { sharpe as sharpeApi } from '../api.js';
 import { formatPercent } from '../utils/format.js';
+import { getPref } from '../preferences.js';
 
 // ── Interpretation ────────────────────────────────────────────────────────────
 
@@ -362,10 +363,12 @@ export async function render(container) {
       body.appendChild(buildChartCard(result.portfolioReturnSeries));
     }
 
-    // Educational & detail collapsible cards
-    body.appendChild(buildAboutCard());
-    if (result.tickerDetails && result.tickerDetails.length > 0) {
-      body.appendChild(buildDetailCard(result));
+    // Educational & detail collapsible cards (only when Show Explanation is on)
+    if (getPref('show_explanation')) {
+      body.appendChild(buildAboutCard());
+      if (result.tickerDetails && result.tickerDetails.length > 0) {
+        body.appendChild(buildDetailCard(result));
+      }
     }
 
     if (result.skippedTickers && result.skippedTickers.length > 0) {

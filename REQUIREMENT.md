@@ -69,10 +69,12 @@ Android app to track personal investments.
 
 ### Navigation
 - **Global top bar** — persistent across all screens:
-  - Portfolio value 3D button (tap to navigate to Dashboard, auto-refreshes); shows daily % and all-time % gain/loss below the total value, color-coded green/red
-  - Hamburger menu (Accounts, Watch List, Settings, SQL Explorer, Help, About)
+  - Left: Search icon (opens Search Ticker dialog with autocomplete dropdown — type partial ticker or company name to see matching positions)
+  - Center: Dashboard, Positions, Transaction nav buttons as small 3D Icon3D icons with labels; selected tab highlighted with full color, unselected dimmed
+  - Right: Refresh button (triggers price refresh for all tickers), Watch List star, Hamburger menu (Accounts, Performance, Simulation, Settings, SQL Explorer, Help, About)
+  - Progress bar appears below top bar while prices are being refreshed; refresh status bar shows "Updating TICKER price/change" per ticker
   - About dialog includes "Show Log" button for viewing application log; version displayed dynamically from BuildConfig
-- **Bottom nav** — Dashboard, Items, Performance, Transaction, Simulation (3D gradient icons with shadow)
+- **No bottom navigation bar** — all primary navigation is in the top bar
 
 ### Dashboard
 - All dashboard sections (Market Indices, Daily Glance, Positions, Position Details) use **CollapsibleCard** — reusable component with title, pin button (top-right), HorizontalDivider between header and content, and expand/collapse toggle; unpinned cards default collapsed, pinned cards default expanded; pin state persisted to SharedPreferences
@@ -128,6 +130,7 @@ Android app to track personal investments.
   - Theme selector: 10 color themes (Default Green, Ocean Blue, Sunset Orange, Midnight Purple, Forest Moss, Ruby Red, Arctic Ice, Gold Rush, Sakura Pink, Charcoal Dark); each defines light and dark color schemes; persisted to SharedPreferences; instant apply
   - Auto-update position shares toggle
   - Warn before delete toggle (default: on) — when off, skips confirmation dialogs for all delete actions
+  - Show Explanation toggle (default: on) — controls visibility of explanation/educational cards on Sharpe Ratio, Correlation Matrix, Volatility Analysis, and Next Day Actions screens
   - Dashboard Market Indices toggles — choose which market indices to show on the dashboard (8 available, 4 default); up/down arrow buttons to reorder indices
 - **Data Management tab:**
   - **Import Data** — 3 import types (Transaction Records, Position Details, Performance Records); each has "Define Mapping" and "Start Import" buttons; shared account selector; column mapping dialog with 3-row preview, auto-mapping with common brokerage aliases (Price→currentPrice, Description→name, etc.), date format options per column, progress bar during import; mappings persisted to database for reuse

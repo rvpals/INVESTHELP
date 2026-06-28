@@ -76,14 +76,22 @@ export function hideRefreshSpinner() {
   el.className = 'hidden';
 }
 
-function showTickerSearch() {
+async function showTickerSearch() {
   const overlay = document.getElementById('dialog-overlay');
   overlay.className = 'dialog-overlay';
   overlay.innerHTML = `
     <div class="dialog">
       <div class="dialog-title">Search Ticker</div>
-      <div class="form-group">
-        <input type="text" class="input" id="search-ticker-input" placeholder="Enter ticker (e.g. AAPL)" style="text-transform:uppercase" autofocus>
+      <div style="position:relative">
+        <input type="text" class="input" id="search-ticker-input"
+          placeholder="Ticker or company name…" style="text-transform:uppercase" autocomplete="off" autofocus>
+        <div id="ticker-dropdown" style="
+          display:none;position:absolute;left:0;right:0;top:calc(100% + 2px);z-index:200;
+          background:var(--surface,#FFFBFE);
+          border:1px solid var(--outline-variant,#CAC4D0);
+          border-radius:8px;overflow:hidden;
+          box-shadow:0 4px 12px rgba(0,0,0,.18);
+          max-height:240px;overflow-y:auto"></div>
       </div>
       <div class="dialog-actions">
         <button class="btn btn-outline" id="search-cancel">Cancel</button>
@@ -92,18 +100,61 @@ function showTickerSearch() {
     </div>
   `;
 
+  let allPositions = [];
+  try { allPositions = await positions.list(); } catch {}
+
   const input = document.getElementById('search-ticker-input');
+  const dropdown = document.getElementById('ticker-dropdown');
+
+  const close = () => { overlay.className = 'dialog-overlay hidden'; };
   const go = () => {
     const ticker = input.value.toUpperCase().trim();
     if (!ticker) return;
-    overlay.className = 'dialog-overlay hidden';
+    close();
     navigate(`#/item/${ticker}`);
   };
 
+  function updateDropdown() {
+    const q = input.value.trim().toUpperCase();
+    if (!q) { dropdown.style.display = 'none'; return; }
+
+    const matches = allPositions
+      .filter(p => p.ticker.toUpperCase().includes(q) || (p.name || '').toUpperCase().includes(q))
+      .slice(0, 10);
+
+    if (!matches.length) { dropdown.style.display = 'none'; return; }
+
+    dropdown.innerHTML = matches.map(p => `
+      <div data-ticker="${p.ticker}" style="
+        padding:10px 14px;cursor:pointer;display:flex;align-items:center;gap:10px;
+        border-bottom:1px solid color-mix(in srgb,var(--outline-variant,#CAC4D0) 40%,transparent)">
+        <span style="font-weight:700;font-size:13px;min-width:54px;color:var(--on-surface,#1C1B1F)">${p.ticker}</span>
+        <span style="font-size:12px;color:var(--on-surface-variant,#49454F);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.name || ''}</span>
+        <span style="font-size:11px;color:var(--on-surface-variant,#49454F);opacity:.6;flex-shrink:0">${p.type || ''}</span>
+      </div>`).join('');
+
+    dropdown.style.display = 'block';
+
+    dropdown.querySelectorAll('[data-ticker]').forEach(item => {
+      item.addEventListener('mouseenter', () => { item.style.background = 'var(--surface-variant,#E7E0EC)'; });
+      item.addEventListener('mouseleave', () => { item.style.background = ''; });
+      // mousedown + preventDefault keeps focus on input until navigation
+      item.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        close();
+        navigate(`#/item/${item.dataset.ticker}`);
+      });
+    });
+  }
+
+  input.addEventListener('input', updateDropdown);
   document.getElementById('search-go').addEventListener('click', go);
-  document.getElementById('search-cancel').addEventListener('click', () => { overlay.className = 'dialog-overlay hidden'; });
-  input.addEventListener('keydown', (e) => { if (e.key === 'Enter') go(); });
-  overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.className = 'dialog-overlay hidden'; });
+  document.getElementById('search-cancel').addEventListener('click', close);
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') go();
+    if (e.key === 'Escape') close();
+  });
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
   setTimeout(() => input.focus(), 100);
 }
 
@@ -169,11 +220,12 @@ function showAbout() {
   overlay.innerHTML = `
     <div class="dialog">
       <div class="dialog-title">About InvestHelp</div>
-      <p>InvestHelp PWA <strong>v1.69</strong></p>
+      <p>InvestHelp PWA <strong>v1.70</strong></p>
       <p class="text-sm text-muted mt-8">Investment tracking progressive web app.</p>
       <hr style="border-color:var(--border-color);margin:12px 0 8px">
       <p class="text-sm" style="font-weight:600">What's New</p>
       <ul class="text-sm text-muted" style="padding-left:20px;margin-top:4px">
+        <li><strong>v1.70</strong> — Android: top bar redesign (Dashboard/Positions/Transaction nav in top bar, Refresh button replaces portfolio card, bottom nav removed); Search Ticker autocomplete; Settings "Show Explanation" toggle for Sharpe Ratio, Correlation, Volatility, NDA cards</li>
         <li><strong>v1.69</strong> — Sharpe Ratio: SQLite cache (instant load on open, cached-at banner); 5Y/10Y lookback options; "About Sharpe Ratio" card (formula, components, interpretation); "Calculation Detail" card (inputs, per-ticker breakdown, step-by-step)</li>
         <li><strong>v1.67</strong> — Sharpe Ratio analytics screen (Android + PWA): portfolio risk-adjusted return metric with configurable risk-free rate (default 5%), lookback period (6m/1y/2y), Canvas daily returns chart with green/red fills</li>
         <li><strong>v1.66</strong> — Item Detail: new inline Correlation card (peer correlations + SPY sensitivity) and Volatility card (52w range bar, annualized vol %, scale legend); removed standalone Volatility toolbar button</li>

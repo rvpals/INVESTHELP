@@ -45,7 +45,8 @@ import java.util.Locale
 
 @Composable
 fun NextDayActionsScreen(
-    viewModel: NextDayActionsViewModel
+    viewModel: NextDayActionsViewModel,
+    showExplanation: Boolean = true
 ) {
     val signals by viewModel.signals.collectAsStateWithLifecycle()
     val isScanning by viewModel.isScanning.collectAsStateWithLifecycle()
@@ -94,6 +95,7 @@ fun NextDayActionsScreen(
             Text(error!!, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
         }
 
+        if (showExplanation) {
         Spacer(modifier = Modifier.height(12.dp))
         var explanationPinned by rememberSaveable { mutableStateOf(false) }
         CollapsibleCard(
@@ -147,6 +149,7 @@ fun NextDayActionsScreen(
                 )
             }
         }
+        } // end if (showExplanation)
 
         if (signals.isNotEmpty()) {
             Spacer(modifier = Modifier.height(12.dp))

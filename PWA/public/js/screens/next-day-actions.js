@@ -2,6 +2,7 @@ import { positions, transactions, yahoo, settings } from '../api.js';
 import { collapsibleCard, initCollapsibleCards } from '../components/collapsible-card.js';
 import { formatCurrency, formatPercent, formatShares, gainLossClass } from '../utils/format.js';
 import { navigate } from '../router.js';
+import { getPref } from '../preferences.js';
 
 const ACTIONS = {
   STOP_LOSS:      { label: 'STOP LOSS',    color: '#C62828', order: 0 },
@@ -231,7 +232,7 @@ function renderResults(el, signals, thresholds) {
   el.innerHTML = `
     ${summaryCards ? `<div class="flex gap-8 mb-16">${summaryCards}</div>` : ''}
 
-    ${collapsibleCard('nda_explanation', 'Explanation', explanationHtml)}
+    ${getPref('show_explanation') ? collapsibleCard('nda_explanation', 'Explanation', explanationHtml) : ''}
 
     ${collapsibleCard('nda_detail', 'Detail on Analysis', detailHtml)}
 

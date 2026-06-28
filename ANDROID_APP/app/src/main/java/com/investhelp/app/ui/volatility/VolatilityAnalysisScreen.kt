@@ -1,6 +1,10 @@
 package com.investhelp.app.ui.volatility
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -17,7 +21,9 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -34,6 +40,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import java.time.Instant
@@ -42,6 +49,7 @@ import java.time.format.DateTimeFormatter
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -83,6 +91,7 @@ private val tickerIconColors = listOf(
 @Composable
 fun VolatilityAnalysisScreen(
     viewModel: VolatilityAnalysisViewModel,
+    showExplanation: Boolean = true,
     onNavigateToItem: (String) -> Unit,
     onBack: () -> Unit
 ) {
@@ -177,6 +186,7 @@ fun VolatilityAnalysisScreen(
                 } else {
                     VolatilityGroupedList(
                         items = currentList,
+                        showExplanation = showExplanation,
                         currencyFormat = currencyFormat,
                         onNavigateToItem = onNavigateToItem
                     )
@@ -189,6 +199,7 @@ fun VolatilityAnalysisScreen(
 @Composable
 private fun VolatilityGroupedList(
     items: List<PositionVolatilityItem>,
+    showExplanation: Boolean = true,
     currencyFormat: NumberFormat,
     onNavigateToItem: (String) -> Unit
 ) {
@@ -205,6 +216,12 @@ private fun VolatilityGroupedList(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(bottom = 16.dp)
     ) {
+        if (showExplanation) {
+            item(key = "explainer") {
+                VolatilityExplainerCard()
+            }
+        }
+
         LABEL_ORDER.forEach { label ->
             val group = grouped[label] ?: emptyList()
             if (group.isNotEmpty()) {
@@ -390,6 +407,129 @@ private fun ErrorRow(ticker: String, error: String) {
         )
     }
     HorizontalDivider()
+}
+
+@Composable
+private fun VolatilityExplainerCard() {
+    var expanded by remember { mutableStateOf(false) }
+    val chevron by animateFloatAsState(if (expanded) 180f else 0f, label = "chevron")
+
+    Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp)) {
+        Column {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { expanded = !expanded }
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    "About Volatility",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.weight(1f)
+                )
+                Icon(
+                    Icons.Default.ExpandMore,
+                    contentDescription = if (expanded) "Collapse" else "Expand",
+                    modifier = Modifier.rotate(chevron)
+                )
+            }
+            AnimatedVisibility(visible = expanded) {
+                Column {
+                    HorizontalDivider()
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Text(
+                                "What does the % mean?",
+                                style = MaterialTheme.typography.labelLarge,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                "The percentage is Annualized Volatility — the standard deviation of daily " +
+                                "returns scaled to a full year (daily std dev × √252 trading days). It shows " +
+                                "how widely a stock's price typically swings over 12 months.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Text(
+                                "Volatility bands",
+                                style = MaterialTheme.typography.labelLarge,
+                                fontWeight = FontWeight.Bold
+                            )
+                            LABEL_ORDER.forEach { label ->
+                                val color = LABEL_COLORS[label] ?: Color.Gray
+                                val range = LABEL_RANGES[label] ?: ""
+                                val desc = when (label) {
+                                    "Low"       -> "Stable; typical for large-cap blue-chips, REITs, or defensive sectors."
+                                    "Moderate"  -> "Normal equity range; most diversified stock portfolios fall here."
+                                    "High"      -> "Elevated risk; growth stocks, small-caps, sector funds."
+                                    "Very High" -> "Speculative; high-beta stocks, leveraged ETFs, crypto-linked assets."
+                                    else        -> ""
+                                }
+                                Row(
+                                    verticalAlignment = Alignment.Top,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .background(color.copy(alpha = 0.07f), RoundedCornerShape(6.dp))
+                                        .padding(8.dp)
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(10.dp)
+                                            .background(color, RoundedCornerShape(50))
+                                            .align(Alignment.CenterVertically)
+                                    )
+                                    Spacer(Modifier.width(8.dp))
+                                    Column {
+                                        Row {
+                                            Text(
+                                                label,
+                                                style = MaterialTheme.typography.labelMedium,
+                                                fontWeight = FontWeight.Bold,
+                                                color = color
+                                            )
+                                            Spacer(Modifier.width(6.dp))
+                                            Text(
+                                                range,
+                                                style = MaterialTheme.typography.labelMedium,
+                                                color = color.copy(alpha = 0.7f)
+                                            )
+                                        }
+                                        Text(
+                                            desc,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Text(
+                                "Why it matters",
+                                style = MaterialTheme.typography.labelLarge,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                "Higher volatility means larger potential gains — but also larger potential losses. " +
+                                "Use this screen to identify your highest-risk holdings and decide whether they match " +
+                                "your risk appetite. A concentrated position in a Very High volatility stock can " +
+                                "disproportionately affect your portfolio.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
 @Composable

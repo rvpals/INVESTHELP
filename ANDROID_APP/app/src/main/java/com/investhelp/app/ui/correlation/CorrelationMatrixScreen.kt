@@ -137,6 +137,7 @@ private val CELL_FONT       = 11.sp
 @Composable
 fun CorrelationMatrixScreen(
     onNavigateBack: () -> Unit,
+    showExplanation: Boolean = true,
     viewModel: CorrelationMatrixViewModel = hiltViewModel()
 ) {
     val uiState  by viewModel.uiState.collectAsStateWithLifecycle()
@@ -187,6 +188,7 @@ fun CorrelationMatrixScreen(
                 is CorrelationMatrixUiState.Success -> SuccessContent(
                     state             = state,
                     filterHighCorr    = filterHighCorr,
+                    showExplanation   = showExplanation,
                     onToggleFilter    = { filterHighCorr = !filterHighCorr },
                     onToggleExplainer = viewModel::toggleExplainer,
                     onCellTap         = { a, b, v -> selectedCell = Triple(a, b, v) }
@@ -257,6 +259,7 @@ private fun ErrorState(message: String) {
 private fun SuccessContent(
     state: CorrelationMatrixUiState.Success,
     filterHighCorr: Boolean,
+    showExplanation: Boolean = true,
     onToggleFilter: () -> Unit,
     onToggleExplainer: () -> Unit,
     onCellTap: (String, String, Double) -> Unit
@@ -308,9 +311,11 @@ private fun SuccessContent(
         }
 
         // ── Explainer card ────────────────────────────────────────────────
-        item {
-            ExplainerCard(expanded = state.explainerExpanded, onToggle = onToggleExplainer)
-            Spacer(Modifier.height(12.dp))
+        if (showExplanation) {
+            item {
+                ExplainerCard(expanded = state.explainerExpanded, onToggle = onToggleExplainer)
+                Spacer(Modifier.height(12.dp))
+            }
         }
 
         // ── Filter toggle ─────────────────────────────────────────────────

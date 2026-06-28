@@ -340,6 +340,30 @@ private fun PreferencesTab(viewModel: SettingsViewModel, uiState: SettingsUiStat
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    "Show Explanation",
+                    style = MaterialTheme.typography.bodyLarge
+                )
+                Text(
+                    "Show detail explanation on some screens, especially for financial concepts.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Switch(
+                checked = uiState.showExplanation,
+                onCheckedChange = { viewModel.setShowExplanation(it) }
+            )
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
             Text(
                 "Max # of News articles on ticker:",
                 style = MaterialTheme.typography.bodyLarge,

@@ -1,6 +1,7 @@
 const DEFAULTS = {
   app_theme: 'default',
   warn_before_delete: true,
+  show_explanation: true,
   market_indices: '^IXIC,^GSPC,^DJI,GC=F',
   market_indices_order: '^IXIC,^GSPC,^DJI,GC=F,^RUT,SI=F,CL=F,BTC-USD',
   dashboard_card_order: 'portfolio_summary,market_indices,daily_glance,positions,position_details,watch_list',

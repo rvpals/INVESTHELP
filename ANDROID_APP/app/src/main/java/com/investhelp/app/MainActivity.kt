@@ -43,11 +43,10 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -61,6 +60,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
@@ -97,8 +99,10 @@ import com.investhelp.app.ui.navigation.VolatilityAnalysisRoute
 import com.investhelp.app.ui.navigation.CorrelationMatrixRoute
 import com.investhelp.app.ui.navigation.SharpeRatioRoute
 import androidx.compose.material.icons.filled.QueryStats
+import androidx.compose.material.icons.filled.Refresh
 import android.util.Base64
 import com.investhelp.app.data.local.DatabaseProvider
+import com.investhelp.app.ui.dashboard.TickerSuggestion
 import com.investhelp.app.ui.settings.SettingsViewModel
 import com.investhelp.app.ui.theme.InvestHelpTheme
 import com.investhelp.app.ui.theme.ThemePreferences
@@ -153,9 +157,6 @@ class MainActivity : AppCompatActivity() {
                 Scaffold(
                     topBar = {
                         GlobalTopBar(navController)
-                    },
-                    bottomBar = {
-                        BottomNavigationBar(navController)
                     }
                 ) { padding ->
                     InvestHelpNavHost(
@@ -294,15 +295,17 @@ class MainActivity : AppCompatActivity() {
 @Composable
 fun GlobalTopBar(navController: NavHostController) {
     val dashboardViewModel: DashboardViewModel = hiltViewModel()
-    val uiState by dashboardViewModel.uiState.collectAsStateWithLifecycle()
     val isRefreshing by dashboardViewModel.isRefreshing.collectAsStateWithLifecycle()
     val refreshStatus by dashboardViewModel.refreshStatus.collectAsStateWithLifecycle()
     val currencyFormat = NumberFormat.getCurrencyInstance(Locale.US)
+    val navBackStackEntry by navController.currentBackStackEntryAsState()
+    val currentDestination = navBackStackEntry?.destination
     var menuExpanded by remember { mutableStateOf(false) }
     var showAbout by remember { mutableStateOf(false) }
     var showLog by remember { mutableStateOf(false) }
     var showSearchDialog by remember { mutableStateOf(false) }
     var searchTicker by remember { mutableStateOf("") }
+    val searchSuggestions by dashboardViewModel.searchSuggestions.collectAsStateWithLifecycle()
 
     if (showAbout) {
         AlertDialog(
@@ -322,11 +325,13 @@ fun GlobalTopBar(navController: NavHostController) {
                     Text("What's New", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
+                        "• Top bar redesign — Dashboard / Positions / Transaction nav buttons moved into the top bar; portfolio card replaced with Refresh button; bottom navigation bar removed\n" +
+                        "• Search Ticker autocomplete — type partial ticker or company name to see a live dropdown of matching positions\n" +
+                        "• Settings: \"Show Explanation\" toggle — controls visibility of explanation cards on Sharpe Ratio, Correlation Matrix, Volatility Analysis, and Next Day Actions screens\n" +
                         "• Sharpe Ratio: SQLite cache — result loads instantly on open; cached-at banner; press ↻ to recompute\n" +
                         "• Sharpe Ratio: 5-year and 10-year lookback options added (6M/1Y/2Y/5Y/10Y chips)\n" +
                         "• Sharpe Ratio: \"About Sharpe Ratio\" card — formula, components, interpretation table\n" +
-                        "• Sharpe Ratio: \"Calculation Detail\" card — inputs, per-ticker breakdown, step-by-step\n" +
-                        "• Sharpe Ratio analytics (Android + PWA) — risk-adjusted return metric with configurable risk-free rate, lookback period, and daily returns chart",
+                        "• Sharpe Ratio: \"Calculation Detail\" card — inputs, per-ticker breakdown, step-by-step",
                         style = MaterialTheme.typography.bodySmall
                     )
                 }
@@ -393,6 +398,13 @@ fun GlobalTopBar(navController: NavHostController) {
     }
 
     if (showSearchDialog) {
+        val filteredSuggestions = remember(searchTicker, searchSuggestions) {
+            if (searchTicker.isBlank()) emptyList()
+            else searchSuggestions.filter {
+                it.ticker.contains(searchTicker, ignoreCase = true) ||
+                it.name.contains(searchTicker, ignoreCase = true)
+            }.take(8)
+        }
         AlertDialog(
             onDismissRequest = {
                 showSearchDialog = false
@@ -400,13 +412,59 @@ fun GlobalTopBar(navController: NavHostController) {
             },
             title = { Text("Search Ticker") },
             text = {
-                androidx.compose.material3.OutlinedTextField(
-                    value = searchTicker,
-                    onValueChange = { searchTicker = it.uppercase() },
-                    label = { Text("Ticker") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
+                Column {
+                    androidx.compose.material3.OutlinedTextField(
+                        value = searchTicker,
+                        onValueChange = { searchTicker = it.uppercase() },
+                        label = { Text("Ticker or company name") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    if (filteredSuggestions.isNotEmpty()) {
+                        Spacer(Modifier.height(6.dp))
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(max = 220.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceVariant
+                            )
+                        ) {
+                            LazyColumn {
+                                items(filteredSuggestions) { suggestion ->
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clickable {
+                                                showSearchDialog = false
+                                                searchTicker = ""
+                                                navController.navigate(ItemDetailRoute(suggestion.ticker))
+                                            }
+                                            .padding(horizontal = 12.dp, vertical = 10.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(
+                                            suggestion.ticker,
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            fontWeight = FontWeight.Bold,
+                                            modifier = Modifier.width(68.dp)
+                                        )
+                                        Spacer(Modifier.width(8.dp))
+                                        Text(
+                                            suggestion.name,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                            modifier = Modifier.weight(1f)
+                                        )
+                                    }
+                                    HorizontalDivider()
+                                }
+                            }
+                        }
+                    }
+                }
             },
             confirmButton = {
                 TextButton(
@@ -449,58 +507,57 @@ fun GlobalTopBar(navController: NavHostController) {
             }
         },
         title = {
-            Card(
-                onClick = {
-                    dashboardViewModel.refreshAllPrices()
-                    navController.navigate(DashboardRoute) {
-                        popUpTo(DashboardRoute) { inclusive = true }
-                        launchSingleTop = true
-                    }
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .shadow(
-                        elevation = 8.dp,
-                        shape = MaterialTheme.shapes.medium
-                    ),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer
-                ),
-                elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                ) {
-                    Row(
+                bottomNavItems.forEach { item ->
+                    val selected = currentDestination?.hasRoute(item.route::class) == true
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                            .clickable {
+                                if (!selected) {
+                                    navController.navigate(item.route) {
+                                        popUpTo(DashboardRoute) { saveState = true }
+                                        launchSingleTop = true
+                                        restoreState = true
+                                    }
+                                }
+                            }
+                            .padding(horizontal = 6.dp, vertical = 2.dp)
                     ) {
-                        Text(
-                            text = "Total Portfolio: ",
-                            style = MaterialTheme.typography.titleMedium,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        Icon3D(
+                            imageVector = item.icon,
+                            contentDescription = item.label,
+                            baseColor = if (selected) item.tint else item.tint.copy(alpha = 0.45f),
+                            iconSize = 16.dp,
+                            boxSize = 28.dp
                         )
                         Text(
-                            text = currencyFormat.format(uiState.totalPortfolioValue),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer
-                        )
-                    }
-                    if (isRefreshing) {
-                        LinearProgressIndicator(
-                            modifier = Modifier.fillMaxWidth(),
-                            color = MaterialTheme.colorScheme.onPrimaryContainer,
-                            trackColor = MaterialTheme.colorScheme.primaryContainer
+                            item.label,
+                            fontSize = 9.sp,
+                            color = if (selected) item.tint else MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal
                         )
                     }
                 }
             }
         },
         actions = {
+            IconButton(
+                onClick = { dashboardViewModel.refreshAllPrices() },
+                modifier = Modifier.size(36.dp)
+            ) {
+                Icon3D(
+                    imageVector = Icons.Default.Refresh,
+                    contentDescription = "Refresh prices",
+                    baseColor = Color(0xFF00897B),
+                    iconSize = 18.dp,
+                    boxSize = 30.dp
+                )
+            }
             IconButton(
                 onClick = {
                     navController.navigate(WatchListRoute) {
@@ -662,6 +719,10 @@ fun GlobalTopBar(navController: NavHostController) {
         }
     )
 
+    if (isRefreshing) {
+        LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+    }
+
     if (isRefreshing && refreshStatus != null) {
         val status = refreshStatus!!
         val sign = if (status.changeAmount >= 0) "+" else ""
@@ -722,46 +783,3 @@ fun Icon3D(
     }
 }
 
-@Composable
-fun BottomNavigationBar(navController: NavHostController) {
-    val navBackStackEntry by navController.currentBackStackEntryAsState()
-    val currentDestination = navBackStackEntry?.destination
-
-    NavigationBar(
-        modifier = Modifier.shadow(elevation = 12.dp),
-        tonalElevation = 8.dp
-    ) {
-        bottomNavItems.forEach { item ->
-            val selected = currentDestination?.hasRoute(item.route::class) == true
-            NavigationBarItem(
-                icon = {
-                    Icon3D(
-                        imageVector = item.icon,
-                        contentDescription = item.label,
-                        baseColor = if (selected) item.tint else item.tint.copy(alpha = 0.4f),
-                        iconSize = if (selected) 22.dp else 20.dp,
-                        boxSize = if (selected) 36.dp else 32.dp
-                    )
-                },
-                label = {
-                    Text(
-                        item.label,
-                        fontSize = 10.sp,
-                        color = if (selected) item.tint else MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                },
-                selected = selected,
-                alwaysShowLabel = true,
-                onClick = {
-                    if (!selected) {
-                        navController.navigate(item.route) {
-                            popUpTo(DashboardRoute) { saveState = true }
-                            launchSingleTop = true
-                            restoreState = true
-                        }
-                    }
-                }
-            )
-        }
-    }
-}

@@ -1,6 +1,7 @@
 import { correlation as correlationApi } from '../api.js';
 import { collapsibleCard, initCollapsibleCards } from '../components/collapsible-card.js';
 import { navigate } from '../router.js';
+import { getPref } from '../preferences.js';
 
 // ── Colour helpers ─────────────────────────────────────────────────────────────
 
@@ -452,7 +453,7 @@ export async function render(container) {
       </div>`;
     }
 
-    html += explainerCardHtml();
+    if (getPref('show_explanation')) html += explainerCardHtml();
 
     // Filter toggle
     html += `<div class="flex items-center gap-8 mt-12 mb-4">
