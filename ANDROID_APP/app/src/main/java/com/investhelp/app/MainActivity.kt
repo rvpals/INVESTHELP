@@ -514,32 +514,24 @@ fun GlobalTopBar(navController: NavHostController) {
             ) {
                 bottomNavItems.forEach { item ->
                     val selected = currentDestination?.hasRoute(item.route::class) == true
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        modifier = Modifier
-                            .clickable {
-                                if (!selected) {
-                                    navController.navigate(item.route) {
-                                        popUpTo(DashboardRoute) { saveState = true }
-                                        launchSingleTop = true
-                                        restoreState = true
-                                    }
+                    IconButton(
+                        onClick = {
+                            if (!selected) {
+                                navController.navigate(item.route) {
+                                    popUpTo(DashboardRoute) { saveState = true }
+                                    launchSingleTop = true
+                                    restoreState = true
                                 }
                             }
-                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                        },
+                        modifier = Modifier.size(36.dp)
                     ) {
                         Icon3D(
                             imageVector = item.icon,
                             contentDescription = item.label,
                             baseColor = if (selected) item.tint else item.tint.copy(alpha = 0.45f),
-                            iconSize = 16.dp,
-                            boxSize = 28.dp
-                        )
-                        Text(
-                            item.label,
-                            fontSize = 9.sp,
-                            color = if (selected) item.tint else MaterialTheme.colorScheme.onSurfaceVariant,
-                            fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal
+                            iconSize = 18.dp,
+                            boxSize = 30.dp
                         )
                     }
                 }
