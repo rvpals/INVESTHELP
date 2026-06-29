@@ -12,6 +12,8 @@ import com.investhelp.app.data.local.entity.InvestmentTransactionEntity
 import com.investhelp.app.data.local.entity.DefinitionEntity
 import com.investhelp.app.data.local.entity.VolatilityCacheEntity
 import com.investhelp.app.data.remote.AnalysisInfo
+import com.investhelp.app.data.remote.CorporateEvent
+import com.investhelp.app.data.remote.CorporateEventType
 import com.investhelp.app.data.remote.HistoricalPrice
 import com.investhelp.app.data.remote.StockPriceService
 import com.investhelp.app.data.repository.DefinitionRepository
@@ -170,6 +172,26 @@ class ItemViewModel @Inject constructor(
                 _investingPerformance.value = emptyList()
             } finally {
                 _isLoadingInvestingPerf.value = false
+            }
+        }
+    }
+
+    // --- Corporate Events ---
+    private val _corporateEvents = MutableStateFlow<List<CorporateEvent>>(emptyList())
+    val corporateEvents: StateFlow<List<CorporateEvent>> = _corporateEvents.asStateFlow()
+
+    private val _isLoadingCorporateEvents = MutableStateFlow(false)
+    val isLoadingCorporateEvents: StateFlow<Boolean> = _isLoadingCorporateEvents.asStateFlow()
+
+    fun loadCorporateEvents(ticker: String) {
+        viewModelScope.launch {
+            _isLoadingCorporateEvents.value = true
+            try {
+                _corporateEvents.value = stockPriceService.fetchCorporateEvents(ticker)
+            } catch (e: Exception) {
+                _corporateEvents.value = emptyList()
+            } finally {
+                _isLoadingCorporateEvents.value = false
             }
         }
     }

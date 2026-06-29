@@ -80,4 +80,13 @@ router.get('/report/:ticker', async (req, res) => {
   }
 });
 
+router.get('/events/:ticker', async (req, res) => {
+  try {
+    const data = await yahoo.fetchCorporateEvents(req.params.ticker);
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;

@@ -128,25 +128,32 @@ Old debug APKs (or APKs signed with a different key) cannot be upgraded in-place
 
 ## Problem #4 — Locked Files During Build
 
-### Symptom
+### Symptom A
 ```
 Unable to unlink version.properties: Invalid argument
 ```
 
+### Symptom B
+```
+java.io.IOException: Unable to delete directory '...app\build'
+Failed to delete some children: ...lint-cache\lintVitalAnalyzeRelease\migrated-jars
+```
+
 ### Cause
-Gradle daemon or another process has `version.properties` open.
+Gradle daemon or another process has `version.properties` or lint-cache JARs open. Symptom B occurs when `clean assembleRelease` tries to delete the build folder while a previous daemon holds a lock on lint-cache JARs.
 
 ### Fix
 ```powershell
-# Stop all Gradle daemons
-cd ANDROID_APP
-.\gradlew.bat --stop
-
-# Kill any lingering Java processes
-Get-Process | Where-Object { $_.Name -eq 'java' } | Stop-Process -Force
+# Kill all Java and Gradle processes
+Get-Process -Name "java","gradle" -ErrorAction SilentlyContinue | Stop-Process -Force
 ```
 
-Then retry the build.
+Then retry **without** `clean` — use `--rerun-tasks` instead to force all tasks to re-execute without deleting the locked build folder:
+```powershell
+$env:JAVA_HOME = "E:\Prog\Java\jdk-17"
+$env:PATH = "$env:JAVA_HOME\bin;$env:PATH"
+.\gradlew.bat assembleRelease --rerun-tasks 2>&1
+```
 
 ---
 

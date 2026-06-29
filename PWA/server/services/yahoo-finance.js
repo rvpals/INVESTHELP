@@ -274,7 +274,122 @@ async function fetchFullReport(ticker) {
   };
 }
 
+async function fetchCorporateEvents(ticker) {
+  const enc = encodeURIComponent(ticker);
+  const events = [];
+
+  // 1. Dividend and split history via v8 chart (5Y, no crumb needed)
+  try {
+    const chartUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${enc}?range=5y&interval=1d&events=div%2Csplit`;
+    const chartResp = await fetch(chartUrl);
+    if (chartResp.ok) {
+      const chartData = await chartResp.json();
+      const result = chartData.chart?.result?.[0];
+      const eventsObj = result?.events || {};
+
+      const dividends = eventsObj.dividends || {};
+      for (const [ts, d] of Object.entries(dividends)) {
+        events.push({
+          date: parseInt(ts),
+          type: 'DIVIDEND',
+          description: `Dividend $${(d.amount || 0).toFixed(4)}/share`,
+          amount: d.amount || 0,
+        });
+      }
+
+      const splits = eventsObj.splits || {};
+      for (const [ts, s] of Object.entries(splits)) {
+        const ratio = s.splitRatio || `${s.numerator}:${s.denominator}`;
+        events.push({
+          date: parseInt(ts),
+          type: 'SPLIT',
+          description: `Stock Split ${ratio}`,
+          ratio,
+        });
+      }
+    }
+  } catch (err) {
+    console.error(`fetchCorporateEvents chart error for ${ticker}:`, err.message);
+  }
+
+  // 2. Earnings via v10 quoteSummary (calendarEvents + earningsHistory)
+  try {
+    const modules = 'calendarEvents,earningsHistory';
+    let data = null;
+
+    if (!crumb) await refreshCrumb();
+    if (crumb) {
+      const url = `https://query2.finance.yahoo.com/v10/finance/quoteSummary/${enc}?modules=${modules}&crumb=${encodeURIComponent(crumb)}`;
+      const resp = await fetch(url, { headers: { Cookie: cookies } });
+      if (resp.status === 401 || resp.status === 403) {
+        await refreshCrumb();
+        if (crumb) {
+          const retry = await fetch(
+            `https://query2.finance.yahoo.com/v10/finance/quoteSummary/${enc}?modules=${modules}&crumb=${encodeURIComponent(crumb)}`,
+            { headers: { Cookie: cookies } }
+          );
+          if (retry.ok) data = await retry.json();
+        }
+      } else if (resp.ok) {
+        data = await resp.json();
+      }
+    }
+    if (!data) {
+      const resp = await fetch(`https://query2.finance.yahoo.com/v10/finance/quoteSummary/${enc}?modules=${modules}`);
+      if (resp.ok) data = await resp.json();
+    }
+
+    if (data) {
+      const r = data.quoteSummary?.result?.[0] || {};
+      const cal = r.calendarEvents || {};
+
+      // Upcoming earnings
+      const earningsDates = cal.earnings?.earningsDate || [];
+      earningsDates.forEach(d => {
+        const ts = d.raw;
+        if (!ts) return;
+        const epsEst = cal.earnings?.earningsAverage?.raw;
+        const desc = epsEst != null
+          ? `Upcoming Earnings (EPS est. $${epsEst.toFixed(2)})`
+          : 'Upcoming Earnings';
+        events.push({ date: ts, type: 'EARNINGS_UPCOMING', description: desc });
+      });
+
+      // Upcoming ex-dividend
+      const exDiv = cal.exDividendDate?.raw;
+      if (exDiv && exDiv > Math.floor(Date.now() / 1000)) {
+        events.push({ date: exDiv, type: 'DIVIDEND', description: 'Ex-Dividend Date (upcoming)', amount: 0 });
+      }
+
+      // Past earnings history
+      const history = r.earningsHistory?.history || [];
+      history.forEach(e => {
+        const ts = e.quarter?.raw;
+        if (!ts) return;
+        const actual = e.epsActual?.raw;
+        const estimate = e.epsEstimate?.raw;
+        const surprise = e.surprisePercent?.raw;
+        let desc = 'Earnings';
+        if (actual != null && estimate != null) {
+          const vs = actual >= estimate ? '✓ Beat' : '✗ Miss';
+          const surpriseStr = surprise != null ? ` ${(surprise * 100).toFixed(1)}%` : '';
+          desc = `Earnings EPS $${actual.toFixed(2)} (est $${estimate.toFixed(2)}) ${vs}${surpriseStr}`;
+        } else if (actual != null) {
+          desc = `Earnings EPS $${actual.toFixed(2)}`;
+        }
+        events.push({ date: ts, type: 'EARNINGS', description: desc });
+      });
+    }
+  } catch (err) {
+    console.error(`fetchCorporateEvents earnings error for ${ticker}:`, err.message);
+  }
+
+  events.sort((a, b) => a.date - b.date);
+  return events;
+}
+
 module.exports = {
   fetchQuote, fetchPriceHistory, fetchPriceHistoryByPeriod,
-  fetchAnalysisInfo, fetchNews, fetchScanData, fetchLogo, fetchFullReport, refreshCrumb,
+  fetchAnalysisInfo, fetchNews, fetchScanData, fetchLogo, fetchFullReport,
+  fetchCorporateEvents, refreshCrumb,
 };

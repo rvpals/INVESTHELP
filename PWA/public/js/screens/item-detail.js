@@ -90,11 +90,13 @@ export async function render(container, { ticker }) {
       </div>` : '<div class="mb-16"></div>'}
       ${collapsibleCard('correlation_' + ticker, 'Correlation', '<div id="correlation-content"><div class="spinner"></div> Loading...</div>', { defaultExpanded: false })}
       ${collapsibleCard('volatility_' + ticker, 'Volatility', '<div id="volatility-content"><div class="spinner"></div> Loading...</div>', { defaultExpanded: false })}
+      ${collapsibleCard('events_' + ticker, 'Important Events', '<div id="events-content"><div class="spinner"></div> Loading...</div>', { defaultExpanded: false })}
       ${collapsibleCard('news_' + ticker, 'News on ' + ticker, '<div id="news-content"><div class="spinner"></div> Loading...</div>')}
     `;
     initCollapsibleCards(content);
     loadCorrelationCard(ticker);
     loadVolatilityCard(ticker, p.currentPrice);
+    loadCorporateEvents(ticker);
     loadNews(ticker);
   } else if (currentTab === 'history') {
     const TIMEFRAMES = [
@@ -183,10 +185,14 @@ export async function render(container, { ticker }) {
       `, { defaultExpanded: true })}
       ${txList.length > 0 ? collapsibleCard('investperf_' + ticker, 'Investing Performance for ' + ticker, `
         <div class="chart-container mb-8"><canvas id="perf-chart"></canvas></div>
-        <div id="perf-legend" class="flex gap-12 mb-8" style="justify-content:center">
+        <div id="perf-legend" class="flex gap-8 mb-8" style="justify-content:center;flex-wrap:wrap">
           <span class="flex items-center gap-4 text-xs"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#D32F2F"></span> Transaction</span>
           <span class="flex items-center gap-4 text-xs"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--outline,#79747E);opacity:0.5"></span> Market</span>
-          <span class="flex items-center gap-4 text-xs"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--tertiary,#7C5800)"></span> Current Price</span>
+          <span class="flex items-center gap-4 text-xs"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--tertiary,#7C5800)"></span> Current</span>
+          <span class="flex items-center gap-4 text-xs"><span style="display:inline-block;width:10px;height:10px;background:#1565C0;transform:rotate(45deg)"></span> Dividend</span>
+          <span class="flex items-center gap-4 text-xs"><span style="display:inline-block;width:10px;height:10px;background:#E65100;transform:rotate(45deg)"></span> Split</span>
+          <span class="flex items-center gap-4 text-xs"><span style="display:inline-block;width:10px;height:10px;background:#2E7D32;transform:rotate(45deg)"></span> Earnings</span>
+          <span class="flex items-center gap-4 text-xs"><span style="display:inline-block;width:10px;height:10px;background:#6A1B9A;transform:rotate(45deg)"></span> Upcoming</span>
         </div>
         <div id="perf-table"><div class="flex items-center gap-8"><div class="spinner"></div> <span class="text-sm text-muted">Loading performance data...</span></div></div>
       `, { defaultExpanded: true }) : ''}
@@ -401,6 +407,53 @@ function renderVolatilityInCard(el, d) {
   `;
 }
 
+async function loadCorporateEvents(ticker) {
+  const el = document.getElementById('events-content');
+  if (!el) return;
+  try {
+    const events = await yahoo.events(ticker);
+    if (!events.length) {
+      el.innerHTML = '<div class="text-sm text-muted">No events found</div>';
+      return;
+    }
+    const now = Math.floor(Date.now() / 1000);
+    const upcoming = events.filter(e => e.date >= now);
+    const past = events.filter(e => e.date < now).slice().reverse();
+
+    const typeLabel = { DIVIDEND: 'Dividend', SPLIT: 'Split', EARNINGS: 'Earnings', EARNINGS_UPCOMING: 'Upcoming' };
+
+    const renderRow = (e) => {
+      const col = EVENT_COLORS[e.type] || '#666';
+      const lbl = typeLabel[e.type] || e.type;
+      const dateStr = new Date(e.date * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      return `<tr>
+        <td style="white-space:nowrap">${dateStr}</td>
+        <td><span style="background:${col}1e;border:1px solid ${col}66;color:${col};padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700">${lbl}</span></td>
+        <td style="font-size:12px">${e.description}</td>
+      </tr>`;
+    };
+
+    let html = '';
+    if (upcoming.length) {
+      html += `<div style="font-weight:600;font-size:11px;color:var(--text-muted);letter-spacing:.05em;margin-bottom:4px">UPCOMING</div>`;
+      html += `<div class="data-table-wrapper mb-8"><table class="data-table">
+        <thead><tr><th>Date</th><th>Type</th><th>Event</th></tr></thead>
+        <tbody>${upcoming.map(renderRow).join('')}</tbody>
+      </table></div>`;
+    }
+    if (past.length) {
+      html += `<div style="font-weight:600;font-size:11px;color:var(--text-muted);letter-spacing:.05em;margin-bottom:4px">RECENT HISTORY</div>`;
+      html += `<div class="data-table-wrapper" style="max-height:240px;overflow-y:auto"><table class="data-table">
+        <thead><tr><th>Date</th><th>Type</th><th>Event</th></tr></thead>
+        <tbody>${past.map(renderRow).join('')}</tbody>
+      </table></div>`;
+    }
+    el.innerHTML = html;
+  } catch (err) {
+    el.innerHTML = `<div class="text-sm text-muted">Unable to load events: ${err.message}</div>`;
+  }
+}
+
 async function loadNews(ticker) {
   const el = document.getElementById('news-content');
   if (!el) return;
@@ -423,6 +476,13 @@ async function loadNews(ticker) {
 function getCSS(prop) {
   return getComputedStyle(document.documentElement).getPropertyValue(prop).trim();
 }
+
+const EVENT_COLORS = {
+  DIVIDEND: '#1565C0',
+  SPLIT: '#E65100',
+  EARNINGS: '#2E7D32',
+  EARNINGS_UPCOMING: '#6A1B9A',
+};
 
 async function loadInvestingPerformance(ticker, txList, currentPrice) {
   const tableEl = document.getElementById('perf-table');
@@ -454,7 +514,24 @@ async function loadInvestingPerformance(ticker, txList, currentPrice) {
       type: 'current'
     };
 
-    const allPoints = [...marketPoints, ...txPoints, currentPoint].sort((a, b) => a.x - b.x);
+    // Fetch corporate events, overlay at nearest market price
+    let eventPoints = [];
+    try {
+      const events = await yahoo.events(ticker);
+      eventPoints = events
+        .filter(e => e.date >= period1 && e.date <= period2)
+        .map(e => {
+          let nearestPrice = currentPrice;
+          let minDiff = Infinity;
+          for (const mp of marketPoints) {
+            const diff = Math.abs(mp.x - e.date);
+            if (diff < minDiff) { minDiff = diff; nearestPrice = mp.y; }
+          }
+          return { x: e.date, y: nearestPrice, type: 'event', eventType: e.type, description: e.description };
+        });
+    } catch (_) {}
+
+    const allPoints = [...marketPoints, ...txPoints, ...eventPoints, currentPoint].sort((a, b) => a.x - b.x);
 
     if (allPoints.length < 2) {
       tableEl.innerHTML = '<div class="text-muted">Not enough data for chart</div>';
@@ -551,6 +628,17 @@ function renderPerfChart(canvas, points) {
       ctx.font = 'bold 10px sans-serif';
       ctx.textAlign = 'center';
       ctx.fillText(formatCurrency(p.y), cx, cy - 12);
+    } else if (p.type === 'event') {
+      const evColor = EVENT_COLORS[p.eventType] || '#666';
+      const ds = 7;
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.rotate(Math.PI / 4);
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(-ds, -ds, ds * 2, ds * 2);
+      ctx.fillStyle = evColor;
+      ctx.fillRect(-ds + 2, -ds + 2, (ds - 2) * 2, (ds - 2) * 2);
+      ctx.restore();
     } else {
       ctx.beginPath(); ctx.arc(cx, cy, 3, 0, Math.PI * 2);
       ctx.fillStyle = outlineColor;
@@ -581,7 +669,10 @@ function renderPerfChart(canvas, points) {
     if (closest && minDist < 30) {
       renderPerfChart(canvas, points);
       const cx = toX(closest.x), cy = toY(closest.y);
-      const tipColor = closest.type === 'transaction' ? txColor : closest.type === 'current' ? currentColor : outlineColor;
+      const tipColor = closest.type === 'transaction' ? txColor
+        : closest.type === 'current' ? currentColor
+        : closest.type === 'event' ? (EVENT_COLORS[closest.eventType] || '#666')
+        : outlineColor;
       ctx.strokeStyle = tipColor;
       ctx.setLineDash([4, 4]);
       ctx.beginPath(); ctx.moveTo(cx, pad.top); ctx.lineTo(cx, pad.top + ch); ctx.stroke();
@@ -593,6 +684,7 @@ function renderPerfChart(canvas, points) {
       let label = formatCurrency(closest.y);
       if (closest.type === 'transaction') label += ` (${closest.action} ${formatShares(closest.shares)})`;
       if (closest.type === 'current') label += ' (Current)';
+      if (closest.type === 'event') label = closest.description;
       ctx.fillText(label, tx, cy - 18);
       ctx.font = '10px sans-serif';
       ctx.fillText(new Date(closest.x * 1000).toLocaleDateString(), tx, cy - 6);
@@ -608,18 +700,28 @@ function renderPerfTable(el, allPoints) {
     const dateStr = new Date(p.x * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
     const isTx = p.type === 'transaction';
     const isCurrent = p.type === 'current';
-    const rowClass = isTx ? 'style="background:rgba(211,47,47,0.08)"' : isCurrent ? 'style="background:rgba(124,88,0,0.08)"' : (i % 2 ? 'class="row-alt"' : '');
-    const typeLabel = isTx ? `<span class="text-bold" style="color:#D32F2F">${p.action} ${formatShares(p.shares)}</span>`
-                    : isCurrent ? `<span class="text-bold" style="color:var(--tertiary,#7C5800)">Current</span>`
-                    : '<span class="text-muted">Market</span>';
-    const priceStyle = isTx ? ' style="color:#D32F2F;font-weight:bold"' : isCurrent ? ' style="color:var(--tertiary,#7C5800);font-weight:bold"' : '';
-    return `<tr ${rowClass}><td>${dateStr}</td><td${priceStyle}>${formatCurrency(p.y)}</td><td>${typeLabel}</td></tr>`;
+    const isEvent = p.type === 'event';
+    const evColor = isEvent ? (EVENT_COLORS[p.eventType] || '#666') : null;
+    const rowClass = isTx ? 'style="background:rgba(211,47,47,0.08)"'
+      : isCurrent ? 'style="background:rgba(124,88,0,0.08)"'
+      : isEvent ? `style="background:${evColor}14"`
+      : (i % 2 ? 'class="row-alt"' : '');
+    const typeLabel = isTx
+      ? `<span class="text-bold" style="color:#D32F2F">${p.action} ${formatShares(p.shares)}</span>`
+      : isCurrent
+      ? `<span class="text-bold" style="color:var(--tertiary,#7C5800)">Current</span>`
+      : isEvent
+      ? `<span style="background:${evColor}1e;border:1px solid ${evColor}66;color:${evColor};padding:1px 6px;border-radius:8px;font-size:11px;font-weight:700">${p.eventType.replace('_', ' ')}</span>`
+      : '<span class="text-muted">Market</span>';
+    const priceStyle = isTx ? ` style="color:#D32F2F;font-weight:bold"` : isCurrent ? ` style="color:var(--tertiary,#7C5800);font-weight:bold"` : isEvent ? ` style="color:${evColor};font-weight:500"` : '';
+    const descCell = isEvent ? `<td style="color:${evColor};font-size:11px">${p.description}</td>` : `<td></td>`;
+    return `<tr ${rowClass}><td>${dateStr}</td><td${priceStyle}>${formatCurrency(p.y)}</td><td>${typeLabel}</td>${descCell}</tr>`;
   });
 
   el.innerHTML = `
     <div class="data-table-wrapper" style="max-height:300px;overflow-y:auto">
       <table class="data-table">
-        <thead><tr><th>Date</th><th>Price</th><th>Type</th></tr></thead>
+        <thead><tr><th>Date</th><th>Price</th><th>Type</th><th>Description</th></tr></thead>
         <tbody>${rows.join('')}</tbody>
       </table>
     </div>

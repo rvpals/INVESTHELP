@@ -7,6 +7,8 @@ const yahoo = require('../services/yahoo-finance');
 
 const TRADING_DAYS_PER_YEAR = 252;
 const MINIMUM_RETURN_OBSERVATIONS = 30;
+const ROLLING_WINDOW_30 = 30;
+const ROLLING_WINDOW_90 = 90;
 
 // Calendar days → Yahoo Finance range string
 function lookbackToYahooRange(calendarDays) {
@@ -172,6 +174,116 @@ function cacheRowToResult(row) {
     fromCache:             true,
     cachedAt:              row.calculatedAt,
   };
+}
+
+// ── Rolling Risk helpers ───────────────────────────────────────────────────────
+
+function epochDaysToDateStr(epochDays) {
+  const d = new Date(epochDays * 86400 * 1000);
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
+}
+
+function epochSecToDateStr(epochSec) {
+  const d = new Date(epochSec * 1000);
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
+}
+
+/** Replays transactions day-by-day against historical prices to produce a portfolio equity curve. */
+function buildEquityCurve(transactions, pricesByTicker) {
+  const sorted = [...transactions].sort((a, b) => a.date - b.date);
+  if (sorted.length === 0) return [];
+
+  const earliestDateStr = epochDaysToDateStr(sorted[0].date);
+
+  const allDatesSet = new Set();
+  for (const priceMap of Object.values(pricesByTicker)) {
+    for (const d of Object.keys(priceMap)) {
+      if (d >= earliestDateStr) allDatesSet.add(d);
+    }
+  }
+  const allDates = [...allDatesSet].sort();
+
+  const holdings = {};
+  const lastKnownPrice = {};
+  const curve = [];
+  let txIdx = 0;
+
+  for (const dateStr of allDates) {
+    while (txIdx < sorted.length && epochDaysToDateStr(sorted[txIdx].date) <= dateStr) {
+      const tx = sorted[txIdx++];
+      const prev = holdings[tx.ticker] || 0;
+      holdings[tx.ticker] = tx.action === 'Buy'
+        ? prev + tx.numberOfShares
+        : Math.max(0, prev - tx.numberOfShares);
+    }
+    for (const [ticker, priceMap] of Object.entries(pricesByTicker)) {
+      if (priceMap[dateStr] != null) lastKnownPrice[ticker] = priceMap[dateStr];
+    }
+    let value = 0;
+    for (const [ticker, shares] of Object.entries(holdings)) {
+      if (shares > 0 && lastKnownPrice[ticker] != null) {
+        value += shares * lastKnownPrice[ticker];
+      }
+    }
+    if (value > 0) curve.push({ date: dateStr, value });
+  }
+
+  return curve;
+}
+
+/** Computes rolling return points + O(N) sliding-window Sharpe for both windows. */
+function computeRollingRisk(equityCurve, riskFreeRateAnnual) {
+  if (equityCurve.length < 2) return [];
+  const dailyRf = riskFreeRateAnnual / TRADING_DAYS_PER_YEAR;
+
+  const returnPoints = [];
+  for (let i = 1; i < equityCurve.length; i++) {
+    const prev = equityCurve[i - 1].value;
+    const curr = equityCurve[i].value;
+    if (prev <= 0) continue;
+    returnPoints.push({ date: equityCurve[i].date, portfolioValue: curr, dailyReturn: (curr - prev) / prev });
+  }
+  if (returnPoints.length === 0) return [];
+
+  const excess = returnPoints.map(p => p.dailyReturn - dailyRf);
+  const s30 = slidingWindowSharpe(excess, ROLLING_WINDOW_30);
+  const s90 = slidingWindowSharpe(excess, ROLLING_WINDOW_90);
+
+  return returnPoints.map((p, i) => ({
+    date: p.date,
+    portfolioValue: p.portfolioValue,
+    dailyReturn: p.dailyReturn,
+    rolling30SharpeRatio: s30[i],
+    rolling90SharpeRatio: s90[i],
+  }));
+}
+
+/** O(N) sliding window annualized Sharpe via running sum and sum-of-squares. */
+function slidingWindowSharpe(excessReturns, window) {
+  const result = [];
+  let sum = 0, sumSq = 0;
+  const deque = [];
+
+  for (const x of excessReturns) {
+    if (deque.length === window) {
+      const old = deque.shift();
+      sum -= old;
+      sumSq -= old * old;
+    }
+    deque.push(x);
+    sum += x;
+    sumSq += x * x;
+
+    if (deque.length < window) {
+      result.push(null);
+    } else {
+      const mean = sum / window;
+      const variance = (sumSq - sum * sum / window) / (window - 1);
+      const std = variance > 1e-12 ? Math.sqrt(variance) : 0;
+      result.push(std > 0 ? (mean / std) * Math.sqrt(TRADING_DAYS_PER_YEAR) : null);
+    }
+  }
+  return result;
 }
 
 // ── GET /api/sharpe/cached ─────────────────────────────────────────────────────
@@ -361,6 +473,63 @@ router.post('/compute', async (req, res) => {
     res.json(responseData);
   } catch (err) {
     console.error('Sharpe compute error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── POST /api/sharpe/rolling ──────────────────────────────────────────────────
+
+router.post('/rolling', async (req, res) => {
+  try {
+    const riskFreeRate = parseFloat(req.body.riskFreeRate ?? 0.05);
+
+    const allTransactions = db.prepare(
+      'SELECT date, action, ticker, numberOfShares FROM investment_transactions ORDER BY date ASC'
+    ).all();
+
+    if (allTransactions.length === 0) {
+      return res.status(400).json({ error: 'No transactions found.' });
+    }
+
+    const tickers = [...new Set(allTransactions.map(t => t.ticker))];
+    const pricesByTicker = {};
+
+    for (let i = 0; i < tickers.length; i++) {
+      const ticker = tickers[i];
+      console.log(`RollingRisk: fetching ${i + 1}/${tickers.length} ${ticker}`);
+      const history = await fetchWithRetry(ticker, '10y');
+      if (history && history.length > 0) {
+        const priceMap = {};
+        for (const p of history) {
+          priceMap[epochSecToDateStr(p.timestamp)] = p.close;
+        }
+        pricesByTicker[ticker] = priceMap;
+      }
+    }
+
+    if (Object.keys(pricesByTicker).length === 0) {
+      return res.status(400).json({ error: 'No price data available for any ticker.' });
+    }
+
+    const equityCurve = buildEquityCurve(allTransactions, pricesByTicker);
+
+    if (equityCurve.length < ROLLING_WINDOW_30 + 1) {
+      return res.status(400).json({
+        error: `Not enough portfolio history. Need at least ${ROLLING_WINDOW_30} invested trading days (found ${equityCurve.length}).`,
+      });
+    }
+
+    const points = computeRollingRisk(equityCurve, riskFreeRate);
+
+    console.log(
+      `RollingRisk: ${points.length} return days, ` +
+      `30d ready at idx ${points.findIndex(p => p.rolling30SharpeRatio != null)}, ` +
+      `90d ready at idx ${points.findIndex(p => p.rolling90SharpeRatio != null)}`
+    );
+
+    res.json({ points });
+  } catch (err) {
+    console.error('RollingRisk error:', err);
     res.status(500).json({ error: err.message });
   }
 });

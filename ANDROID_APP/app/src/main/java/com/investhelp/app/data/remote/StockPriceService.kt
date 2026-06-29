@@ -16,6 +16,9 @@ import kotlinx.serialization.json.int
 import kotlinx.serialization.json.long
 import java.net.HttpURLConnection
 import java.net.URL
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -74,6 +77,15 @@ data class AnalysisInfo(
 data class YahooReportSection(
     val title: String,
     val fields: List<YahooReportField>
+)
+
+enum class CorporateEventType { DIVIDEND, SPLIT, EARNINGS, EARNINGS_UPCOMING }
+
+data class CorporateEvent(
+    val date: LocalDate,
+    val type: CorporateEventType,
+    val description: String,
+    val amount: Double? = null
 )
 
 data class YahooReportField(
@@ -682,6 +694,114 @@ class StockPriceService @Inject constructor() {
             value >= 1_000_000 -> "${"%.2f".format(value / 1_000_000)}M"
             value >= 1_000 -> "${"%.0f".format(value)}"
             else -> "%.2f".format(value)
+        }
+    }
+
+    suspend fun fetchCorporateEvents(ticker: String): List<CorporateEvent> = withContext(Dispatchers.IO) {
+        val events = mutableListOf<CorporateEvent>()
+
+        // 1. Dividend and split history via v8 chart (5Y, no crumb needed)
+        try {
+            val url = URL("https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?range=5y&interval=1d&events=div%2Csplit")
+            val conn = url.openConnection() as HttpURLConnection
+            conn.instanceFollowRedirects = true
+            conn.setRequestProperty("User-Agent", "Mozilla/5.0")
+            conn.connectTimeout = 15_000
+            conn.readTimeout = 30_000
+            try {
+                if (conn.responseCode == 200) {
+                    val body = conn.inputStream.bufferedReader().readText()
+                    val root = json.parseToJsonElement(body) as JsonObject
+                    val result = root["chart"]?.jsonObject?.get("result")?.jsonArray?.firstOrNull()?.jsonObject
+                    val eventsObj = result?.get("events")?.jsonObject
+
+                    // Dividends
+                    eventsObj?.get("dividends")?.jsonObject?.forEach { (ts, dv) ->
+                        val epochSec = ts.toLongOrNull() ?: return@forEach
+                        val date = Instant.ofEpochSecond(epochSec).atZone(ZoneId.systemDefault()).toLocalDate()
+                        val amount = dv.jsonObject["amount"]?.jsonPrimitive?.doubleOrNull ?: 0.0
+                        events.add(CorporateEvent(date, CorporateEventType.DIVIDEND, "Dividend \$${"%.4f".format(amount)}/share", amount))
+                    }
+
+                    // Splits
+                    eventsObj?.get("splits")?.jsonObject?.forEach { (ts, sp) ->
+                        val epochSec = ts.toLongOrNull() ?: return@forEach
+                        val date = Instant.ofEpochSecond(epochSec).atZone(ZoneId.systemDefault()).toLocalDate()
+                        val numerator = sp.jsonObject["numerator"]?.jsonPrimitive?.longOrNull
+                        val denominator = sp.jsonObject["denominator"]?.jsonPrimitive?.longOrNull
+                        val ratio = sp.jsonObject["splitRatio"]?.jsonPrimitive?.contentOrNull
+                            ?: if (numerator != null && denominator != null) "$numerator:$denominator" else "?"
+                        events.add(CorporateEvent(date, CorporateEventType.SPLIT, "Stock Split $ratio"))
+                    }
+                }
+            } finally { conn.disconnect() }
+        } catch (e: Exception) {
+            AppLog.log("fetchCorporateEvents chart failed for $ticker: ${e.message}")
+        }
+
+        // 2. Earnings via v10 quoteSummary (calendarEvents + earningsHistory)
+        try {
+            ensureCrumb()
+            val crumb = cachedCrumb ?: throw Exception("No crumb available")
+            val modules = "calendarEvents,earningsHistory"
+            val url = URL("https://query2.finance.yahoo.com/v10/finance/quoteSummary/${ticker}?modules=$modules&crumb=${java.net.URLEncoder.encode(crumb, "UTF-8")}")
+            val conn = url.openConnection() as HttpURLConnection
+            conn.instanceFollowRedirects = true
+            conn.setRequestProperty("User-Agent", "Mozilla/5.0")
+            conn.setRequestProperty("Cookie", cachedCookie ?: "")
+            conn.connectTimeout = 15_000
+            conn.readTimeout = 15_000
+            try {
+                val status = conn.responseCode
+                if (status == 401 || status == 403) {
+                    invalidateCrumb()
+                } else if (status == 200) {
+                    parseEarningsEvents(conn.inputStream.bufferedReader().readText(), events)
+                }
+            } finally { conn.disconnect() }
+        } catch (e: Exception) {
+            AppLog.log("fetchCorporateEvents earnings failed for $ticker: ${e.message}")
+        }
+
+        events.sortBy { it.date }
+        events
+    }
+
+    private fun parseEarningsEvents(body: String, events: MutableList<CorporateEvent>) {
+        try {
+            val root = json.parseToJsonElement(body) as JsonObject
+            val result = root["quoteSummary"]?.jsonObject?.get("result")?.jsonArray?.firstOrNull()?.jsonObject ?: return
+            val cal = result["calendarEvents"]?.jsonObject
+
+            // Upcoming earnings dates
+            cal?.get("earnings")?.jsonObject?.get("earningsDate")?.jsonArray?.forEach { d ->
+                val ts = d.jsonObject["raw"]?.jsonPrimitive?.longOrNull ?: return@forEach
+                val date = Instant.ofEpochSecond(ts).atZone(ZoneId.systemDefault()).toLocalDate()
+                val epsEst = cal["earnings"]?.jsonObject?.get("earningsAverage")?.jsonObject?.get("raw")?.jsonPrimitive?.doubleOrNull
+                val desc = if (epsEst != null) "Upcoming Earnings (EPS est. \$${"%.2f".format(epsEst)})" else "Upcoming Earnings"
+                events.add(CorporateEvent(date, CorporateEventType.EARNINGS_UPCOMING, desc))
+            }
+
+            // Past earnings history
+            result["earningsHistory"]?.jsonObject?.get("history")?.jsonArray?.forEach { e ->
+                val ts = e.jsonObject["quarter"]?.jsonObject?.get("raw")?.jsonPrimitive?.longOrNull ?: return@forEach
+                val date = Instant.ofEpochSecond(ts).atZone(ZoneId.systemDefault()).toLocalDate()
+                val actual = e.jsonObject["epsActual"]?.jsonObject?.get("raw")?.jsonPrimitive?.doubleOrNull
+                val estimate = e.jsonObject["epsEstimate"]?.jsonObject?.get("raw")?.jsonPrimitive?.doubleOrNull
+                val surprise = e.jsonObject["surprisePercent"]?.jsonObject?.get("raw")?.jsonPrimitive?.doubleOrNull
+                val desc = when {
+                    actual != null && estimate != null -> {
+                        val vs = if (actual >= estimate) "✓ Beat" else "✗ Miss"
+                        val surpriseStr = if (surprise != null) " ${"%.1f".format(surprise * 100)}%" else ""
+                        "Earnings EPS \$${"%.2f".format(actual)} (est \$${"%.2f".format(estimate)}) $vs$surpriseStr"
+                    }
+                    actual != null -> "Earnings EPS \$${"%.2f".format(actual)}"
+                    else -> "Earnings"
+                }
+                events.add(CorporateEvent(date, CorporateEventType.EARNINGS, desc))
+            }
+        } catch (e: Exception) {
+            AppLog.log("parseEarningsEvents failed: ${e.message}")
         }
     }
 }

@@ -8,14 +8,19 @@ import com.investhelp.app.data.local.entity.SharpeCacheEntity
 import com.investhelp.app.data.remote.HistoricalPrice
 import com.investhelp.app.data.remote.StockPriceService
 import com.investhelp.app.data.repository.InvestmentItemRepository
+import com.investhelp.app.data.repository.TransactionRepository
 import com.investhelp.app.model.InvestmentType
+import com.investhelp.app.model.TransactionAction
+import com.investhelp.app.util.RollingRiskEngine
 import com.investhelp.app.util.SharpeCalculator
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.add
@@ -28,19 +33,25 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.long
 import kotlinx.serialization.json.put
+import java.time.Instant
 import java.time.LocalDate
+import java.time.ZoneId
 import javax.inject.Inject
 import kotlin.math.sqrt
 
 @HiltViewModel
 class SharpeRatioViewModel @Inject constructor(
     private val itemRepository: InvestmentItemRepository,
+    private val transactionRepository: TransactionRepository,
     private val stockPriceService: StockPriceService,
     private val sharpeCacheDao: SharpeCacheDao
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<SharpeRatioUiState>(SharpeRatioUiState.Idle)
     val uiState: StateFlow<SharpeRatioUiState> = _uiState.asStateFlow()
+
+    private val _rollingRiskState = MutableStateFlow<RollingRiskUiState>(RollingRiskUiState.Idle)
+    val rollingRiskState: StateFlow<RollingRiskUiState> = _rollingRiskState.asStateFlow()
 
     /** Displayed in the risk-free rate text field as a percentage string (e.g. "5.0"). */
     val riskFreeRatePercent = MutableStateFlow("5.0")
@@ -241,6 +252,83 @@ class SharpeRatioViewModel @Inject constructor(
                 result = result,
                 portfolioReturnSeries = portfolioReturnSeries
             )
+        }
+    }
+
+    /**
+     * Reconstructs the actual portfolio equity curve from transaction history × 10Y daily prices,
+     * then computes rolling 30-day and 90-day annualized Sharpe Ratios via O(N) sliding window.
+     */
+    fun computeRollingRisk() {
+        viewModelScope.launch {
+            val riskFreeRate = (riskFreeRatePercent.value.toDoubleOrNull() ?: 5.0) / 100.0
+
+            _rollingRiskState.value = RollingRiskUiState.Loading("Loading transactions…")
+
+            val allTransactions = transactionRepository.getAllTransactions().first()
+            if (allTransactions.isEmpty()) {
+                _rollingRiskState.value = RollingRiskUiState.Error("No transactions found.")
+                return@launch
+            }
+
+            val txTickers = allTransactions.map { it.ticker }.toSet().toList()
+            val pricesByTicker = mutableMapOf<String, Map<LocalDate, Double>>()
+
+            txTickers.forEachIndexed { index, ticker ->
+                _rollingRiskState.value = RollingRiskUiState.Loading(
+                    "Fetching prices…  ${index + 1} / ${txTickers.size}  ($ticker)"
+                )
+                val history = fetchWithRetry(ticker, 3650)
+                if (!history.isNullOrEmpty()) {
+                    pricesByTicker[ticker] = history.associate { hp ->
+                        Instant.ofEpochSecond(hp.timestamp)
+                            .atZone(ZoneId.systemDefault())
+                            .toLocalDate() to hp.close
+                    }
+                }
+            }
+
+            if (pricesByTicker.isEmpty()) {
+                _rollingRiskState.value = RollingRiskUiState.Error(
+                    "No price data available for any ticker."
+                )
+                return@launch
+            }
+
+            _rollingRiskState.value = RollingRiskUiState.Loading("Computing equity curve…")
+
+            val txInputs = allTransactions.map { tx ->
+                RollingRiskEngine.TransactionInput(
+                    date = tx.date,
+                    ticker = tx.ticker,
+                    numberOfShares = tx.numberOfShares,
+                    isBuy = tx.action == TransactionAction.Buy
+                )
+            }
+
+            val equityCurve = withContext(Dispatchers.Default) {
+                RollingRiskEngine.buildEquityCurve(txInputs, pricesByTicker)
+            }
+
+            if (equityCurve.size < RollingRiskEngine.WINDOW_30 + 1) {
+                _rollingRiskState.value = RollingRiskUiState.Error(
+                    "Not enough portfolio history.\n" +
+                    "Need at least ${RollingRiskEngine.WINDOW_30} invested trading days."
+                )
+                return@launch
+            }
+
+            val points = withContext(Dispatchers.Default) {
+                RollingRiskEngine.compute(equityCurve, riskFreeRate)
+            }
+
+            AppLog.log(
+                "RollingRisk: ${points.size} return days, " +
+                "30d ready at idx ${points.indexOfFirst { it.rolling30SharpeRatio != null }}, " +
+                "90d ready at idx ${points.indexOfFirst { it.rolling90SharpeRatio != null }}"
+            )
+
+            _rollingRiskState.value = RollingRiskUiState.Success(points)
         }
     }
 

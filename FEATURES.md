@@ -1,392 +1,425 @@
-# Invest Help - Features
+# InvestHelp — Feature Reference
 
-## Navigation
+Investment tracking app available as an Android native app and a Progressive Web App (PWA).
+Both share the same SQLite database schema and v6 backup format, making data fully portable between platforms.
 
-### Global Top Bar
-- Portfolio value 3D button with daily change amount in parentheses (color-coded green/red)
-- Second row shows Day % gain/loss (color-coded)
-- Tapping refreshes all prices and navigates to Dashboard
-- Spinner shown during price refresh
-- Refresh status bar: temporary bar below top bar showing "Updating [TICKER]" with price/share, change $ and change % (color-coded green/red); auto-hides when complete
-- Watch List icon button (star, purple) for quick access to Watch Lists
-- Hamburger menu: Accounts, Performance, Simulation, Next Day Actions, Volatility Analysis, Correlation Matrix, Settings, SQL Explorer, Help, About
+---
 
-### Dashboard Portfolio Summary
-- Collapsible "Portfolio Summary" card with pin persistence
-- Total portfolio value displayed in headlineLarge bold (left-aligned)
-- Today's gain/loss: amount + percentage + "Today's gain/loss" label (color-coded green/red)
-- Mini line chart (140dp) with dashed horizontal grid lines and right-side Y-axis labels ($XXK format)
-- Date range labels below chart (full date format: "MMM dd, yyyy")
-- All-time percentage centered below chart (e.g., "+19.00% all time")
-- "Refreshed: MMM dd, h:mm a" label showing last price refresh time (persisted across app restarts)
-- Click chart opens full-screen Change History dialog with zoomable multi-series chart (Total/ETF/Stock lines) + "Change Value This Week So Far" summary + grid data table with daily change columns
+## Part 1 — Android App
 
-### Bottom Navigation
-- 3 tabs: Dashboard, Positions, Transaction
-- 3D gradient icons with shadow/elevation effect
-- Selected icon slightly larger than unselected
-- Performance and Simulation accessible via hamburger menu
+### Navigation
+- **Top bar** (persistent across all screens):
+  - **Left:** Search icon — opens Search Ticker dialog with live autocomplete (matches ticker symbol or company name, up to 8 results, tap suggestion to navigate directly)
+  - **Center:** Dashboard / Positions / Transaction nav buttons as 3D gradient icon buttons; selected tab shows full color, unselected is dimmed
+  - **Right:** Refresh button (triggers full price refresh for all tickers), Watch List star, hamburger menu
+- **Hamburger menu:** Accounts, Performance, Simulation, Settings, Next-Day Actions, SQL Explorer, Volatility Analysis, Correlation Matrix, Sharpe Ratio, Help, About
+- **Refresh progress:** LinearProgressIndicator appears below the top bar during refresh; a status bar below that shows "Updating [TICKER]" with live price, change $, and change % per ticker (color-coded, auto-hides on completion)
+- No bottom navigation bar — all primary navigation lives in the top bar
 
-## Dashboard
+---
 
-### Market Indices
-- Horizontal scrollable row of cards (NASDAQ, S&P 500, Dow, Gold, Russell 2K, Silver, Oil, Bitcoin)
-- Each card shows label, current price, daily change with percentage
-- Click to open Yahoo Finance page for the index
-- Long-press drag-and-drop reorder; order persisted to SharedPreferences
-- Customizable in Settings > Preferences (toggle indices, reorder with arrows)
-- Auto-refresh on app start and with Refresh All
-- Wrapped in CollapsibleCard with pin persistence
+### Dashboard
+- **Portfolio Summary card:** total portfolio value in large bold text; daily and all-time gain/loss percentages; mini line chart of historical total value from change history (2+ records required); tapping the mini chart opens a full-screen Change History dialog
+- **Change History dialog:** full-screen zoomable multi-series line chart (Total / ETF / Stock lines) with pinch-to-zoom, pan, and tap-to-select; grid data table below (Date, ETF, Stock, Total columns); "Change Value This Week So Far" summary card showing week-to-date daily change totals, color-coded green/red
+- **Market Indices card:** horizontal scrollable row of small cards — NASDAQ, S&P 500, Dow, Gold, Russell 2K, Silver, Oil, Bitcoin (configurable in Settings); each shows label, current price, and daily change; tap to open Yahoo Finance page; long-press to drag-and-drop reorder
+- **Daily Glance card:** "Overall Daily" section showing total Stock and ETF daily change $ and %; "By Per Share" checkbox toggles between total-value and per-share sorting; top 5 daily gainers and top 5 losers with ticker, name, gain/loss $ and %; tap any row to navigate to item detail
+- **Positions pie chart card:** pie chart of all holdings by total value; shares labels inside slices; legend table (Ticker, Shares, %) with grid lines; top 20 shown with "More" button to expand; tap legend row to navigate to item detail
+- **Position Details card:** horizontally scrollable table with ticker 3D icon, shares, current price, total value; tap row to navigate to item detail
+- All dashboard sections use collapsible cards with a **pin button** — pinned cards default expanded, unpinned default collapsed; pin state persisted to SharedPreferences
 
-### Daily Glance
-- Overall Daily section: Stock and ETF total daily change in $ and %
-- "By Per Share" checkbox toggles between total value and per-share display
-- Top 5 gainers (green) and top 5 losers (red) today
-- Each row: ticker, company name, gain/loss $ and %
-- Clickable rows navigate to item detail
-- Wrapped in CollapsibleCard with pin persistence
+---
 
-### Positions Pie Chart
-- All items by ticker value with shares labels inside slices
-- Legend table with gridlines: Ticker, Shares, % columns
-- Top 20 limit with "More" button to show all
-- Clicking legend rows navigates to item detail
-- Wrapped in CollapsibleCard with pin persistence
+### Positions Screen
+Four tabs in a flat equal-width row layout:
 
-### Watch List Dashboard Card
-- Collapsible card in Dashboard showing watch lists at a glance
-- Table columns: Ticker, Chg% (change since added, color-coded), Chg$ (profit/loss in $, color-coded), Added$ (price when added)
-- Live prices fetched per ticker after DB load; "--" shown in muted color while loading
-- Change % = `(currentPrice - priceWhenAdded) / priceWhenAdded × 100`; Change $ = `(currentPrice - priceWhenAdded) × shares`
+- **STOCK tab:** pie chart of stock holdings + list of stock positions
+- **ETF tab:** pie chart of ETF holdings + list of ETF positions
+- **Analysis tab:** side-by-side exploding pie charts for Stocks and ETFs (largest slice offset outward)
+- **Dividend tab:**
+  - "Total Annual Dividend Income" summary card (blue) at the top
+  - Separate Stock and ETF dividend sections, each with an exploding pie chart, color-coded legend with percentage per ticker
+  - Sortable data table (columns: Ticker, Shares, Div/Share, Annual $, %); sort by Annual Dividend / Div per Share / Ticker / Shares
+  - Only tickers with a dividend rate > 0 and shares > 0 are shown; tap any row to navigate to item detail
 
-### Position Details
-- Horizontally scrollable table with gridlines
-- Columns: Ticker (3D icon), Shares, Price, Value
-- Sortable column headers (click to sort asc/desc)
-- Clickable rows navigate to item detail
-- Wrapped in CollapsibleCard with pin persistence
+**Position list rows** (brokerage-style):
+- Left: 3D ticker icon (gradient box, company logo overlay via Coil) + ticker symbol (bold) + uppercase company name
+- Center: current price + daily change $ and % below
+- Right: total position value + daily gain/loss badge (green/red chip)
+- Annual dividend income line ("Div: $X.XX/yr") shown in blue when dividendRate > 0
+- Edit button per row (no delete in list — delete is inside the edit dialog)
 
-## Items (Positions Screen)
+**Toolbar:** Sort dropdown (Ticker / Total Value / Current Price, defaults to Total Value desc) + Refresh All button
 
-- 3 tabs with modern icons: **STOCK** (ShowChart), **ETF** (TrendingUp), **Analysis** (Analytics)
-- STOCK/ETF tabs:
-  - Pie chart section (collapsible) showing allocation by ticker value
-  - Sort dropdown: Ticker, Total Value (default), Current Price
-  - Brokerage-style card rows with thin dividers (inspired by Chase app layout)
-    - Left: 3D ticker icon + ticker (bold) + uppercase company name
-    - Below ticker: current price with day change $ and % (color-coded)
-    - Right: total position value + daily gain/loss badge (green/red chip)
-  - Edit button per row; Delete available in Edit dialog
-- Analysis tab:
-  - Stock pie chart card with exploding slice (highest-value ticker offset outward)
-  - ETF pie chart card with exploding slice (highest-value ticker offset outward)
-  - Each card shows total value, pie chart with legend, and bold label on largest position
-- Add/edit via form with type selector (Stock, ETF, Bond, MutualFund, Crypto, Other); quantity field has up/down arrows for +1/-1 adjustment; allows saving with 0 shares
-- Item Form fetches full Yahoo Finance data (price, name, dayHigh, dayLow, previousClose, logo) when adding a new ticker; auto-detects type (Stock/ETF/MutualFund/Crypto) from Yahoo `quoteType`
-- Refresh All updates live prices for all items
-- One record per ticker (ticker is sole primary key)
+---
 
-## Item Detail
+### Item Detail
+Three-tab screen (ScrollableTabRow):
 
-Three tabs: **Details**, **Price History**, **Transactions** (ScrollableTabRow)
-
-### Details Tab
-- Header: company logo icon (48dp, cached from DB) + ticker (bold) + company name + type chip + current price
+**Details tab:**
+- Header card: ticker info, current price, 0-share indicator if no shares held
 - Card row 1 (large): Total Shares, Total Value
-- "You don't own any shares of this ticker" indicator (red) when quantity is 0
-- Card row 2 (medium): Daily G/L, Daily G/L/Share, Daily Min, Daily Max
-- **Analysis Info** collapsible card (with pin persistence):
-  - Auto-fetches Yahoo Finance quoteSummary on screen load
-  - Key Metrics: Market Cap, Trailing P/E, Forward P/E, EPS, Dividend Yield
-  - Price Range: 52-Week High/Low, 50-Day Avg, 200-Day Avg
-  - Financials: Analyst Target, Revenue/Share, Profit Margins, Return on Equity
-  - About: long business summary
-  - Clickable metric labels show definition popup (from definitions table)
-- **News on \<TICKER\>** collapsible card (with pin persistence):
-  - Fetches news articles from Yahoo Finance search API
-  - Each article: title (bold), publisher (primary color), time ago
-  - Tap opens article link in browser
-  - Alternating row background colors, dividers between articles
-  - Max article count configurable in Settings (5, 10, or 20; default 5)
+- Card row 2 (medium): Daily G/L, Daily G/L per Share, Daily Low, Daily High
+- Card row 3 (shown when dividendRate > 0, blue): Dividend per Share, Annual Dividend
+- **Analysis Info** collapsible card (pinnable): auto-fetches Yahoo Finance quoteSummary on load; shows Key Metrics, Price Range, Financials, About sections; tap any metric label to see a definition popup
+- **News** collapsible card (pinnable): fetches news from Yahoo Finance; shows title, publisher, time ago; tap to open in browser; article count configurable in Settings (5 / 10 / 20)
+- **ℹ button** in top bar: opens full Yahoo Finance report dialog (market data, valuation, financials, key stats, profile, events, analyst recommendations, fund holdings for ETFs)
 
-### Price History Tab
-- Timeframe radio buttons: Hourly, Daily, Monthly, Yearly
-- Hint text below selector showing what each timeframe means (e.g., "Today's market hours (Every Hour)")
-- Interval radio buttons displayed in two rows for full visibility
-- Hourly intervals: Every Hour (1h), 30 Minutes (30m), 15 Minutes (15m), 5 Minutes (5m), 1 Minute (1m)
-- Hourly: market hours for today (user-selected interval)
-- Daily: last 60 days (1d interval)
-- Monthly: last 13 months (1mo interval)
-- Yearly: last 15 years (1mo interval)
-- Summary cards: Average, Max, Min of the result prices
-- Line chart: Canvas-drawn with all data points; pinch-to-zoom (1x–5x) with pan; tap-to-select with tooltip (price + date); double-tap to reset; filled area under curve; Y-axis price labels, X-axis date labels
-- Grid table: row number, date/time, closing price with horizontal and vertical gridlines
+**Price History tab:**
+- Timeframe selector: Hourly / Daily / Monthly / Yearly (radio buttons with hint text)
+  - Hourly: today's market hours with interval selector (1m / 5m / 15m / 30m / Every Hour)
+  - Daily: last 60 days; Monthly: last 13 months; Yearly: last 15 years
+- Canvas line chart with pinch-to-zoom, pan, and tap-to-select tooltip
+- Summary cards: Average, Max, Min; grid data table of prices below
 
-### Transactions Tab
-- "Transactions & Stats" collapsible panel (default expanded): date range filter with buy/sell statistics (avg/max/min), followed by transaction cards showing days since date and G/L
-- Each transaction card has a delete button (X) with confirmation dialog (respects "Warn before delete" setting)
-- "Investing Performance for <TICKER>" collapsible panel (default expanded): fetches Yahoo Finance closing prices 1 day before and 1 day after each transaction; current price added as last data point (tertiary color); line chart with price labels on each point, transaction prices as bold red dots, market prices as gray dots, current price as tertiary-colored dot; pinch-to-zoom (1x–5x) with pan, tap-to-select tooltip, double-tap to reset; data table below with highlighted transaction rows and alternating row colors
-- Investing Performance chart: fullscreen view button (opens chart in full-screen dialog at 400dp height)
-- Investing Performance chart: save-to-PNG button (renders chart as 1200x600 bitmap, saves to Pictures/InvestHelp/)
+**Transactions tab:**
+- **Transactions & Stats** collapsible panel: date range filter, buy/sell statistics, per-transaction G/L cards showing days since transaction ("123d") and gain/loss (current price vs transaction price); delete button (X) per card with confirmation dialog
+- **Investing Performance** collapsible panel: fetches Yahoo Finance prices 1 day before/after each transaction; current price added as last data point; Canvas line chart with price labels on each point, pinch-to-zoom (1x–5x), pan, tap-to-select tooltip, double-tap to reset zoom; transaction dots (bold red) vs market dots (gray) vs current price dot (tertiary color); data table with highlighted transaction rows and alternating row colors
+- Fullscreen button: opens Investing Performance chart in a full-screen dialog (400dp height)
+- Save to PNG button: renders chart as 1200×600 bitmap saved to Pictures/InvestHelp/
 
-### Yahoo Finance Full Report
-- Info button (ℹ) in top app bar fetches all available data from Yahoo Finance
-- Full-screen scrollable dialog with sections:
-  - Market Data: price, volume, day high/low, 52-week range, exchange, currency, type
-  - Valuation & Trading: P/E ratios, market cap, beta, dividend info, moving averages
-  - Financials: revenue, margins, EBITDA, cash flow, debt, ROE/ROA, analyst targets
-  - Key Statistics: EPS, PEG ratio, enterprise value, short interest, institutional holdings
-  - Company Profile: sector, industry, employees, location, website, business summary
-  - Upcoming Events: next earnings date, ex-dividend date
-  - Analyst Recommendations: strong buy/buy/hold/sell/strong sell counts
-  - Fund Profile (ETFs): category, fund family, expense ratio
-  - Top Holdings (ETFs): top 10 holdings with portfolio weight %
-- Each field shows name, value, and a description of what it means
-- Alternating row colors for readability
+---
 
-### Delete Item
-- Delete button (trash icon, red tint) in top app bar
-- Respects "Warn before delete" setting (shows confirmation dialog when enabled)
+### Transactions
+**Transaction List:**
+- Each card shows: date, action (Buy/Sell), ticker, shares, price per share, gain/loss (current price − transaction price × shares), days since transaction; G/L color-coded green/red
+- **Multi-select mode:** long-press any card to enter selection; checkboxes on each card; contextual top bar with count, Select All, and Delete; bulk delete respects "Warn before delete" setting
 
-## Transactions
+**Transaction Form:**
+- Fields: date, time (optional), action (Buy/Sell), ticker (auto-uppercased), shares, price per share, total amount (calculated), note
+- **Analyze Price button** next to Price field: opens price analysis screen showing current price, transaction avg/max/min, and historic high/low (week/month/year/YTD/max) in a grid table; tap any price to copy it back to the form
+- **View button** next to Ticker: navigates to item detail for that ticker; form state preserved on return
+- **Simulate button:** calculates days from transaction date to today and opens Simulation pre-filled with ticker, shares, and that custom day range; simulation auto-runs on navigation
+- New ticker: auto-creates a position stub (defaults to Stock type)
+- Duplicate prevention: unique constraint on (date, action, ticker, totalAmount)
 
-### Transaction Form
-- Fields: date, time (optional), action (Buy/Sell), ticker (editable with filtered dropdown suggestions), shares, price, total, note
-- Transactions are not tied to accounts (account-independent)
-- Analyze Price button: current price, avg/max/min, historic high/low (week/month/year/YTD/max)
-- View button: opens item detail for the ticker
-- Update/Create and Simulate buttons fixed at bottom of screen (not scrollable)
-- Simulate button: opens simulation from transaction date to today
-- Form state preserved via rememberSaveable
+---
 
-### Transaction List
-- Each card shows G/L: (currentPrice - pricePerShare) * shares (color-coded)
-- Multi-select mode: long-press to enter, checkboxes, select all, bulk delete
-- Bulk delete respects "Warn before delete" setting
-
-## Simulation
-
-- Ticker and shares input
-- Time range chips in 3 rows: Week (1W, 2W), Month (1M, 3M, 6M), Year (1Y, 2Y, 5Y, 10Y, MAX)
-- Summary card: start price vs current, profit/loss amount and percentage
-- Line chart with filled area, start price reference line
-- Tap-to-select with tooltip (price + date)
-- Custom day ranges from transaction simulation (auto-runs)
+### Simulation
+- Enter ticker symbol and number of shares
+- Time range selection in grouped rows: Week (1W, 2W) / Month (1M, 3M, 6M) / Year (1Y, 2Y, 5Y, 10Y, MAX)
+- Results: summary card (start price vs current price, profit/loss amount and %), Canvas line chart with filled area and start-price reference line, tap-to-select tooltip with price and date
 - Large ranges (5Y+) use weekly interval; MAX uses Yahoo Finance `range=max`
-- **Scenario Simulation** (collapsible card): enter shares, ticker, and buy date to calculate hypothetical gain/loss at today's price via Yahoo Finance historical lookup
+- **Custom day ranges** from transaction simulation: human-readable label (e.g. "1y 3m", "2m 15d"), auto-runs on navigation
+- **Scenario Simulation card:** enter shares, ticker, and a hypothetical buy date; calculates gain/loss at today's price via Yahoo Finance historical lookup
 
-## Accounts
+---
 
-- Account list with name, description, initial value, and last value (from most recent performance record)
-- Account detail screen with:
-  - Info card showing initial value and last value
-  - Interactive performance line chart (pinch-to-zoom, pan, tap-to-select tooltip, double-tap reset); shown when 2+ performance records exist
-  - Performance records table (Date, Value, Note columns) with grid lines, alternating row colors, newest first
-- lastValue and lastUpdatedOn auto-updated when a new performance record is saved
+### Account Performance
+- Accessible from hamburger menu
+- Tracks total account value over time for trending analysis
+- **Add Record form:** account selector, total value field, Pull button (computes current portfolio value), Recent button (fills with latest saved value for the selected account), optional note, auto-timestamps to today
+- Mini line chart (150dp) below the form shows history for the selected account (2+ records required)
+- **Multi-account line chart:** Canvas-drawn overlay chart; FilterChip multi-select for accounts; each account gets a distinct color; pinch-to-zoom (1x–5x), two-finger pan; tap-to-select tooltip showing account name, value, and date; x-axis labels update to reflect the visible viewport
+- **Full-screen chart:** double-tap inline chart to open full-screen dialog; supports zoom/pan/tap-to-select; double-tap in full-screen resets zoom
+- **Note indicators:** data points with notes rendered as bold larger circles; tapping shows a two-line tooltip (value/date + note text)
+- **Chart Data panel:** tabular data (Account, Date, Value) for all displayed chart series; sorted by account then date
+- **Records grid table:** horizontal/vertical gridlines, header row, alternating row colors; edit note via pencil icon dialog; delete respects "Warn before delete" setting
 
-## Account Performance
+---
 
-- Four CollapsibleCards: Add Record, Charts, Chart Data, Records
-- Add record: account selector, total value, "Pull from App" button, "Recent" button (loads latest record value), optional note
-- Add record: mini chart below form fields showing selected account's history (when 2+ records exist)
-- Chart Data: collapsible table showing Account, Date, Value for all data points in the chart
-- One record per account per date (unique constraint)
-- Multi-account overlay line chart (Canvas-drawn)
-  - FilterChip multi-select in FlowRow
-  - Distinct colors per account (8-color palette)
-  - Pinch-to-zoom (1x-5x) with two-finger pan
-  - Tap-to-select tooltip with account name, value, date
-  - "Smooth Curve" checkbox for cubic Bezier smoothing
-  - Note indicators: bold data points with white outline
-  - Double-tap opens full-screen chart dialog
-- Records list: grid table with horizontal and vertical gridlines, header row, alternating row colors; filterable by account, sortable by Account/Date/Value/Note
+### Watch List
+- Accessible from hamburger menu (star icon) or top bar star button
+- Create multiple named watch lists; each displayed as its own collapsible panel
+- **Add ticker:** dialog with ticker, shares count, price-when-added; Fetch button pulls current price from Yahoo Finance
+- **Table view** (horizontally scrollable): Ticker, Shares, Current Price, Added Price, Change $, Change %, Added Date, bell icon (reminders), delete button
+- Change $ = (currentPrice × shares) − (priceWhenAdded × shares)
+- **Reminders:** optional per-item reminder with date, time, and message; scheduled via AlarmManager, fires as a notification via BroadcastReceiver; bell icon colored when active; set/edit via dedicated dialog with date picker, time picker, message field, and Clear option
+- Manage lists: create, rename, delete (CASCADE deletes all items in the list)
+- Tap ticker text to navigate to item detail
 
-## Watch List
+---
 
-- Each watch list displayed as its own collapsible panel (all visible simultaneously)
-- Create, rename, delete watch lists (CASCADE)
-- Add ticker: shares, price-when-added, "Fetch" button for current price, optional reminder
-- Table with gridlines: Ticker (clickable, navigates to Item Detail), Shares, Price, Added @, Change $, Change %, Date, Delete, Reminder bell
-- Reminder bell icon: highlighted when reminder is active; tap to set/edit/clear reminder
-- Reminders: date/time picker + message; scheduled notification via AlarmManager; fires even in doze mode
-- Notification tap: opens Item Detail screen for the ticker
-- Refresh All button in header refreshes prices across all watch lists
+### Next Day Actions
+- Accessible from hamburger menu
+- Scans all positions with shares using a 5-signal tiered decision engine:
+  - **STOP LOSS** — price closed below 20-day SMA (Tier A)
+  - **TRIM PROFITS** — total return exceeds configured profit target % (Tier A)
+  - **REBALANCE** — allocation exceeds concentration cap for type (Tier B: Stock cap / ETF cap)
+  - **STRONG BUY** — closing volume ≥ 1.5× 20-day average volume (Tier C)
+  - **HOLD** — all thresholds healthy
+- Summary count badges per signal type at top; data table with Ticker, Shares, Price, Value, Alloc%, Return%, Action, Reasoning
+- **Explanation card** (toggleable via Settings "Show Explanation"): describes each signal and shows configured thresholds
+- Detail log cards: expand per ticker to see full step-by-step evaluation with raw numbers
+- Thresholds configurable in Settings (NDA Thresholds tab): profit target %, stock concentration cap %, ETF concentration cap %
 
-## Settings
+---
 
-### Preferences
-- **Themes** (collapsible panel): 22 selectable color themes (Default Green, Ocean Blue, Sunset Orange, Midnight Purple, Forest Moss, Ruby Red, Arctic Ice, Gold Rush, Sakura Pink, Charcoal Dark, Lavender Fields, Copper Bronze, Emerald Gem, Slate Blue, Mocha Coffee, Navy Marine, Tropical Mint, Wine Burgundy, Desert Sand, Nordic Pine, Fidelity, Chase); each theme defines full light and dark color schemes; selection persisted to SharedPreferences; instant apply without restart
-- **Auto Update Change History when refresh**: toggle (default: off); when on, records ETF/Stock/Total values and daily change values to change_history table after price refresh
-- **Auto Refresh All**: toggle (default: off); when on, shows interval selector
-  - Interval options: 5 min, 30 min, 1 hr, 5 hr, Market close daily
-  - Uses WorkManager for reliable periodic background refresh
-  - Foreground notification shown during refresh ("Refreshing prices...")
-  - Completion notification shows ticker count and failures
-  - Respects "Auto Update Change History" setting
-- Auto-update position shares toggle
-- Warn before delete toggle (default: on)
-- **Max # of News articles on ticker**: dropdown (5, 10, 20); controls how many news articles appear in Item Detail's News card
-- **Dashboard Market Indices** (collapsible panel): toggles for 8 indices, up/down arrow reorder
+### Volatility Analysis
+- Accessible from hamburger menu
+- Calculates 52-week annualized volatility and daily standard deviation for all positions using Yahoo Finance 1-year daily price history
+- Positions grouped into 4 volatility bands: **Low** (<15%) / **Moderate** (15–30%) / **High** (30–50%) / **Very High** (>50%), each color-coded
+- Progress bar shown per ticker during calculation
+- Results cached to SQLite (`volatility_cache` table); "Last calculated on" banner shown on subsequent opens; Refresh button clears cache and recalculates
+- Per-ticker detail: annualized vol %, daily std dev %, 52-week low/high, position within 52-week range (range bar)
+- **Explanation card** (toggleable via Settings "Show Explanation"): describes what the % means, what each band means, and how to interpret the range bar
 
-### Data Management
-- CSV Import: 3 types (Transaction, Position, Performance)
-  - Column mapping dialog with 3-row preview (Transaction, Performance)
-  - Auto-mapping with brokerage aliases
-  - Date format options per column
-  - Persistent mappings (csv_import_mappings table)
-  - Clear (x) button per type: erases all entries from the corresponding table with confirmation dialog
-- **Position Import (enhanced)**:
-  - Full-screen mapping editor (replaces dialog) with back navigation
-  - Top bar actions: Load, Save As, Save
-  - "Save As" prompts for a name to store the mapping as a reusable profile
-  - "Load" shows all saved named mappings with delete option
-  - Saved mappings list shown at bottom of the mapping screen (clickable to load)
-  - "Start Import" prompts user to select a mapping (Default active or a saved named mapping)
-  - Detailed import result log after completion: summary counts (New/Updated/Skipped) + per-ticker entries showing status and field changes
-- Named mapping profiles stored in `csv_named_mappings` table
-- Backup folder selection (persisted)
-- Export to JSON (v6 generic format) — auto-discovers all tables; export success message shows "CSV mappings: X active, Y named" to confirm mapping data was captured
-- Restore from JSON (v1/v2/v3/v4/v5/v6 compatible); restore success message shows CSV mapping row counts
-- `volatility_cache` table excluded from backups (cached computed data — regenerated on demand)
-- Backup format compatible between Android app and PWA web app
-- **Automatic Back Up when quitting**: toggle (default: off); when on, automatically exports a backup JSON file when the app goes to background (with 30-minute cooldown to prevent excessive backups)
-- **Number of automatic backup to keep**: configurable limit (default: 10); oldest auto-backup files are deleted when the count exceeds the limit
-- **Last Auto Backup completed on**: displays the date and time of the most recent successful auto backup
+---
 
-## SQL Explorer
+### Correlation Matrix
+- Accessible from hamburger menu
+- Computes pairwise Pearson correlation coefficients using 1-year daily returns for all stock/ETF positions
+- Full N×N matrix display with color-coded cells (green = high positive, red = high negative, gray = low)
+- Market sensitivity section: correlation of each ticker vs SPY
+- Portfolio insights: identifies strongly correlated pairs (≥0.75 threshold), filter toggle to highlight only high-correlation cells
+- Results cached to SQLite (`correlation_cache` singleton); "Last calculated on" banner; Refresh clears cache
+- PNG download button: saves matrix as image
+- **Explanation card** (toggleable via Settings "Show Explanation"): what correlation means, how to read the matrix, what values indicate
 
-- SQL text box for composing queries (monospace font, multi-line)
-- Run button navigates to dedicated SQL Result screen
-- "Save SQL to Library" button: prompts for name, description, category (with autocomplete)
-- **SQL Library** collapsible card: displays saved queries with category filter dropdown and name search; Run/Delete actions per entry; clicking a query loads it into the SQL text box
-- **Table Browser**: list all tables, expand to show columns (name, type, PK/NN indicators)
-  - Clicking a table name inserts it into the SQL text box
-  - Clicking a column name inserts it into the SQL text box
-  - "Open" button runs `SELECT * FROM table` in SQL Result screen
-  - "Erase" button deletes all entries (with confirmation if warn-before-delete enabled)
+---
 
-## SQL Result
+### Sharpe Ratio
+- Accessible from hamburger menu
+- Calculates portfolio Sharpe Ratio (risk-adjusted return) using combined daily portfolio returns
+- Configurable: risk-free rate (default 5%), lookback period (6M / 1Y / 2Y / 5Y / 10Y chips)
+- Results: Sharpe Ratio, annualized return, annualized volatility, aligned trading days, mean daily return, daily risk-free rate used
+- Canvas daily returns chart with green/red area fills
+- Per-ticker breakdown table showing contribution details
+- Results cached to SQLite (`sharpe_ratio_cache` singleton); "Cached at" banner on instant load; Refresh (↻) button recomputes
+- **About Sharpe Ratio card** (toggleable via Settings "Show Explanation"): formula, components, interpretation table (poor/acceptable/good/excellent ranges)
+- **Calculation Detail card** (toggleable via Settings "Show Explanation"): inputs used, per-ticker data points, step-by-step calculation
 
-- Full screen for viewing query results (navigated from SQL Explorer)
-- **SQL Query** collapsible card: editable SQL text box + Run button to re-execute
-- **Result** collapsible card:
-  - Scrollable grid with both vertical and horizontal scroll (400dp height)
-  - Visible vertical and horizontal gridlines
-  - Alternating row colors for readability
-  - Clickable cells open full-screen detail view showing column name and full value
-  - Row count and execution time displayed
-  - "Export to CSV file" button: exports grid data with field names in first row, values enclosed in double quotes
-- Auto-executes the SQL query on screen load
+---
 
-## Next-Day Actions
+### SQL Explorer
+- Accessible from hamburger menu
+- SQL text editor + Run button (navigates to SQL Result screen) + Save to Library button
+- **Table browser:** lists all app database tables with expandable column details (name, type, PK/NN indicators); tap table or column name to insert into the SQL editor; Open button runs `SELECT * FROM <table>` directly
+- **SQL Library card:** saved queries with name, description, category filter, name search, Run and Delete per entry
+- **SQL Result screen:** full-screen with editable SQL query card, result grid (vertical + horizontal scroll, clickable cells for full-screen untruncated detail), Export to CSV button; auto-executes on load
 
-- Post-market portfolio scanner accessible from hamburger menu
-- **"Run Scan"** button fetches 20-day price/volume data for every position from Yahoo Finance
-- **Tier A — Risk Preservation:**
-  - Stop Loss: flags positions where current price closed below 20-day SMA
-  - Profit Taking: flags positions with total return % above configurable target (default 20%)
-- **Tier B — Position Sizing:**
-  - Concentration Cap: flags stocks exceeding configurable % (default 10%) or ETFs exceeding cap (default 25%)
-- **Tier C — Momentum:**
-  - Volume Spike: flags positions with closing volume ≥1.5x the 20-day average volume
-- Color-coded action grid: STRONG BUY (green), TRIM PROFITS (orange), REBALANCE (blue), STOP LOSS (red), HOLD (gray)
-- Summary chips at top showing count per action type
-- Grid columns: Ticker, Shares, Price, Value, Allocation %, Return %, Action, Reasoning
-- Configurable thresholds in Settings > Preferences > "Next-Day Actions Thresholds"
+---
 
-## Correlation Matrix
+### Settings
 
-- Accessible from hamburger menu → "Correlation Matrix" (Android: teal GridOn icon; PWA: ⊡)
-- Available on both Android (`CorrelationMatrixRoute`) and PWA (`#/correlation`)
-- **Computes Pearson correlation** of 1-year daily % returns for all Stock/ETF positions; also calculates each ticker's correlation vs SPY as a market benchmark
-- **Color-coded N×N grid**: red ≥0.75 (highly correlated), orange ≥0.50 (moderate), yellow ≥0.25 (low), green ≥0.00 (uncorrelated), blue <0.00 (inverse); diagonal always dark gray = 1.0
-- **Scroll behaviour**: 68dp cells, rotated column headers (-45°), horizontal scroll with snap-to-column boundary; row labels sticky on left
-- **Filter toggle**: "Highlight ≥ 0.75 only" chips — dims cells below threshold to 20% opacity so high-correlation pairs stand out
-- **Explainer card**: collapsible card explaining what correlation means, the 5-band colour scale, what to look for, and why the diagonal is 1.0
-- **Cell tap**: opens modal dialog with correlation value, label (e.g. "highly correlated"), and plain-English explanation for that specific pair
-- **Market sensitivity row**: colour-coded chips showing each ticker's Pearson vs SPY (how closely it tracks the S&P 500)
-- **Portfolio insights**: average correlation across all pairs, most correlated pair, most diversifying ticker, high-correlation warning (avg > 0.70)
-- **Share / Export PNG**: renders entire matrix on a Canvas with 80px cells, colour legend, and rotated headers → saved to device (MediaStore on Android, download link on PWA)
-- **Cache**: single-row DB table `correlation_cache` stores full matrix JSON; loads instantly from cache on re-open; excluded from backup exports
-- **Last calculated timestamp** + Refresh button (clears cache, re-fetches and recomputes)
-- **Failed tickers banner**: positions with insufficient price history (<10 days) are excluded and listed
-- **Math**: inner-join all ticker timestamps → `dailyReturn[i] = (close[i] - close[i-1]) / close[i-1]` → sample Pearson r = Σ(da·db) / √(Σda² · Σdb²), clamped to [-1.0, 1.0]
-- **Android JUnit tests**: `CorrelationUtilsTest.kt` — 14 tests covering all math utilities
+**Preferences tab:**
+- **Theme:** 10 color themes (Default Green, Ocean Blue, Sunset Orange, Midnight Purple, Forest Moss, Ruby Red, Arctic Ice, Gold Rush, Sakura Pink, Charcoal Dark); instant apply, persisted to SharedPreferences
+- **Warn before delete** (default: on) — when off, skips confirmation dialogs for all delete actions app-wide
+- **Show Explanation** (default: on) — controls visibility of educational explanation cards on Sharpe Ratio, Correlation Matrix, Volatility Analysis, and Next Day Actions screens
+- **Max news articles per ticker** dropdown (5 / 10 / 20; default: 5)
+- **Auto Update Change History when refresh** (default: off) — when on, automatically records ETF/Stock/Total daily values to change_history after every price refresh
+- **Auto Refresh All** (default: off) — background periodic price refresh via WorkManager; interval options: 5 min / 30 min / 1 hr / 5 hr / Market close daily; foreground notification shown during refresh; completion notification shows ticker count
+- **Dashboard Market Indices:** toggles for 8 indices; up/down arrow reorder (syncs with long-press drag-and-drop on Dashboard)
 
-## Volatility Analysis
+**Data Management tab:**
+- **Backup folder selection** (persisted across restarts)
+- **Export Data:** exports all tables as v6 generic JSON (auto-discovers tables via `sqlite_master`; BLOB columns base64-encoded)
+- **Restore Data:** imports v6 JSON (topological FK-safe delete/insert order, full transaction); backward-compatible with v1–v5 formats
+- **Automatic backup when quitting** (default: off): exports on app backgrounding with 30-minute cooldown guard; "Last Auto Backup completed on" timestamp shown; configurable max backup count (default: 10, oldest files pruned)
+- **CSV Import** — 3 import types:
+  - *Transaction Records:* maps CSV columns to transaction fields; does not auto-update share counts; creates position stub for new tickers
+  - *Position Details:* maps CSV columns to position fields; confirmation dialog before overwrite; auto-strips commas from brokerage-formatted numbers (e.g. "92,150.62")
+  - *Performance Records:* account name mapping dialog to resolve CSV account names to app accounts
+  - Each import type has "Define Mapping" (full-screen editor with Save / Save As / Load) and "Start Import" (select saved mapping, imports with per-row NEW/UPDATED/SKIPPED log)
+  - Column mapping dialog shows 3-row preview with auto-mapping using common brokerage aliases
 
-- Results cached to `volatility_cache` DB table; loads instantly from cache on re-open
-- "Last calculated on MMM d, yyyy h:mm a" banner shown when cache is present
-- Refresh button clears cache and re-fetches all tickers from Yahoo Finance
-- Accessible from hamburger menu (purple BarChart icon)
-- Available on both Android and PWA (`#/volatility-analysis`)
-- **Two tabs**: Stocks and ETFs — shows all positions of each type
-- **Grouped display**: positions sorted into Low / Moderate / High / Very High volatility groups
-  - Color-coded headers: Low=green, Moderate=orange, High=red-orange, Very High=dark red
-  - Each group shows colored dot, label, range, and count badge
-  - Items within each group sorted by vol% ascending
-- **Each row**: gradient ticker icon + ticker (bold) + company name | vol% colored badge + position value
-- **Live progress bar** while fetching (X / Y tickers loaded); Loading and Failed sections shown at bottom
-- **Clicking a row** navigates to item detail for that ticker
-- **Refresh button** force-clears the 1-hour cache and re-fetches all tickers
-- **Data sources**: 365-day daily closes + quoteSummary (52W High/Low) + live quote per ticker
-- **Math**: same log-return σ annualized ×√252 as per-ticker volatility screen
+**NDA Thresholds tab:**
+- Profit Target % (used by Next Day Actions TRIM PROFITS signal)
+- Stock Concentration Cap % and ETF Concentration Cap % (used by REBALANCE signal)
 
-## 52-Week Volatility
+---
 
-- Accessible via BarChart icon (📊) in Item Detail top bar
-- Available on both Android and PWA
-- **Position Value Card**: primary-container background; ticker + company name; large position value (currentPrice × shares)
-- **52-Week Range Card**: Canvas-drawn range bar showing where current price sits within 52W Low–High range; percentage badge ("X% of range"); low/high labels
-- **Annualized Volatility Card**: large % in label color; badge (Low/Moderate/High/Very High); stats (Daily Std Dev, sessions, method); 4-cell scale legend
-- **Math**: log returns `ln(close[i]/close[i-1])`, sample σ ÷ (n-1), annualized `× √252 × 100`
-- **Label thresholds**: <15% Low, <30% Moderate, <60% High, >60% Very High
-- **Cache**: 1-hour in-memory per ticker; Refresh button bypasses cache
-- **Data sources**: Yahoo Finance v8 chart (365d daily closes) + quoteSummary (52W High/Low) + v8 quote (current price)
-- **PWA route**: `GET /api/volatility/:ticker` with Map-based cache; `?force=true` to bypass
-- **PWA screen**: HiDPI canvas using CSS `--primary` / `--surface-variant` custom properties
+### Help
+- Accessible from hamburger menu
+- Full HTML help guide loaded via WebView from bundled `assets/help.html`
+- Covers all features: navigation overview grid, per-section guides, and tips
+- Styled with dark/light theme support via CSS `prefers-color-scheme`
 
-## AI (Artificial Intelligence)
+---
 
-- Accessible via sparkle icon (✨) on Item Detail top bar
-- "Artificial Intelligence for \<TICKER\>" full screen
-- **AI Library** collapsible card: lists saved prompts (name + description); search box to filter
-  - Clicking an entry auto-fills prompt with `[TICKER]` replaced by the ticker in quotes
-- Multi-line prompt editor for composing or editing prompts
-- Selected prompt info card shows name and description
-- **"Send to Gemini"** button: opens Google Gemini web app in embedded WebView (500dp)
-  - JavaScript and DOM storage enabled for full Gemini functionality
-  - User signs into Google once, stays logged in
-- **AI Library table** (`ai_library`): id, name, description, promptText
-  - Pre-seeded with 3 prompts: Forensic Ticker Deep-Dive, 10-K/10-Q Earnings Summarizer, ETF "Under the Hood" Deconstruction
-- **Settings > AI tab**: toggle to enable/disable AI, API key field
+### About Dialog
+- Version number (dynamic from BuildConfig: versionName + versionCode)
+- "What's New" section with recent feature changelog
+- **Show Log button:** opens scrollable in-memory application log (up to 200 entries, newest first, with timestamps); clear button to wipe entries; logs include price fetch results, refresh summaries, and per-ticker errors
 
-## Help
+---
 
-- HTML-based guide via WebView (assets/help.html)
-- Dark/light theme support
-- Navigation overview grid, per-section guides, tips
+## Part 2 — PWA App
 
-## Application Log
+### Overview
+- Node.js + Express server + better-sqlite3 database
+- Vanilla JS / HTML5 / CSS3 frontend — no framework, no build step
+- Hash-based SPA router (`#/route` format)
+- Same SQLite schema and v6 backup format as Android — data fully portable between platforms
+- Run: `START_APP.bat` (Windows) or `npm start` from the `PWA/` folder → http://localhost:3000
+- Dark/light theme: auto-detected from system preference via CSS `prefers-color-scheme`
 
-- In-memory log (up to 200 entries)
-- Captures price fetch results, refresh summaries, errors
-- Viewable from About dialog > Show Log
-- Newest-first with timestamps; clear button
+---
 
-## PWA Web App
+### Navigation
+- **Top bar:** Portfolio value button (tap to refresh all prices + navigate to Dashboard), Search Ticker button, Watch List star, hamburger menu
+- **Search Ticker dialog:** type partial ticker or company name; async autocomplete dropdown (up to 10 results) drawn from live positions list; tap suggestion to navigate directly
+- **Hamburger menu:** Accounts, Performance, Simulation, Next Day Actions, Volatility Analysis, Correlation Matrix, Sharpe Ratio, Settings, SQL Explorer, Help, About
+- **Refresh status bar:** shows live "Refreshing prices…" feedback; success/failure count on completion; auto-hides after 3–4 seconds
 
-- Full web version of InvestHelp in `PWA/` folder
-- **Server**: Node.js + Express + better-sqlite3 (same SQLite schema as Android Room v31)
-- **Frontend**: Vanilla HTML/CSS/JS — no framework, no build step
-- **17 API routes**: accounts, positions, transactions, performance, watchlists, change-history, definitions, csv-mappings, sql-library, ai-library, yahoo, refresh, backup, csv-import, sql-explorer, settings, volatility
-- **19 screens**: dashboard, positions, item-detail, item-form, transaction-list/form, simulation, account-list/detail/form, performance, watchlist, settings, sql-explorer, ai-ticker, next-day-actions, analyze-price, help, volatility
-- **11 components**: top-bar, bottom-nav, collapsible-card, confirm-dialog, data-table, pie-chart, line-chart, mini-chart, ticker-icon, filter-chips, date-range-picker
-- **22 color themes** with dark mode via CSS custom properties
-- **Yahoo Finance proxy**: configurable proxy URL in Settings > Preferences for restricted networks; supports prepend-style (corsproxy.io) and replace-style (self-hosted); test button verifies connectivity
-- **Charts**: HTML5 Canvas — line chart (zoom/pan/tap-to-select), pie chart, mini sparkline
-- **Auto-refresh**: server-side cron (works with browser closed)
-- **SQL Explorer**: direct SQLite access — full SQL support
-- **Backup**: v6 generic JSON format compatible with Android app; `volatility_cache` excluded
-- **Launch**: `START_APP.bat` (Windows) or `npm start` → http://localhost:3000
-- **Dependencies**: express, better-sqlite3, multer
+---
+
+### Dashboard
+- **Portfolio Summary card:** total portfolio value with daily change $ and %; mini line chart of historical total value; tap mini chart to open Change History dialog
+- **Change History dialog:** multi-series Canvas line chart (Total / ETF / Stock lines) with zoom/pan/tap-to-select; grid data table; "Change Value This Week So Far" summary
+- **Market Indices card:** horizontal scrollable row of index cards (NASDAQ, S&P 500, Dow, Gold + more); configurable in Settings; tap to open Yahoo Finance page
+- **Daily Glance card:** overall Stock/ETF daily change totals; top 5 gainers and top 5 losers; tap to navigate to item detail
+- **Positions pie chart card:** Canvas pie chart by total value; legend with Ticker, Shares, %; tap legend row to navigate to item detail
+- **Position Details card:** scrollable table with ticker icon, shares, current price, total value; tap row to navigate
+- All sections use collapsible cards with pin persistence (localStorage)
+
+---
+
+### Positions Screen
+Four tabs:
+
+- **STOCK tab:** pie chart + stock position list
+- **ETF tab:** pie chart + ETF position list
+- **Analysis tab:** exploding pie charts for Stocks and ETFs
+- **Dividend tab:** total annual income summary; Stock and ETF sections with exploding pie charts, sortable dividend tables (Annual / Div per Share / Ticker / Shares), tappable rows
+
+**Position list rows:** ticker icon, symbol (bold), company name, current price, daily change, total value, daily G/L badge, annual dividend income line (when dividendRate > 0)
+
+Sort dropdown: Ticker / Total Value / Current Price
+
+---
+
+### Item Detail
+Three tabs:
+
+**Details tab:**
+- Header: ticker, type, current price, day high/low, shares summary
+- Metric cards: Total Value, Daily G/L, Dividend info (when applicable)
+- Analysis Info card: Yahoo Finance quoteSummary data (Key Metrics, Price Range, Financials, About); metric definition popups
+- News card: Yahoo Finance news articles (title, publisher, time ago, tap to open in browser); article count configurable
+- Full Yahoo Finance report button
+
+**Price History tab:**
+- Timeframe: Hourly / Daily / Monthly / Yearly
+- Hourly interval selector (1m / 5m / 15m / 30m / 1hr)
+- Canvas line chart with zoom, pan, tap-to-select; Average / Max / Min summary cards; data table
+
+**Transactions tab:**
+- Transactions & Stats panel: date range filter, buy/sell statistics, per-transaction G/L cards with days elapsed
+- Investing Performance chart: Canvas line chart overlaying transaction prices with market prices; transaction dots, market dots, current price dot; zoom/pan/tap-to-select; data table with highlighted transaction rows
+
+---
+
+### Transactions
+**Transaction List:**
+- Cards with date, action, ticker, shares, price, G/L (current vs transaction price × shares)
+- Multi-select via long-press: checkboxes, Select All, bulk Delete
+
+**Transaction Form:**
+- Fields: date, time (optional), action, ticker, shares, price, total amount, note
+- Analyze Price button: historic high/low grid with price copy-back
+- View button: navigate to item detail
+- Simulate button: opens Simulation with transaction date range
+
+---
+
+### Simulation
+- Enter ticker and shares; time range chips: 1W / 2W / 1M / 3M / 6M / 1Y / 2Y / 5Y / 10Y / MAX
+- Results: summary (start vs current price, profit/loss), Canvas line chart with area fill and reference line, tap-to-select tooltip
+- Custom day ranges from transaction simulation: auto-runs with label
+- Scenario Simulation card: hypothetical buy-date gain/loss calculator
+
+---
+
+### Account Performance
+- Multi-account Canvas line chart with pinch-to-zoom, pan, tap-to-select tooltip; account FilterChips
+- Full-screen chart on double-tap; zoom resets on double-tap in full-screen
+- Note indicators on data points; two-line tooltip when tapped (value/date + note)
+- Add Record form: account selector, value field, Pull and Recent buttons, optional note
+- Mini chart in Add Record section (2+ records required)
+- Chart Data table; Records grid with edit note (pencil icon) and delete
+
+---
+
+### Watch List
+- Multiple named watch lists with collapsible panels
+- Add ticker: shares, price-when-added, Fetch button for current price
+- Table: Ticker, Shares, Current Price, Added Price, Change $, Change %, Added Date, bell (reminders), delete
+- Reminders: date/time/message; browser Notification API (permission requested on first use)
+- Manage: create, rename, delete lists
+
+---
+
+### Next Day Actions
+- Same 5-signal scanner as Android (STOP LOSS / TRIM PROFITS / REBALANCE / STRONG BUY / HOLD)
+- Live progress bar per ticker during scan
+- Summary count badges; results table; expandable detail log per ticker
+- **Explanation card** (toggleable via Settings "Show Explanation")
+- Thresholds configurable in Settings (NDA Thresholds tab)
+
+---
+
+### Volatility Analysis
+- 52-week annualized volatility for all positions; grouped into 4 color-coded bands
+- Live progress bar during calculation; results cached to SQLite; "Last calculated on" banner
+- Per-ticker: annualized vol %, daily std dev %, 52-week range bar
+- **Explanation card** (toggleable via Settings "Show Explanation")
+
+---
+
+### Correlation Matrix
+- Pairwise Pearson correlation matrix; color-coded cells; market sensitivity vs SPY
+- Filter toggle for high-correlation pairs (≥0.75); portfolio insights
+- Cached to SQLite; PNG download
+- **Explanation card** (toggleable via Settings "Show Explanation")
+
+---
+
+### Sharpe Ratio
+- Portfolio Sharpe Ratio with configurable risk-free rate and lookback period (6M / 1Y / 2Y / 5Y / 10Y)
+- Canvas daily returns chart; per-ticker breakdown table
+- Cached to SQLite; instant load with "Cached at" banner; Refresh (↻) recomputes
+- **About Sharpe Ratio card** and **Calculation Detail card** (both toggleable via Settings "Show Explanation")
+
+---
+
+### SQL Explorer
+- SQL editor + Run button + Save to Library
+- Table browser with column details; Open button per table
+- SQL Library with category filter, name search, Run/Delete per entry
+- SQL Result screen: editable SQL, scrollable result grid, Export to CSV
+
+---
+
+### Settings
+
+**Preferences tab:**
+- **Warn before delete** (default: on)
+- **Show Explanation** (default: on) — controls explanation cards on Sharpe Ratio, Correlation, Volatility, NDA screens
+- **Max news articles per ticker** (5 / 10 / 20; default: 5)
+- **Auto Update Change History** (default: off)
+- **Auto Refresh interval:** configurable cron-based background price refresh; completion logged
+- **Dashboard Market Indices:** toggles for 8 indices with reorder support
+- **Yahoo Finance Proxy:** configurable proxy URL for restricted networks
+
+**Data Management tab:**
+- **Export / Import backup** (v6 generic JSON; backward-compatible v1–v5 restore)
+- **Auto backup** (default: off): exports on auto-refresh completion; configurable max backup count
+- **CSV Import** — Transaction, Position, and Performance record imports with the same mapping system as Android (Define Mapping / Start Import, brokerage alias auto-mapping, per-row import log)
+
+**Dashboard Cards tab:** toggle visibility of individual dashboard cards
+
+**NDA Thresholds tab:** profit target %, stock cap %, ETF cap %
+
+**Server Log tab:** scrollable in-memory server log (500 entries); timestamps; clear button
+
+---
+
+### Offline Snapshot
+- Static `snapshot.html` generated automatically after every Refresh All
+- Offline-viewable portfolio summary (no server required to view)
+- Saved in the PWA server directory and served as a static file
+
+---
+
+### Service Worker & PWA Shell
+- Network-first caching strategy for JS/CSS/HTML; cache-first for static assets
+- Installable as a PWA (add to home screen / desktop)
+- **Refresh App button** (About dialog): clears all caches, posts `force-refresh` message to service worker, hard-reloads to pick up latest code
+
+---
+
+### About
+- App version string
+- "What's New" changelog with per-version bullet points
+- **Show Log / Server Log button:** in-memory server log viewer (500 entries, newest first); clear button
+- Refresh App button (force cache bust)

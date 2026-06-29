@@ -109,6 +109,7 @@ export const yahoo = {
   news:          (ticker, count) => get(`/api/yahoo/news/${encodeURIComponent(ticker)}?count=${count || 5}`),
   scan:          (ticker) => get(`/api/yahoo/scan/${encodeURIComponent(ticker)}`),
   report:        (ticker) => get(`/api/yahoo/report/${encodeURIComponent(ticker)}`),
+  events:        (ticker) => get(`/api/yahoo/events/${encodeURIComponent(ticker)}`),
 };
 
 export const refresh = {
@@ -157,9 +158,11 @@ export const correlation = {
 };
 
 export const sharpe = {
-  compute:   (riskFreeRate, lookbackDays) =>
+  compute:       (riskFreeRate, lookbackDays) =>
     post('/api/sharpe/compute', { riskFreeRate, lookbackDays }),
-  getCached: () => get('/api/sharpe/cached'),
+  getCached:     () => get('/api/sharpe/cached'),
+  computeRolling: (riskFreeRate) =>
+    post('/api/sharpe/rolling', { riskFreeRate }),
 };
 
 // Auth helpers — these calls must NOT throw on 401 so callers can handle it

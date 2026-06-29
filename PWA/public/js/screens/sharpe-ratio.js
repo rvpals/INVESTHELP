@@ -374,6 +374,8 @@ export async function render(container) {
     if (result.skippedTickers && result.skippedTickers.length > 0) {
       body.appendChild(buildSkippedCard(result.skippedTickers, result.skipReasons));
     }
+
+    body.appendChild(buildRollingRiskCard());
   }
 
   // ── Card builders ──
@@ -642,5 +644,266 @@ export async function render(container) {
           </span>
         </div>`).join('')}`;
     return div;
+  }
+
+  // ── Rolling Risk Metrics card ───────────────────────────────────────────────
+
+  function buildRollingRiskCard() {
+    const div = document.createElement('div');
+    div.className = 'card mb-12';
+    div.id = 'rolling-risk-card';
+    div.innerHTML = `
+      <div style="padding:16px 16px 12px">
+        <div style="font-size:14px;font-weight:600;margin-bottom:4px">Rolling Risk Metrics</div>
+        <div class="text-xs text-muted mb-12">
+          30-day and 90-day annualized Sharpe Ratio computed from actual transaction history
+        </div>
+        <div class="flex justify-end">
+          <button class="btn btn-outline btn-sm" id="btn-rolling-calc">Calculate</button>
+        </div>
+      </div>
+      <div id="rolling-body" style="padding:0 16px 16px"></div>`;
+
+    setTimeout(() => {
+      document.getElementById('btn-rolling-calc')?.addEventListener('click', runRollingCompute);
+    }, 0);
+
+    return div;
+  }
+
+  async function runRollingCompute() {
+    const btn = document.getElementById('btn-rolling-calc');
+    const body = document.getElementById('rolling-body');
+    if (!body) return;
+
+    const rf = parseFloat(document.getElementById('rf-rate-input')?.value ?? '5') / 100;
+
+    if (btn) btn.disabled = true;
+    body.innerHTML = `
+      <div class="flex items-center gap-12" style="padding:8px 0">
+        <div class="spinner" style="width:18px;height:18px;border-width:2px"></div>
+        <span class="text-sm text-muted">Computing equity curve…</span>
+      </div>`;
+
+    try {
+      const result = await sharpeApi.computeRolling(rf);
+      if (!result.points || result.points.length === 0) {
+        body.innerHTML = `<div class="text-sm text-muted">No data to display.</div>`;
+        return;
+      }
+      showRollingResult(body, result.points);
+    } catch (err) {
+      body.innerHTML = `
+        <div class="text-sm" style="color:var(--error,#b3261e);margin-bottom:8px">${err.message || 'Computation failed'}</div>
+        <button class="btn btn-outline btn-sm" id="btn-rolling-retry">Retry</button>`;
+      setTimeout(() => {
+        document.getElementById('btn-rolling-retry')?.addEventListener('click', runRollingCompute);
+      }, 0);
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  }
+
+  function showRollingResult(container, points) {
+    const last30 = [...points].reverse().find(p => p.rolling30SharpeRatio != null)?.rolling30SharpeRatio;
+    const last90 = [...points].reverse().find(p => p.rolling90SharpeRatio != null)?.rolling90SharpeRatio;
+
+    container.innerHTML = `
+      <div class="flex gap-16 mb-10" style="font-size:12px;flex-wrap:wrap">
+        <div class="flex items-center gap-6">
+          <div style="width:24px;height:3px;background:#1565C0;border-radius:2px;flex-shrink:0"></div>
+          <span>30-Day Rolling</span>
+          ${last30 != null ? `<span style="font-weight:700;color:#1565C0">${last30.toFixed(2)}</span>` : ''}
+        </div>
+        <div class="flex items-center gap-6">
+          <div style="width:24px;height:3px;background:#6A1B9A;border-radius:2px;flex-shrink:0"></div>
+          <span>90-Day Rolling</span>
+          ${last90 != null ? `<span style="font-weight:700;color:#6A1B9A">${last90.toFixed(2)}</span>` : ''}
+        </div>
+      </div>
+      <div style="position:relative">
+        <canvas id="rolling-chart" style="width:100%;height:220px;display:block"></canvas>
+      </div>
+      <div class="text-xs text-muted mt-6">${points.length} trading days  ·  Hover or tap to inspect</div>`;
+
+    setTimeout(() => {
+      const canvas = document.getElementById('rolling-chart');
+      if (!canvas) return;
+      let coords = drawRollingChart(canvas, points);
+      let selectedIdx = -1;
+
+      function redraw() {
+        coords = drawRollingChart(canvas, points);
+        if (selectedIdx >= 0 && coords) drawRollingTooltip(canvas, points, selectedIdx, coords);
+      }
+
+      canvas.addEventListener('click', e => {
+        if (!coords) return;
+        const rect = canvas.getBoundingClientRect();
+        const xStep = coords.chartW / (points.length - 1);
+        selectedIdx = Math.max(0, Math.min(
+          Math.round((e.clientX - rect.left - coords.PAD_LEFT) / xStep),
+          points.length - 1
+        ));
+        redraw();
+      });
+
+      canvas.addEventListener('mousemove', e => {
+        if (!coords) return;
+        const rect = canvas.getBoundingClientRect();
+        const xStep = coords.chartW / (points.length - 1);
+        const idx = Math.max(0, Math.min(
+          Math.round((e.clientX - rect.left - coords.PAD_LEFT) / xStep),
+          points.length - 1
+        ));
+        if (idx !== selectedIdx) { selectedIdx = idx; redraw(); }
+      });
+
+      canvas.addEventListener('mouseleave', () => { selectedIdx = -1; redraw(); });
+      window.addEventListener('resize', redraw);
+    }, 0);
+  }
+
+  function drawRollingChart(canvas, points) {
+    const dpr = window.devicePixelRatio || 1;
+    const cssW = canvas.offsetWidth;
+    const cssH = canvas.offsetHeight;
+    canvas.width  = cssW * dpr;
+    canvas.height = cssH * dpr;
+    const ctx = canvas.getContext('2d');
+    ctx.scale(dpr, dpr);
+
+    if (!points || points.length < 2) return null;
+
+    const PAD_LEFT = 44, PAD_RIGHT = 8, PAD_TOP = 10, PAD_BOTTOM = 26;
+    const chartW = cssW - PAD_LEFT - PAD_RIGHT;
+    const chartH = cssH - PAD_TOP  - PAD_BOTTOM;
+
+    const allVals = [
+      ...points.filter(p => p.rolling30SharpeRatio != null).map(p => p.rolling30SharpeRatio),
+      ...points.filter(p => p.rolling90SharpeRatio != null).map(p => p.rolling90SharpeRatio),
+    ];
+    if (allVals.length === 0) return null;
+
+    const peak = Math.max(...allVals.map(Math.abs));
+    const yRange = Math.max(peak * 1.15, 1.0);
+
+    function yOf(v) { return PAD_TOP + chartH * (1 - (v + yRange) / (2 * yRange)); }
+    function xOf(i) { return PAD_LEFT + (i / (points.length - 1)) * chartW; }
+
+    const isDark = document.documentElement.classList.contains('dark') ||
+      window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const gridColor     = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)';
+    const zeroLineColor = isDark ? 'rgba(255,255,255,0.35)' : 'rgba(0,0,0,0.30)';
+    const labelColor    = isDark ? '#9e9e9e' : '#757575';
+
+    // Grid lines
+    const gridStep = yRange <= 2 ? 0.5 : yRange <= 4 ? 1.0 : 2.0;
+    const gridLevels = [];
+    for (let v = -Math.ceil(yRange / gridStep) * gridStep; v <= yRange + gridStep * 0.5; v += gridStep) {
+      gridLevels.push(Math.round(v * 100) / 100);
+    }
+    gridLevels.forEach(level => {
+      const y = yOf(level);
+      if (y < PAD_TOP || y > PAD_TOP + chartH) return;
+      ctx.beginPath();
+      ctx.moveTo(PAD_LEFT, y);
+      ctx.lineTo(PAD_LEFT + chartW, y);
+      ctx.strokeStyle = level === 0 ? zeroLineColor : gridColor;
+      ctx.lineWidth   = level === 0 ? 1.5 : 1;
+      ctx.stroke();
+    });
+
+    // Draw a line series with subpath breaks at nulls
+    function drawSeries(getter, color) {
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 2;
+      ctx.lineJoin = 'round';
+      ctx.beginPath();
+      let started = false;
+      for (let i = 0; i < points.length; i++) {
+        const v = getter(points[i]);
+        if (v != null) {
+          if (!started) { ctx.moveTo(xOf(i), yOf(v)); started = true; }
+          else ctx.lineTo(xOf(i), yOf(v));
+        } else started = false;
+      }
+      ctx.stroke();
+    }
+
+    drawSeries(p => p.rolling30SharpeRatio, '#1565C0');
+    drawSeries(p => p.rolling90SharpeRatio, '#6A1B9A');
+
+    // Y-axis labels
+    ctx.font = '11px system-ui, sans-serif';
+    ctx.fillStyle = labelColor;
+    ctx.textAlign = 'right';
+    gridLevels.forEach(level => {
+      const y = yOf(level);
+      if (y >= PAD_TOP && y <= PAD_TOP + chartH) {
+        ctx.fillText(level.toFixed(level % 1 === 0 ? 0 : 1), PAD_LEFT - 4, y + 4);
+      }
+    });
+
+    // X-axis date labels
+    ctx.textAlign = 'center';
+    [0, Math.floor(points.length * 0.25), Math.floor(points.length * 0.5),
+     Math.floor(points.length * 0.75), points.length - 1]
+      .filter((v, i, a) => a.indexOf(v) === i)
+      .forEach(i => {
+        const [yr, mo, dy] = points[i].date.split('-');
+        const label = new Date(+yr, +mo - 1, +dy).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+        ctx.fillText(label, xOf(i), PAD_TOP + chartH + 18);
+      });
+
+    return { xOf, yOf, chartW, PAD_LEFT, PAD_TOP, chartH };
+  }
+
+  function drawRollingTooltip(canvas, points, idx, coords) {
+    if (idx < 0 || !coords) return;
+    const { xOf, yOf, PAD_LEFT, PAD_TOP, chartH } = coords;
+    const ctx = canvas.getContext('2d');
+    const pt = points[idx];
+    const sx = xOf(idx);
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(sx, PAD_TOP);
+    ctx.lineTo(sx, PAD_TOP + chartH);
+    ctx.strokeStyle = 'rgba(128,128,128,0.5)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    if (pt.rolling30SharpeRatio != null) {
+      ctx.beginPath();
+      ctx.arc(sx, yOf(pt.rolling30SharpeRatio), 4, 0, 2 * Math.PI);
+      ctx.fillStyle = '#1565C0';
+      ctx.fill();
+    }
+    if (pt.rolling90SharpeRatio != null) {
+      ctx.beginPath();
+      ctx.arc(sx, yOf(pt.rolling90SharpeRatio), 4, 0, 2 * Math.PI);
+      ctx.fillStyle = '#6A1B9A';
+      ctx.fill();
+    }
+
+    const isDark = document.documentElement.classList.contains('dark') ||
+      window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const textColor = isDark ? '#e0e0e0' : '#212121';
+
+    const [yr, mo, dy] = pt.date.split('-');
+    const dateLabel = new Date(+yr, +mo - 1, +dy)
+      .toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+
+    ctx.font = 'bold 11px system-ui, sans-serif';
+    ctx.fillStyle = textColor;
+    const tx = Math.max(PAD_LEFT + 4, Math.min(sx, canvas.offsetWidth - 120));
+    ctx.fillText(dateLabel, tx, PAD_TOP + 14);
+    if (pt.rolling30SharpeRatio != null)
+      ctx.fillText(`30d: ${pt.rolling30SharpeRatio.toFixed(2)}`, tx, PAD_TOP + 28);
+    if (pt.rolling90SharpeRatio != null)
+      ctx.fillText(`90d: ${pt.rolling90SharpeRatio.toFixed(2)}`, tx, PAD_TOP + 42);
+
+    ctx.restore();
   }
 }

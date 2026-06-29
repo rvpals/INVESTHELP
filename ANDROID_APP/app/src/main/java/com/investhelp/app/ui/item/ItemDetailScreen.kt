@@ -93,6 +93,8 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.PlaylistAdd
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Star
+import com.investhelp.app.data.remote.CorporateEvent
+import com.investhelp.app.data.remote.CorporateEventType
 import com.investhelp.app.data.remote.YahooReportSection
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.OutlinedTextField
@@ -169,6 +171,8 @@ fun ItemDetailScreen(
     val volatilityCache by viewModel.volatilityCache.collectAsStateWithLifecycle()
     val volatilityLoading by viewModel.volatilityLoading.collectAsStateWithLifecycle()
     val tickerCorrelation by viewModel.tickerCorrelation.collectAsStateWithLifecycle()
+    val corporateEvents by viewModel.corporateEvents.collectAsStateWithLifecycle()
+    val isLoadingCorporateEvents by viewModel.isLoadingCorporateEvents.collectAsStateWithLifecycle()
 
     var selectedTab by rememberSaveable { mutableIntStateOf(0) }
     var statsStartDate by remember { mutableStateOf(LocalDate.now().minusYears(1)) }
@@ -178,6 +182,7 @@ fun ItemDetailScreen(
         viewModel.fetchAnalysisInfo(ticker)
         viewModel.loadVolatilityForTicker(ticker)
         viewModel.loadCorrelationForTicker(ticker)
+        viewModel.loadCorporateEvents(ticker)
     }
 
     LaunchedEffect(ticker, statsStartDate, statsEndDate) {
@@ -420,7 +425,9 @@ fun ItemDetailScreen(
                     definitions = definitions,
                     volatilityCache = volatilityCache,
                     volatilityLoading = volatilityLoading,
-                    tickerCorrelation = tickerCorrelation
+                    tickerCorrelation = tickerCorrelation,
+                    corporateEvents = corporateEvents,
+                    isLoadingCorporateEvents = isLoadingCorporateEvents
                 )
                 1 -> PriceHistoryTab(
                     ticker = ticker,
@@ -445,6 +452,7 @@ fun ItemDetailScreen(
                     investingPerformance = investingPerformance,
                     isLoadingInvestingPerf = isLoadingInvestingPerf,
                     investingPerfError = investingPerfError,
+                    corporateEvents = corporateEvents,
                     warnBeforeDelete = warnBeforeDelete,
                     onDeleteTransaction = { viewModel.deleteTransaction(it) }
                 )
@@ -465,7 +473,9 @@ private fun ItemDetailContent(
     definitions: List<DefinitionEntity>,
     volatilityCache: com.investhelp.app.data.local.entity.VolatilityCacheEntity?,
     volatilityLoading: Boolean,
-    tickerCorrelation: TickerCorrelationInfo?
+    tickerCorrelation: TickerCorrelationInfo?,
+    corporateEvents: List<CorporateEvent> = emptyList(),
+    isLoadingCorporateEvents: Boolean = false
 ) {
     val context = LocalContext.current
     val newsArticleCount = remember {
@@ -684,12 +694,132 @@ private fun ItemDetailContent(
 
         item {
             Spacer(modifier = Modifier.height(8.dp))
+            ImportantEventsCard(
+                ticker = ticker,
+                events = corporateEvents,
+                isLoading = isLoadingCorporateEvents
+            )
+        }
+
+        item {
+            Spacer(modifier = Modifier.height(8.dp))
             NewsCollapsibleCard(
                 ticker = ticker,
                 newsArticles = newsArticles,
                 isLoading = isLoadingNews
             )
         }
+    }
+}
+
+@Composable
+private fun ImportantEventsCard(
+    ticker: String,
+    events: List<CorporateEvent>,
+    isLoading: Boolean
+) {
+    val context = LocalContext.current
+    val pinKey = "pin_card_events_$ticker"
+    val prefs = remember {
+        context.getSharedPreferences(SettingsViewModel.PREFS_NAME, android.content.Context.MODE_PRIVATE)
+    }
+    var pinned by rememberSaveable { mutableStateOf(prefs.getBoolean(pinKey, false)) }
+
+    com.investhelp.app.ui.components.CollapsibleCard(
+        title = "Important Events",
+        pinned = pinned,
+        onPinToggle = { newPinned ->
+            pinned = newPinned
+            prefs.edit().putBoolean(pinKey, newPinned).apply()
+        }
+    ) {
+        if (isLoading) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
+                horizontalArrangement = Arrangement.Center
+            ) { CircularProgressIndicator(modifier = Modifier.size(24.dp)) }
+        } else if (events.isEmpty()) {
+            Text(
+                "No events found",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(vertical = 8.dp)
+            )
+        } else {
+            val now = LocalDate.now()
+            val upcoming = events.filter { it.date >= now }
+            val recent = events.filter { it.date < now }.reversed()
+
+            if (upcoming.isNotEmpty()) {
+                Text(
+                    "UPCOMING",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(bottom = 4.dp)
+                )
+                upcoming.forEach { event -> EventRow(event) }
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+            if (recent.isNotEmpty()) {
+                Text(
+                    "RECENT HISTORY",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(bottom = 4.dp)
+                )
+                recent.take(12).forEach { event -> EventRow(event) }
+            }
+        }
+    }
+}
+
+private fun eventColor(type: CorporateEventType): Color = when (type) {
+    CorporateEventType.DIVIDEND -> Color(0xFF1565C0)
+    CorporateEventType.SPLIT -> Color(0xFFE65100)
+    CorporateEventType.EARNINGS -> Color(0xFF2E7D32)
+    CorporateEventType.EARNINGS_UPCOMING -> Color(0xFF6A1B9A)
+}
+
+@Composable
+private fun EventRow(event: CorporateEvent) {
+    val color = eventColor(event.type)
+    val dateFormatter = remember { DateTimeFormatter.ofPattern("MMM dd, yyyy") }
+    val typeLabel = when (event.type) {
+        CorporateEventType.DIVIDEND -> "Dividend"
+        CorporateEventType.SPLIT -> "Split"
+        CorporateEventType.EARNINGS -> "Earnings"
+        CorporateEventType.EARNINGS_UPCOMING -> "Upcoming"
+    }
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        verticalAlignment = Alignment.Top,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Text(
+            text = event.date.format(dateFormatter),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.width(100.dp)
+        )
+        Surface(
+            color = color.copy(alpha = 0.12f),
+            shape = RoundedCornerShape(8.dp)
+        ) {
+            Text(
+                text = typeLabel,
+                style = MaterialTheme.typography.labelSmall,
+                color = color,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+            )
+        }
+        Text(
+            text = event.description,
+            style = MaterialTheme.typography.bodySmall,
+            modifier = Modifier.weight(1f)
+        )
     }
 }
 
@@ -1321,6 +1451,7 @@ private fun TransactionDetailsTab(
     investingPerformance: List<ItemViewModel.InvestingPerfPoint>,
     isLoadingInvestingPerf: Boolean,
     investingPerfError: String?,
+    corporateEvents: List<CorporateEvent> = emptyList(),
     warnBeforeDelete: Boolean = true,
     onDeleteTransaction: (com.investhelp.app.data.local.entity.InvestmentTransactionEntity) -> Unit = {}
 ) {
@@ -1566,7 +1697,8 @@ private fun TransactionDetailsTab(
                     InvestingPerformanceChartWithControls(
                         ticker = ticker,
                         points = investingPerformance,
-                        currencyFormat = currencyFormat
+                        currencyFormat = currencyFormat,
+                        corporateEvents = corporateEvents
                     )
                 } else {
                     Text(
@@ -1583,7 +1715,8 @@ private fun TransactionDetailsTab(
                     InvestingPerformanceTable(
                         points = investingPerformance,
                         currencyFormat = currencyFormat,
-                        dateFormatter = dateFormatter
+                        dateFormatter = dateFormatter,
+                        corporateEvents = corporateEvents
                     )
                 }
             }
@@ -1597,7 +1730,8 @@ private fun TransactionDetailsTab(
 private fun InvestingPerformanceChartWithControls(
     ticker: String,
     points: List<ItemViewModel.InvestingPerfPoint>,
-    currencyFormat: NumberFormat
+    currencyFormat: NumberFormat,
+    corporateEvents: List<CorporateEvent> = emptyList()
 ) {
     var showFullscreen by remember { mutableStateOf(false) }
     val context = LocalContext.current
@@ -1638,7 +1772,8 @@ private fun InvestingPerformanceChartWithControls(
 
         InvestingPerformanceChart(
             points = points,
-            currencyFormat = currencyFormat
+            currencyFormat = currencyFormat,
+            corporateEvents = corporateEvents
         )
     }
 
@@ -1647,6 +1782,7 @@ private fun InvestingPerformanceChartWithControls(
             ticker = ticker,
             points = points,
             currencyFormat = currencyFormat,
+            corporateEvents = corporateEvents,
             onDismiss = { showFullscreen = false },
             onSave = {
                 scope.launch(Dispatchers.IO) {
@@ -1662,6 +1798,7 @@ private fun InvestingPerformanceFullscreenDialog(
     ticker: String,
     points: List<ItemViewModel.InvestingPerfPoint>,
     currencyFormat: NumberFormat,
+    corporateEvents: List<CorporateEvent> = emptyList(),
     onDismiss: () -> Unit,
     onSave: () -> Unit
 ) {
@@ -1697,7 +1834,8 @@ private fun InvestingPerformanceFullscreenDialog(
                 InvestingPerformanceChart(
                     points = points,
                     currencyFormat = currencyFormat,
-                    chartHeight = 400
+                    chartHeight = 400,
+                    corporateEvents = corporateEvents
                 )
             }
         }
@@ -1827,7 +1965,8 @@ private fun saveChartToPng(
 private fun InvestingPerformanceChart(
     points: List<ItemViewModel.InvestingPerfPoint>,
     currencyFormat: NumberFormat,
-    chartHeight: Int = 220
+    chartHeight: Int = 220,
+    corporateEvents: List<CorporateEvent> = emptyList()
 ) {
     if (points.size < 2) return
 
@@ -1844,7 +1983,23 @@ private fun InvestingPerformanceChart(
     val maxPrice = remember(prices) { prices.max() }
     val priceRange = remember(minPrice, maxPrice) { (maxPrice - minPrice).coerceAtLeast(0.01) }
 
+    // Map each corporate event to the nearest point index by date
+    val eventMappings = remember(points, corporateEvents) {
+        if (corporateEvents.isEmpty()) emptyList()
+        else {
+            val minDate = points.firstOrNull()?.date ?: return@remember emptyList()
+            val maxDate = points.lastOrNull()?.date ?: return@remember emptyList()
+            corporateEvents
+                .filter { it.date in minDate..maxDate }
+                .map { event ->
+                    val idx = points.indexOfFirst { it.date >= event.date }.let { if (it < 0) points.size - 1 else it }
+                    Pair(idx, event)
+                }
+        }
+    }
+
     var selectedIdx by remember { mutableStateOf<Int?>(null) }
+    var selectedEventIdx by remember { mutableStateOf<Int?>(null) }
     var zoom by remember { mutableStateOf(1f) }
     var scrollOffset by remember { mutableStateOf(0f) }
     var chartWidthPx by remember { mutableStateOf(0f) }
@@ -1876,14 +2031,32 @@ private fun InvestingPerformanceChart(
                             val virtualWidth = chartWidthPx * zoom
                             val virtualX = offset.x + scrollOffset
                             val spacing = virtualWidth / (points.size - 1).coerceAtLeast(1)
-                            val idx = ((virtualX + spacing / 2) / spacing).toInt()
-                                .coerceIn(0, points.size - 1)
-                            selectedIdx = if (selectedIdx == idx) null else idx
+
+                            // Check if tapping near an event diamond
+                            var closestEventIdx: Int? = null
+                            var closestEventDist = 24.dp.value * 24.dp.value
+                            eventMappings.forEachIndexed { i, (ptIdx, _) ->
+                                val ex = ptIdx * spacing - scrollOffset
+                                val ey = chartWidthPx * (1f - ((prices[ptIdx] - minPrice) / priceRange).toFloat())
+                                val dist = (offset.x - ex) * (offset.x - ex) + (offset.y - ey) * (offset.y - ey)
+                                if (dist < closestEventDist) { closestEventDist = dist; closestEventIdx = i }
+                            }
+
+                            if (closestEventIdx != null) {
+                                selectedEventIdx = if (selectedEventIdx == closestEventIdx) null else closestEventIdx
+                                selectedIdx = null
+                            } else {
+                                val idx = ((virtualX + spacing / 2) / spacing).toInt()
+                                    .coerceIn(0, points.size - 1)
+                                selectedIdx = if (selectedIdx == idx) null else idx
+                                selectedEventIdx = null
+                            }
                         },
                         onDoubleTap = {
                             zoom = 1f
                             scrollOffset = 0f
                             selectedIdx = null
+                            selectedEventIdx = null
                         }
                     )
                 }
@@ -1972,6 +2145,25 @@ private fun InvestingPerformanceChart(
                     }
                 }
 
+                // Draw event diamond markers
+                eventMappings.forEachIndexed { evIdx, (ptIdx, event) ->
+                    val x = ptIdx * spacing - scrollOffset
+                    if (x < -20.dp.toPx() || x > chartWidth + 20.dp.toPx()) return@forEachIndexed
+                    val y = chartHeight * (1f - ((prices[ptIdx] - minPrice) / priceRange).toFloat())
+                    val evColor = eventColor(event.type)
+                    val ds = 7.dp.toPx()
+                    val diamondPath = Path().apply {
+                        moveTo(x, y - ds)
+                        lineTo(x + ds, y)
+                        lineTo(x, y + ds)
+                        lineTo(x - ds, y)
+                        close()
+                    }
+                    drawPath(diamondPath, Color.White)
+                    if (selectedEventIdx == evIdx) drawPath(diamondPath, evColor.copy(alpha = 0.3f))
+                    drawPath(diamondPath, evColor, style = Stroke(2.dp.toPx()))
+                }
+
                 // Selected point indicator
                 selectedIdx?.let { idx ->
                     val x = idx * spacing - scrollOffset
@@ -2006,7 +2198,7 @@ private fun InvestingPerformanceChart(
                 }
             }
 
-            // Tooltip
+            // Tooltip for selected point
             selectedIdx?.let { idx ->
                 val pt = points[idx]
                 val typeLabel = when {
@@ -2029,18 +2221,63 @@ private fun InvestingPerformanceChart(
                     )
                 }
             }
+
+            // Tooltip for selected event
+            selectedEventIdx?.let { evIdx ->
+                val (_, event) = eventMappings.getOrNull(evIdx) ?: return@let
+                val evColor = eventColor(event.type)
+                val label = "${event.description} — ${event.date.format(dateFormat)}"
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .background(evColor.copy(alpha = 0.15f), RoundedCornerShape(4.dp))
+                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                ) {
+                    Text(
+                        text = label,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = evColor,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
         }
     }
+}
+
+private sealed class PerfTableRow {
+    data class PriceRow(val pt: ItemViewModel.InvestingPerfPoint) : PerfTableRow()
+    data class EventRow(val event: CorporateEvent) : PerfTableRow()
 }
 
 @Composable
 private fun InvestingPerformanceTable(
     points: List<ItemViewModel.InvestingPerfPoint>,
     currencyFormat: NumberFormat,
-    dateFormatter: DateTimeFormatter
+    dateFormatter: DateTimeFormatter,
+    corporateEvents: List<CorporateEvent> = emptyList()
 ) {
     val dividerColor = MaterialTheme.colorScheme.outline
     val txBgColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
+
+    val tableRows = remember(points, corporateEvents) {
+        val dateRange = if (points.isEmpty()) null else points.first().date..points.last().date
+        val eventsInRange = if (dateRange == null) emptyList()
+            else corporateEvents.filter { it.date in dateRange }
+        val merged: MutableList<PerfTableRow> = mutableListOf()
+        var evIdx = 0
+        for (pt in points) {
+            while (evIdx < eventsInRange.size && eventsInRange[evIdx].date <= pt.date) {
+                merged.add(PerfTableRow.EventRow(eventsInRange[evIdx]))
+                evIdx++
+            }
+            merged.add(PerfTableRow.PriceRow(pt))
+        }
+        while (evIdx < eventsInRange.size) {
+            merged.add(PerfTableRow.EventRow(eventsInRange[evIdx++]))
+        }
+        merged
+    }
 
     Card(
         colors = CardDefaults.cardColors(
@@ -2086,96 +2323,133 @@ private fun InvestingPerformanceTable(
                 )
                 VerticalDivider(color = dividerColor)
                 Text(
-                    text = "Shares",
+                    text = "Type / Event",
                     style = MaterialTheme.typography.labelSmall,
                     fontWeight = FontWeight.Bold,
-                    modifier = Modifier.width(60.dp).padding(horizontal = 4.dp),
-                    textAlign = TextAlign.End
-                )
-                VerticalDivider(color = dividerColor)
-                Text(
-                    text = "Type",
-                    style = MaterialTheme.typography.labelSmall,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.width(70.dp).padding(horizontal = 4.dp),
-                    textAlign = TextAlign.Center
+                    modifier = Modifier.width(200.dp).padding(horizontal = 4.dp)
                 )
             }
             HorizontalDivider(thickness = 2.dp, color = dividerColor)
 
             val altColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
-            points.forEachIndexed { index, pt ->
-                val bgMod = when {
-                    pt.isCurrentPrice -> Modifier.background(MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.4f))
-                    pt.isTransaction -> Modifier.background(txBgColor)
-                    index % 2 == 1 -> Modifier.background(altColor)
-                    else -> Modifier
-                }
-                Row(
-                    modifier = bgMod
-                        .height(IntrinsicSize.Min)
-                        .padding(vertical = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "${index + 1}",
-                        style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.width(36.dp).padding(start = 4.dp),
-                        textAlign = TextAlign.Center,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    VerticalDivider(color = dividerColor)
-                    Text(
-                        text = pt.date.format(dateFormatter),
-                        style = MaterialTheme.typography.bodySmall,
-                        fontWeight = if (pt.isTransaction || pt.isCurrentPrice) FontWeight.Bold else FontWeight.Normal,
-                        modifier = Modifier.width(100.dp).padding(horizontal = 4.dp)
-                    )
-                    VerticalDivider(color = dividerColor)
-                    Text(
-                        text = currencyFormat.format(pt.price),
-                        style = MaterialTheme.typography.bodySmall,
-                        fontWeight = if (pt.isTransaction || pt.isCurrentPrice) FontWeight.Bold else FontWeight.Normal,
-                        modifier = Modifier.width(90.dp).padding(horizontal = 4.dp),
-                        textAlign = TextAlign.End,
-                        color = when {
-                            pt.isCurrentPrice -> MaterialTheme.colorScheme.tertiary
-                            pt.isTransaction -> MaterialTheme.colorScheme.error
-                            else -> MaterialTheme.colorScheme.onSurface
+            var priceRowIdx = 0
+            tableRows.forEachIndexed { index, row ->
+                when (row) {
+                    is PerfTableRow.PriceRow -> {
+                        val pt = row.pt
+                        val bgMod = when {
+                            pt.isCurrentPrice -> Modifier.background(MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.4f))
+                            pt.isTransaction -> Modifier.background(txBgColor)
+                            priceRowIdx % 2 == 1 -> Modifier.background(altColor)
+                            else -> Modifier
                         }
-                    )
-                    VerticalDivider(color = dividerColor)
-                    Text(
-                        text = if (pt.isTransaction && pt.numberOfShares > 0) {
-                            if (pt.numberOfShares == pt.numberOfShares.toLong().toDouble())
-                                pt.numberOfShares.toLong().toString()
-                            else
-                                "%.2f".format(pt.numberOfShares)
-                        } else "",
-                        style = MaterialTheme.typography.bodySmall,
-                        fontWeight = if (pt.isTransaction) FontWeight.Bold else FontWeight.Normal,
-                        modifier = Modifier.width(60.dp).padding(horizontal = 4.dp),
-                        textAlign = TextAlign.End,
-                        color = if (pt.isTransaction) MaterialTheme.colorScheme.error
-                            else MaterialTheme.colorScheme.onSurface
-                    )
-                    VerticalDivider(color = dividerColor)
-                    Text(
-                        text = when {
-                            pt.isCurrentPrice -> "Current"
-                            pt.isTransaction -> "BUY/SELL"
-                            else -> "Market"
-                        },
-                        style = MaterialTheme.typography.bodySmall,
-                        fontWeight = if (pt.isTransaction || pt.isCurrentPrice) FontWeight.Bold else FontWeight.Normal,
-                        modifier = Modifier.width(70.dp).padding(horizontal = 4.dp),
-                        textAlign = TextAlign.Center,
-                        color = when {
-                            pt.isCurrentPrice -> MaterialTheme.colorScheme.tertiary
-                            pt.isTransaction -> MaterialTheme.colorScheme.error
-                            else -> MaterialTheme.colorScheme.onSurfaceVariant
+                        priceRowIdx++
+                        Row(
+                            modifier = bgMod.height(IntrinsicSize.Min).padding(vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "$priceRowIdx",
+                                style = MaterialTheme.typography.bodySmall,
+                                modifier = Modifier.width(36.dp).padding(start = 4.dp),
+                                textAlign = TextAlign.Center,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            VerticalDivider(color = dividerColor)
+                            Text(
+                                text = pt.date.format(dateFormatter),
+                                style = MaterialTheme.typography.bodySmall,
+                                fontWeight = if (pt.isTransaction || pt.isCurrentPrice) FontWeight.Bold else FontWeight.Normal,
+                                modifier = Modifier.width(100.dp).padding(horizontal = 4.dp)
+                            )
+                            VerticalDivider(color = dividerColor)
+                            Text(
+                                text = currencyFormat.format(pt.price),
+                                style = MaterialTheme.typography.bodySmall,
+                                fontWeight = if (pt.isTransaction || pt.isCurrentPrice) FontWeight.Bold else FontWeight.Normal,
+                                modifier = Modifier.width(90.dp).padding(horizontal = 4.dp),
+                                textAlign = TextAlign.End,
+                                color = when {
+                                    pt.isCurrentPrice -> MaterialTheme.colorScheme.tertiary
+                                    pt.isTransaction -> MaterialTheme.colorScheme.error
+                                    else -> MaterialTheme.colorScheme.onSurface
+                                }
+                            )
+                            VerticalDivider(color = dividerColor)
+                            Text(
+                                text = when {
+                                    pt.isCurrentPrice -> "Current"
+                                    pt.isTransaction -> if (pt.numberOfShares > 0) {
+                                        val s = if (pt.numberOfShares == pt.numberOfShares.toLong().toDouble())
+                                            pt.numberOfShares.toLong().toString() else "%.2f".format(pt.numberOfShares)
+                                        "BUY/SELL ($s shares)"
+                                    } else "BUY/SELL"
+                                    else -> "Market"
+                                },
+                                style = MaterialTheme.typography.bodySmall,
+                                fontWeight = if (pt.isTransaction || pt.isCurrentPrice) FontWeight.Bold else FontWeight.Normal,
+                                modifier = Modifier.width(200.dp).padding(horizontal = 4.dp),
+                                color = when {
+                                    pt.isCurrentPrice -> MaterialTheme.colorScheme.tertiary
+                                    pt.isTransaction -> MaterialTheme.colorScheme.error
+                                    else -> MaterialTheme.colorScheme.onSurfaceVariant
+                                }
+                            )
                         }
-                    )
+                    }
+                    is PerfTableRow.EventRow -> {
+                        val event = row.event
+                        val evColor = eventColor(event.type)
+                        Row(
+                            modifier = Modifier
+                                .background(evColor.copy(alpha = 0.08f))
+                                .height(IntrinsicSize.Min)
+                                .padding(vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            // Diamond indicator in # column
+                            Box(
+                                modifier = Modifier.width(36.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Canvas(modifier = Modifier.size(12.dp)) {
+                                    val ds = size.width / 2
+                                    val path = Path().apply {
+                                        moveTo(size.width / 2, 0f)
+                                        lineTo(size.width, size.height / 2)
+                                        lineTo(size.width / 2, size.height)
+                                        lineTo(0f, size.height / 2)
+                                        close()
+                                    }
+                                    drawPath(path, evColor)
+                                }
+                            }
+                            VerticalDivider(color = dividerColor)
+                            Text(
+                                text = event.date.format(dateFormatter),
+                                style = MaterialTheme.typography.bodySmall,
+                                fontWeight = FontWeight.Medium,
+                                modifier = Modifier.width(100.dp).padding(horizontal = 4.dp),
+                                color = evColor
+                            )
+                            VerticalDivider(color = dividerColor)
+                            Text(
+                                text = "—",
+                                style = MaterialTheme.typography.bodySmall,
+                                modifier = Modifier.width(90.dp).padding(horizontal = 4.dp),
+                                textAlign = TextAlign.End,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            VerticalDivider(color = dividerColor)
+                            Text(
+                                text = event.description,
+                                style = MaterialTheme.typography.bodySmall,
+                                fontWeight = FontWeight.Medium,
+                                modifier = Modifier.width(200.dp).padding(horizontal = 4.dp),
+                                color = evColor
+                            )
+                        }
+                    }
                 }
                 HorizontalDivider(color = dividerColor)
             }

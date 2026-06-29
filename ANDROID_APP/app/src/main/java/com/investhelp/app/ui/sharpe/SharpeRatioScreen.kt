@@ -64,6 +64,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.investhelp.app.util.RollingRiskEngine
 import com.investhelp.app.util.SharpeCalculator
 import java.text.NumberFormat
 import java.time.Instant
@@ -71,12 +72,16 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import androidx.compose.foundation.gestures.detectTapGestures
+import kotlin.math.abs
 
 private val COLOR_GAIN = Color(0xFF2E7D32)
 private val COLOR_LOSS = Color(0xFFC62828)
 private val COLOR_GOOD = Color(0xFF2E7D32)
 private val COLOR_VERY_GOOD = Color(0xFF0D47A1)
 private val COLOR_EXCEPTIONAL = Color(0xFF6A1B9A)
+
+private val COLOR_ROLLING_30D = Color(0xFF1565C0)  // blue
+private val COLOR_ROLLING_90D = Color(0xFF6A1B9A)  // purple
 
 private val LOOKBACK_OPTIONS = listOf(
     "6M" to 180,
@@ -96,6 +101,7 @@ fun SharpeRatioScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val riskFreeRatePercent by viewModel.riskFreeRatePercent.collectAsStateWithLifecycle()
     val lookbackCalendarDays by viewModel.lookbackCalendarDays.collectAsStateWithLifecycle()
+    val rollingRiskState by viewModel.rollingRiskState.collectAsStateWithLifecycle()
 
     Scaffold(
         topBar = {
@@ -168,6 +174,13 @@ fun SharpeRatioScreen(
                         }
                     }
                 }
+            }
+
+            item {
+                RollingRiskCard(
+                    uiState = rollingRiskState,
+                    onCalculate = { viewModel.computeRollingRisk() }
+                )
             }
         }
     }
@@ -829,6 +842,298 @@ private fun SimpleCollapsibleCard(
                 Column {
                     HorizontalDivider(color = MaterialTheme.colorScheme.outline)
                     Box(modifier = Modifier.padding(16.dp)) { content() }
+                }
+            }
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Rolling Risk Metrics card — 30d / 90d rolling Sharpe Ratio
+// ─────────────────────────────────────────────────────────────────────────────
+
+@Composable
+private fun RollingRiskCard(
+    uiState: RollingRiskUiState,
+    onCalculate: () -> Unit
+) {
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text(
+                "Rolling Risk Metrics",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold
+            )
+            Text(
+                "30-day and 90-day annualized Sharpe Ratio computed from actual transaction history",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            when (val state = uiState) {
+                is RollingRiskUiState.Idle -> {
+                    Button(
+                        onClick = onCalculate,
+                        modifier = Modifier.align(Alignment.End)
+                    ) { Text("Calculate") }
+                }
+                is RollingRiskUiState.Loading -> {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                        Text(
+                            state.message,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+                is RollingRiskUiState.Error -> {
+                    Text(
+                        state.message,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                    OutlinedButton(
+                        onClick = onCalculate,
+                        modifier = Modifier.align(Alignment.End)
+                    ) { Text("Retry") }
+                }
+                is RollingRiskUiState.Success -> {
+                    val points = state.points
+                    val last30 = points.lastOrNull { it.rolling30SharpeRatio != null }?.rolling30SharpeRatio
+                    val last90 = points.lastOrNull { it.rolling90SharpeRatio != null }?.rolling90SharpeRatio
+
+                    // Legend + latest values
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(width = 24.dp, height = 3.dp)
+                                    .background(COLOR_ROLLING_30D, RoundedCornerShape(2.dp))
+                            )
+                            Text("30-Day", style = MaterialTheme.typography.labelSmall)
+                            if (last30 != null) {
+                                Text(
+                                    String.format("%.2f", last30),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = COLOR_ROLLING_30D
+                                )
+                            }
+                        }
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(width = 24.dp, height = 3.dp)
+                                    .background(COLOR_ROLLING_90D, RoundedCornerShape(2.dp))
+                            )
+                            Text("90-Day", style = MaterialTheme.typography.labelSmall)
+                            if (last90 != null) {
+                                Text(
+                                    String.format("%.2f", last90),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = COLOR_ROLLING_90D
+                                )
+                            }
+                        }
+                        OutlinedButton(
+                            onClick = onCalculate,
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
+                        ) {
+                            Icon(Icons.Default.Refresh, contentDescription = "Recalculate", modifier = Modifier.size(16.dp))
+                        }
+                    }
+
+                    RollingRiskChart(
+                        points = points,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(240.dp)
+                    )
+
+                    Text(
+                        "${points.size} trading days  ·  Tap chart to inspect",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun RollingRiskChart(
+    points: List<RollingRiskEngine.RollingRiskPoint>,
+    modifier: Modifier = Modifier
+) {
+    if (points.size < 2) return
+
+    val allValues = points.mapNotNull { it.rolling30SharpeRatio } +
+                    points.mapNotNull { it.rolling90SharpeRatio }
+    if (allValues.isEmpty()) return
+
+    val peak = allValues.maxOf { abs(it) }.coerceAtLeast(1.0)
+    val yRange = peak * 1.15
+
+    var selectedIndex by remember(points) { mutableIntStateOf(-1) }
+
+    val dateFormatter = remember { DateTimeFormatter.ofPattern("MM/dd") }
+    val gridColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.15f)
+    val zeroLineColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.70f)
+    val labelTextColor = MaterialTheme.colorScheme.onSurfaceVariant.toArgb()
+
+    Box(modifier = modifier) {
+        Canvas(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(start = 40.dp, end = 8.dp, top = 8.dp, bottom = 28.dp)
+                .pointerInput(points) {
+                    detectTapGestures { offset ->
+                        val canvasWidth = size.width.toFloat()
+                        selectedIndex = ((offset.x / canvasWidth) * (points.size - 1))
+                            .toInt()
+                            .coerceIn(0, points.size - 1)
+                    }
+                }
+        ) {
+            val w = size.width
+            val h = size.height
+
+            fun yOf(v: Double): Float = (h * (1.0 - (v + yRange) / (2.0 * yRange))).toFloat()
+            fun xOf(i: Int): Float = i * w / (points.size - 1)
+
+            val zeroY = yOf(0.0)
+
+            // Grid lines at integer Sharpe values within range
+            val gridStep = if (yRange <= 2.0) 0.5 else if (yRange <= 4.0) 1.0 else 2.0
+            val gridLevels = mutableListOf<Double>()
+            var v = -(Math.ceil(yRange / gridStep) * gridStep)
+            while (v <= yRange + gridStep * 0.5) {
+                gridLevels.add(v)
+                v += gridStep
+            }
+
+            gridLevels.forEach { level ->
+                val y = yOf(level)
+                if (y < 0 || y > h) return@forEach
+                drawLine(
+                    color = if (level == 0.0) zeroLineColor else gridColor,
+                    start = Offset(0f, y),
+                    end = Offset(w, y),
+                    strokeWidth = if (level == 0.0) 1.5f else 1f
+                )
+            }
+
+            // 30d rolling Sharpe line — multiple subpaths for null gaps
+            val path30 = Path()
+            var in30 = false
+            points.forEachIndexed { i, pt ->
+                val sv = pt.rolling30SharpeRatio
+                if (sv != null) {
+                    if (!in30) { path30.moveTo(xOf(i), yOf(sv)); in30 = true }
+                    else path30.lineTo(xOf(i), yOf(sv))
+                } else in30 = false
+            }
+            drawPath(path30, color = COLOR_ROLLING_30D, style = Stroke(width = 4f))
+
+            // 90d rolling Sharpe line
+            val path90 = Path()
+            var in90 = false
+            points.forEachIndexed { i, pt ->
+                val sv = pt.rolling90SharpeRatio
+                if (sv != null) {
+                    if (!in90) { path90.moveTo(xOf(i), yOf(sv)); in90 = true }
+                    else path90.lineTo(xOf(i), yOf(sv))
+                } else in90 = false
+            }
+            drawPath(path90, color = COLOR_ROLLING_90D, style = Stroke(width = 4f))
+
+            // Y-axis labels
+            val yLabelPaint = Paint().apply {
+                color = labelTextColor
+                textSize = 24f
+                textAlign = android.graphics.Paint.Align.RIGHT
+            }
+            gridLevels.forEach { level ->
+                val y = yOf(level)
+                if (y < 0 || y > h) return@forEach
+                drawContext.canvas.nativeCanvas.drawText(
+                    String.format("%.1f", level),
+                    -4f, y + 8f, yLabelPaint
+                )
+            }
+
+            // X-axis date labels
+            val xLabelPaint = Paint().apply {
+                color = labelTextColor
+                textSize = 22f
+                textAlign = android.graphics.Paint.Align.CENTER
+            }
+            listOf(0, points.size / 4, points.size / 2, points.size * 3 / 4, points.size - 1)
+                .distinct()
+                .forEach { i ->
+                    drawContext.canvas.nativeCanvas.drawText(
+                        points[i].date.format(dateFormatter),
+                        xOf(i), h + 22f, xLabelPaint
+                    )
+                }
+
+            // Selection overlay
+            if (selectedIndex in points.indices) {
+                val sx = xOf(selectedIndex)
+                val pt = points[selectedIndex]
+
+                drawLine(
+                    color = Color.Gray.copy(alpha = 0.5f),
+                    start = Offset(sx, 0f),
+                    end = Offset(sx, h),
+                    strokeWidth = 1f
+                )
+                pt.rolling30SharpeRatio?.let {
+                    drawCircle(color = COLOR_ROLLING_30D, radius = 5f, center = Offset(sx, yOf(it)))
+                }
+                pt.rolling90SharpeRatio?.let {
+                    drawCircle(color = COLOR_ROLLING_90D, radius = 5f, center = Offset(sx, yOf(it)))
+                }
+
+                val tooltipPaint = Paint().apply {
+                    color = labelTextColor
+                    textSize = 26f
+                    textAlign = android.graphics.Paint.Align.LEFT
+                    isFakeBoldText = true
+                }
+                val txClamped = sx.coerceIn(4f, w - 100f)
+                val dateLabel = pt.date.format(DateTimeFormatter.ofPattern("MMM d, yyyy"))
+                drawContext.canvas.nativeCanvas.drawText(dateLabel, txClamped, 18f, tooltipPaint)
+                pt.rolling30SharpeRatio?.let {
+                    drawContext.canvas.nativeCanvas.drawText(
+                        "30d: ${String.format("%.2f", it)}",
+                        txClamped, 34f, tooltipPaint
+                    )
+                }
+                pt.rolling90SharpeRatio?.let {
+                    drawContext.canvas.nativeCanvas.drawText(
+                        "90d: ${String.format("%.2f", it)}",
+                        txClamped, 50f, tooltipPaint
+                    )
                 }
             }
         }

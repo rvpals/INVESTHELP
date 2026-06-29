@@ -33,6 +33,9 @@
 - Android: Gradle wrapper download timeout behind corporate proxy — Java ignores system proxy settings. Fixed by adding proxy config to `gradle.properties`.
 - Android: install_dependency.bat "was unexpected at this time" error — paths with spaces (Program Files) broke `%variable%` expansion in if/else blocks. Fixed with `enabledelayedexpansion` and `!variable!` syntax.
 
+## Resolved
+- Android: Release build failed with "Unable to delete directory...lint-cache/lintVitalAnalyzeRelease/migrated-jars" during `clean assembleRelease` — Gradle lint-cache JARs locked by a prior daemon process. Fixed by killing all Java/Gradle processes (`Get-Process -Name "java","gradle" | Stop-Process -Force`) then building with `assembleRelease --rerun-tasks` (no `clean`). See `build_android_apk.md` Problem #4.
+
 ## Notes
 - Build requires JAVA_HOME set to JDK 17+ — configure in `ANDROID_APP/env.bat`
 - Migration 16->17 drops bank_transfers table (Bank Transfer feature removed); existing bank transfer data is lost on upgrade
